@@ -12,12 +12,10 @@
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" href="favicon.png">
     <link rel="apple-touch-icon" href="icon-192.png">
-    <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="icon-192.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+    
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 
     <style>
@@ -182,24 +180,18 @@
     </style>
 </head>
 <body>
-<!-- 알림 허용 배너 -->
 <div id="notiBanner" onclick="requestNotificationPermission()">
     🔔 알림을 허용하면 수주·승인·생산 완료 시 자동으로 알림을 받을 수 있습니다. 탭하여 허용하기
 </div>
-<!-- 토스트 컨테이너 -->
 <div id="toastWrap"></div>
 
-<!-- ══════════════════════════════════════════
-     🔒 PIN 로그인 오버레이 (역할 선택 + 키패드)
-══════════════════════════════════════════ -->
 <div id="loginOverlay">
     <div class="login-card">
         <div class="login-logo">YONGJIN <span>ENT.</span></div>
         <div class="login-sub">역할을 선택하고 PIN을 입력하세요</div>
 
         <div class="role-grid" id="roleGrid">
-            <!-- JS가 생성 -->
-        </div>
+            </div>
 
         <div class="pin-dots">
             <div class="pin-dot" id="pd0"></div>
@@ -227,16 +219,12 @@
     <p style="margin-top:20px;font-size:10px;color:rgba(255,255,255,0.35);font-weight:700;letter-spacing:2px;">INTERNAL MANAGEMENT SYSTEM</p>
 </div>
 
-<!-- ══════════════════════════════
-     메인 앱
-══════════════════════════════ -->
 <div id="mainApp" class="hidden pb-24">
 
     <nav class="bg-white border-b sticky top-0 z-50 px-4 py-3 shadow-sm">
         <div class="max-w-md mx-auto space-y-3">
             <div id="roleTabsWrap" class="grid gap-1">
-                <!-- switchRole 이전에 buildTabs()가 채움 -->
-            </div>
+                </div>
             <div class="flex items-center justify-between bg-blue-50 px-4 py-2 rounded-xl border border-blue-100">
                 <h1 class="text-sm font-black tracking-tighter text-slate-900 italic">YONGJIN ENT.</h1>
                 <div class="flex items-center gap-2">
@@ -249,7 +237,6 @@
 
     <main class="max-w-md mx-auto p-4 space-y-6">
 
-        <!-- 영업 -->
         <div id="section-sales" class="space-y-6 hidden">
             <section class="bg-white p-6 rounded-[2.5rem] shadow-sm border space-y-4">
                 <h3 class="font-bold text-slate-800 text-lg">📝 신규 수주 보고</h3>
@@ -284,7 +271,6 @@
                     </div>
                 </div>
 
-                <!-- 3D 미리보기 -->
                 <div class="relative h-60 bg-gradient-to-br from-slate-50 to-slate-100 rounded-3xl flex items-center justify-center overflow-hidden preview-container border border-slate-200 shadow-inner">
                     <div class="absolute top-4 bg-white/90 backdrop-blur-sm border border-slate-200 text-slate-700 px-4 py-1.5 rounded-full text-[10px] font-bold z-10 shadow-sm">
                         <span id="selectedWoodNameDisplay">규격 시뮬레이션</span>
@@ -337,7 +323,6 @@
             </section>
         </div>
 
-        <!-- 회계 -->
         <div id="section-accounting" class="hidden space-y-6">
             <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-blue-100">
                 <h3 class="font-bold text-blue-800 mb-4 flex items-center gap-2">
@@ -361,7 +346,6 @@
             </section>
         </div>
 
-        <!-- 채권 -->
         <div id="section-receivables" class="hidden space-y-6">
             <div id="receivableBannerWrap"></div>
             <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-amber-200">
@@ -376,7 +360,6 @@
             </section>
         </div>
 
-        <!-- 생산 -->
         <div id="section-factory" class="hidden space-y-6">
             <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-orange-100">
                 <h3 class="font-bold text-orange-800 mb-6">🏭 생산 공정 제어판</h3>
@@ -384,12 +367,10 @@
             </section>
         </div>
 
-        <!-- 현황 (관리자 전용) -->
         <div id="section-history" class="hidden space-y-6">
             <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-200">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="font-bold text-slate-800">📊 통합 대시보드</h3>
-                    <!-- 초기화: 관리자만 -->
                     <div class="flex gap-2">
                         <button onclick="exportExcel()"
                             class="text-[10px] bg-green-600 text-white px-3 py-2 rounded-lg font-bold">
@@ -414,19 +395,7 @@
 <script>
 /* ══════════════════════════════════════════════
    👥 사용자 설정 — PIN만 변경하면 됩니다
-   role: sales | accounting | factory | admin
-   접근 탭:
-     sales      → 영업만
-     accounting → 회계만
-     factory    → 생산만
-     admin      → 전체 (초기화 포함)
 ══════════════════════════════════════════════ */
-/* ════════════════════════════════════════════════════════
-   ✏️  [수정포인트 1] 사용자 PIN 변경
-   퇴사/신규입사 시 해당 줄의 pin 값만 바꾸면 됩니다.
-   role 종류: sales(영업) | accounting(회계) | factory(공장장) | admin(관리자)
-   label: 화면에 표시될 역할명 (이름 없이 역할만 표시)
-════════════════════════════════════════════════════════ */
 const USERS = [
     { id: 'sales',  role: 'sales',       label: '영업',   pin: '1111' },
     { id: 'acc1',   role: 'accounting',  label: '회계①', pin: '2222' },
@@ -436,11 +405,6 @@ const USERS = [
     { id: 'adm2',   role: 'admin',       label: '관리②', pin: '6666' },
 ];
 
-/* ════════════════════════════════════════════════════════
-   ✏️  [수정포인트 2] 역할별 접근 가능 탭
-   각 역할이 로그인 후 볼 수 있는 탭 목록입니다.
-   탭 종류: sales | accounting | receivables | factory | history
-════════════════════════════════════════════════════════ */
 const ROLE_TABS = {
     sales:      ['sales',       'history'],
     accounting: ['accounting',  'receivables', 'history'],
@@ -456,30 +420,22 @@ const TAB_META = {
     history:     { label: '현황',  emoji: '📊' },
 };
 
-/* ══════════════════════════════════════════════
-   ⚠️  Supabase 알림 테이블 생성 필요 (최초 1회)
-   Supabase 콘솔 → SQL Editor → 아래 실행:
-
-   create table notifications (
-     id          bigserial primary key,
-     target_roles text[],
-     type        text,
-     message     text,
-     created_at  timestamptz default now(),
-     read        boolean default false
-   );
-══════════════════════════════════════════════ */
-
-/* ══ Supabase ══ */
 /* ════════════════════════════════════════════════════════
-   ✏️  [수정포인트 3] Supabase 데이터베이스 연결 정보
-   Supabase 콘솔 → 프로젝트 설정 → API 에서 확인 가능
-   URL과 ANON_KEY가 바뀌면 여기서 수정하세요.
+   🚀 파이어베이스(Firebase) 연결 설정
 ════════════════════════════════════════════════════════ */
-const SUPABASE_URL      = 'https://mlranhagzvtwtlzkovua.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1scmFuaGFnenZ0d3RsemtveXVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2MjkyNDgsImV4cCI6MjA5MTIwNTI0OH0.hVfBwvPJXxm0SCGHDbF38qP12axjJCwGFtFJbWjDMnM';
-const { createClient }  = supabase;
-const sb                = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const firebaseConfig = {
+  apiKey: "AIzaSyDGdi03xiK44WzrK8082VjUPsIujQmN7_A",
+  authDomain: "yongjin-enterprise.firebaseapp.com",
+  databaseURL: "https://yongjin-enterprise-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "yongjin-enterprise",
+  storageBucket: "yongjin-enterprise.firebasestorage.app",
+  messagingSenderId: "364016255378",
+  appId: "1:364016255378:web:387f6145265e0a567d814b"
+};
+
+// 파이어베이스 초기화
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
 /* ══ 상태 ══ */
 let orders          = [];
@@ -531,12 +487,12 @@ function tryLogin() {
         document.getElementById('mainApp').classList.remove('hidden');
         document.getElementById('displayUser').textContent = user.label;
 
-        /* 초기화 버튼: 관리자만 표시 */
         if (user.role === 'admin') document.getElementById('clearBtn').style.display = '';
 
         buildTabs();
         const firstTab = ROLE_TABS[user.role][0];
         switchRole(firstTab);
+        
         fetchOrdersFromCloud();
         checkNotiBanner();
         startNotiPoller();
@@ -561,25 +517,31 @@ function buildTabs() {
 }
 
 /* ══════════════════════════════════════════════
-   ☁️ Supabase
+   ☁️ Firebase 데이터베이스 연동 함수들
 ══════════════════════════════════════════════ */
 async function fetchOrdersFromCloud() {
-    const { data, error } = await sb.from('orders').select('*').order('id', { ascending: true });
-    if (error) { console.error(error); return; }
-    orders = data || [];
-    const activeBtn = document.querySelector('.active-role');
-    if (activeBtn) {
-        const role = activeBtn.id.replace('role-', '');
-        switchRole(role);
+    try {
+        const snapshot = await db.collection('orders').orderBy('createdAt', 'asc').get();
+        orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        const activeBtn = document.querySelector('.active-role');
+        if (activeBtn) {
+            const role = activeBtn.id.replace('role-', '');
+            switchRole(role);
+        }
+        if (currentUser) checkOverdueReceivables();
+    } catch (e) {
+        console.error("데이터 불러오기 실패:", e);
     }
-    /* 로드 후 미수금 초과 체크 */
-    if (currentUser) checkOverdueReceivables();
 }
 
 async function updateOrderInCloud(id, updates) {
-    const { error } = await sb.from('orders').update(updates).eq('id', id);
-    if (error) alert('업데이트 오류: ' + error.message);
-    else fetchOrdersFromCloud();
+    try {
+        await db.collection('orders').doc(id).update(updates);
+        fetchOrdersFromCloud();
+    } catch (e) {
+        alert('업데이트 오류: ' + e.message);
+    }
 }
 
 /* ══════════════════════════════════════════════
@@ -593,11 +555,6 @@ function handleImageError(imgEl, color) {
 }
 
 function openWoodModal() {
-    /* ════════════════════════════════════════════════════════
-       ✏️  [수정포인트 4] 목재 종류 추가/삭제
-       형식: ['목재이름', '이미지파일명.png', '대체색상코드']
-       이미지가 없으면 대체색상이 표시됩니다.
-    ════════════════════════════════════════════════════════ */
     const woods = [
         ['무광PET/퍼펙트화이트',     'image_f06ce4.png', '#FDFCF8'],
         ['유광하이그로시/화이트',      'image_f06ca6.png', '#FFFFFF'],
@@ -618,7 +575,7 @@ function openWoodModal() {
         ['유광하이그로시/블랙',        'image_f056d9.png', '#1A1A1A'],
         ['전체코팅/화이트오크',        'image_f056bc.png', '#D7C4B0'],
         ['양면코팅/화이트오크',        'image_f056bc.png', '#D7C4B0'],
-        ['일반합판',                  'image_f05699.png', '#D2B48C'],
+        ['일반합판',                 'image_f05699.png', '#D2B48C'],
         ['전체코팅/연월넛',           'image_f0567a.png', '#8B5A2B'],
         ['양면코팅/연월넛',           'image_f0567a.png', '#8B5A2B'],
     ];
@@ -705,11 +662,6 @@ function switchRole(role) {
 /* ══════════════════════════════════════════════
    📝 영업 보고
 ══════════════════════════════════════════════ */
-/* ════════════════════════════════════════════════════════
-   📝 [영업] 수주 보고 함수
-   - 입력값 검증 후 Supabase orders 테이블에 저장
-   - 저장 성공 시 회계+관리자에게 알림 발송
-════════════════════════════════════════════════════════ */
 async function handleReport() {
     const client  = document.getElementById('clientName').value;
     const t       = document.getElementById('thickness').value;
@@ -732,26 +684,22 @@ async function handleReport() {
         rejectReason: '',
         reportedBy: currentUser.label,
         logs: [`${new Date().toLocaleString()}: ${currentUser.label} 영업 보고`],
+        createdAt: Date.now() // Firebase 정렬용
     };
 
-    const { error } = await sb.from('orders').insert([newOrder]);
-    if (error) alert('전송 실패: ' + error.message);
-    else {
+    try {
+        await db.collection('orders').add(newOrder);
         alert('서버 저장 완료!');
         document.getElementById('clientName').value = '';
         fetchOrdersFromCloud();
+    } catch(e) {
+        alert('전송 실패: ' + e.message);
     }
 }
 
 /* ══════════════════════════════════════════════
-   💼 회계 (원본 구조 유지 + 거절 사유 로그 추가)
+   💼 회계
 ══════════════════════════════════════════════ */
-/* ════════════════════════════════════════════════════════
-   💼 [회계] 승인 대기 화면 렌더링
-   - 승인대기(pending) / 공장생산현황(approved) / 청구대기 표시
-   - rejectOrder: 거절 사유 입력 → DB 저장 → 현황탭에 표시
-   - updateStatus: 승인 처리 → 공장장+관리자 알림 발송
-════════════════════════════════════════════════════════ */
 function renderAccounting() {
     /* 승인 대기 */
     document.getElementById('accountingList').innerHTML =
@@ -760,7 +708,7 @@ function renderAccounting() {
                 <div class="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
                 <div class="flex justify-between items-center mb-2 pl-2">
                     <p class="font-black text-lg">${o.client}</p>
-                    <button onclick="editOrder(${o.id})" class="text-[10px] bg-slate-100 px-3 py-1 rounded-lg">수정</button>
+                    <button onclick="editOrder('${o.id}')" class="text-[10px] bg-slate-100 px-3 py-1 rounded-lg">수정</button>
                 </div>
                 <div class="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl mb-3 ml-2">
                     <p>• 자재: <b>${o.material} (${o.thickness})</b></p>
@@ -769,8 +717,8 @@ function renderAccounting() {
                     <p>• 보고자: <b>${o.reportedBy || '-'}</b></p>
                 </div>
                 <div class="flex gap-2 ml-2">
-                    <button onclick="rejectOrder(${o.id})" class="flex-1 py-3 bg-white border rounded-xl text-red-500 font-bold">거절</button>
-                    <button onclick="updateStatus(${o.id}, 'approved')" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold">승인</button>
+                    <button onclick="rejectOrder('${o.id}')" class="flex-1 py-3 bg-white border rounded-xl text-red-500 font-bold">거절</button>
+                    <button onclick="updateStatus('${o.id}', 'approved')" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold">승인</button>
                 </div>
             </div>`).join('') || '<p class="text-center py-4 text-xs text-slate-400">업무 없음</p>';
 
@@ -815,7 +763,6 @@ async function updateStatus(id, s) {
         logs: [...(o.logs || []), `${new Date().toLocaleString()}: ${currentUser.label} ${s === 'approved' ? '승인' : s}`],
     });
     if (s === 'approved') {
-        /* 🔔 공장장 + 관리자에게 알림 */
         await pushNotification(
             ['factory', 'admin'],
             'noti-accounting',
@@ -833,14 +780,8 @@ async function editOrder(id) {
 }
 
 /* ══════════════════════════════════════════════
-   🏭 생산 (원본 그대로)
+   🏭 생산
 ══════════════════════════════════════════════ */
-/* ════════════════════════════════════════════════════════
-   🏭 [생산] 공정 현황 렌더링
-   - approved 상태인 수주만 표시
-   - addProgress: 생산수량 입력 → 누적 → 완료시 completed로 변경
-   - 생산 완료 시 회계+관리자에게 자동 알림 발송
-════════════════════════════════════════════════════════ */
 function renderFactory() {
     document.getElementById('productionList').innerHTML =
         orders.filter(o => o.status === 'approved').map(o => {
@@ -854,7 +795,7 @@ function renderFactory() {
                 </div>
                 <div class="flex gap-2">
                     <input type="number" id="in-${o.id}" class="flex-1 p-3 bg-slate-50 rounded-xl border" placeholder="생산량 입력">
-                    <button onclick="addProgress(${o.id})" class="px-6 py-3 bg-orange-600 text-white rounded-xl font-bold">보고</button>
+                    <button onclick="addProgress('${o.id}')" class="px-6 py-3 bg-orange-600 text-white rounded-xl font-bold">보고</button>
                 </div>
             </div>`;
         }).join('') || '<p class="text-center py-10 text-slate-400 text-xs">대기 수주 없음</p>';
@@ -866,14 +807,16 @@ async function addProgress(id) {
     if (val <= 0) return alert('수량을 입력하세요.');
     if (val < 0)  return alert('음수는 입력할 수 없습니다.');
     if ((o.completedQty || 0) + val > o.qty) return alert(`초과! 남은 수량: ${o.qty - (o.completedQty || 0)}장`);
+    
     const newQty    = (o.completedQty || 0) + val;
     const newStatus = newQty >= o.qty ? 'completed' : o.status;
+    
     await updateOrderInCloud(id, {
         completedQty: newQty, status: newStatus,
         logs: [...(o.logs || []), `${new Date().toLocaleString()}: 생산 +${val}장 (누계 ${newQty}/${o.qty})`],
     });
+    
     if (newStatus === 'completed') {
-        /* 🔔 회계 + 관리자에게 알림 */
         await pushNotification(
             ['accounting', 'admin'],
             'noti-factory',
@@ -884,20 +827,12 @@ async function addProgress(id) {
 }
 
 /* ══════════════════════════════════════════════
-   💰 채권 — 미수금 총액 배너 추가
+   💰 채권
 ══════════════════════════════════════════════ */
-/* ════════════════════════════════════════════════════════
-   💰 [채권] 미수금 현황 렌더링
-   - completed + unpaid 상태인 건만 표시
-   - 상단에 총 미수금액 배너 자동 계산
-   - confirmPayment: 입금확인 처리 → paid로 변경
-   - exportReceivablesCSV: CSV 파일로 내보내기
-════════════════════════════════════════════════════════ */
 function renderReceivables() {
     const unpaid = orders.filter(o => o.status === 'completed' && o.paymentStatus === 'unpaid');
     const total  = unpaid.reduce((s, o) => s + (o.price * o.qty), 0);
 
-    /* ★ 총액 배너 */
     document.getElementById('receivableBannerWrap').innerHTML = `
         <div class="receivable-banner">
             <div>
@@ -913,7 +848,7 @@ function renderReceivables() {
                 <p class="font-black text-amber-900">${o.client}</p>
                 <p class="text-xs text-slate-500 mt-1">${o.material} / 입금예정: ${o.payDate || '미정'}</p>
                 <p class="text-sm font-black text-red-600 mt-2">청구액: ₩${(o.price * o.qty).toLocaleString()}</p>
-                <button onclick="confirmPayment(${o.id})"
+                <button onclick="confirmPayment('${o.id}')"
                     class="w-full py-3 mt-4 bg-amber-500 text-white rounded-xl font-bold active:scale-95">
                     💵 입금 확인 완료
                 </button>
@@ -929,17 +864,11 @@ async function confirmPayment(id) {
     });
 }
 
-/* ════════════════════════════════════════════════════════
-   📊 [엑셀] 채권 미수금 엑셀 내보내기
-   SheetJS 라이브러리 사용 — 서식 있는 xlsx 파일 생성
-════════════════════════════════════════════════════════ */
 function exportReceivablesCSV() {
     const unpaid = orders.filter(o => o.status === 'completed' && o.paymentStatus === 'unpaid');
     if (!unpaid.length) { alert('미수금 데이터가 없습니다.'); return; }
 
     const wb = XLSX.utils.book_new();
-
-    /* 미수금 시트 */
     const header = [['업체명', '목재', '가로(mm)', '세로(mm)', '두께', '수량', '단가', '합계금액', '출고일', '입금예정일']];
     const rows = unpaid.map(o => [
         o.client, o.material, Number(o.width)||0, Number(o.height)||0,
@@ -949,8 +878,6 @@ function exportReceivablesCSV() {
     rows.push(['', '', '', '', '', '', '합계', total, '', '']);
 
     const ws = XLSX.utils.aoa_to_sheet([...header, ...rows]);
-
-    /* 열 너비 */
     ws['!cols'] = [
         {wch:18},{wch:22},{wch:10},{wch:10},{wch:8},
         {wch:8},{wch:12},{wch:14},{wch:12},{wch:12}
@@ -961,12 +888,6 @@ function exportReceivablesCSV() {
     XLSX.writeFile(wb, `용진기업_미수금_${ym}.xlsx`);
 }
 
-/* ════════════════════════════════════════════════════════
-   📊 [엑셀] 전체 통합 현황 엑셀 내보내기 (현황 탭)
-   시트 1: 전체 수주 현황
-   시트 2: 미수금 요약
-   시트 3: 월별 집계
-════════════════════════════════════════════════════════ */
 function exportExcel() {
     if (!orders.length) { alert('데이터가 없습니다.'); return; }
 
@@ -977,7 +898,6 @@ function exportExcel() {
     const statusKr = { pending:'승인대기', approved:'생산중', completed:'완료', rejected:'거절됨' };
     const payKr    = { paid:'입금완료', unpaid:'미수' };
 
-    /* ── 시트1: 전체 수주 현황 ── */
     const s1Header = [
         [`용진기업 전체 수주 현황 (${ym} 기준 / 출력일: ${now})`],
         [],
@@ -1003,7 +923,6 @@ function exportExcel() {
     ws1['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:12} }];
     XLSX.utils.book_append_sheet(wb, ws1, '전체수주현황');
 
-    /* ── 시트2: 미수금 요약 ── */
     const unpaid = orders.filter(o => o.status === 'completed' && o.paymentStatus === 'unpaid');
     const s2Header = [
         [`용진기업 미수금 요약 (${ym})`],
@@ -1021,7 +940,6 @@ function exportExcel() {
     ws2['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:4} }];
     XLSX.utils.book_append_sheet(wb, ws2, '미수금요약');
 
-    /* ── 시트3: 상태별 집계 ── */
     let pC=0,pS=0, aC=0,aS=0, uC=0,uS=0, cC=0,cS=0;
     orders.forEach(o => {
         const tot = (o.price||0) * (o.qty||0);
@@ -1053,15 +971,8 @@ function exportExcel() {
 }
 
 /* ══════════════════════════════════════════════
-   📊 현황 — 상태 뱃지 + 거절 사유 표시
+   📊 현황
 ══════════════════════════════════════════════ */
-/* ════════════════════════════════════════════════════════
-   📊 [현황] 통합 대시보드 렌더링 (전 역할 접근 가능)
-   - 4가지 상태별 건수/금액 집계 표시
-   - 전체 수주 목록 역순(최신순) 표시
-   - 거절사유 빨간 박스로 표시
-   - 초기화 버튼: 관리자(admin) 역할만 노출
-════════════════════════════════════════════════════════ */
 function renderHistory() {
     let pC=0,pS=0, aC=0,aS=0, uC=0,uS=0, cC=0,cS=0;
     orders.forEach(o => {
@@ -1114,22 +1025,13 @@ function renderHistory() {
             </div>`).join('');
 }
 
-/* ══════════════════════════════════════════════
-   🗑 전체 초기화 — 관리자만 (JS + DB에서 체크)
-══════════════════════════════════════════════ */
-/* ════════════════════════════════════════════════════════
-   🗑  [초기화] 전체 데이터 삭제
-   - admin 역할만 실행 가능 (역할 체크 + 이중 확인)
-   - Supabase orders 테이블 전체 삭제
-   - 새 시즌(월/분기) 시작 시 사용
-════════════════════════════════════════════════════════ */
 async function clearAllData() {
     if (currentUser.role !== 'admin') { alert('관리자만 초기화할 수 있습니다.'); return; }
     if (!confirm('⚠️ 모든 데이터를 초기화합니까?\n되돌릴 수 없습니다.')) return;
     if (prompt('확인을 위해 "초기화" 를 입력하세요:') !== '초기화') { alert('취소됐습니다.'); return; }
 
     for (const o of orders) {
-        await sb.from('orders').delete().eq('id', o.id);
+        await db.collection('orders').doc(o.id).delete();
     }
     orders = [];
     renderHistory();
@@ -1137,39 +1039,20 @@ async function clearAllData() {
 }
 
 /* ══════════════════════════════════════════════
-   🔔 알림 시스템
-   - 브라우저 푸시 알림 (홈화면 저장 시 앱처럼 동작)
-   - 인앱 토스트 알림 (앱 열려있을 때)
-   수신 대상:
-     영업 보고      → 회계①② + 관리①②
-     회계 승인      → 공장장  + 관리①②
-     생산 완료      → 회계①② + 관리①②
-     미수금 초과    → 관리①②  (입금예정일 지난 건)
+   🔔 알림 시스템 (Firebase 호환)
 ══════════════════════════════════════════════ */
-
-/* Supabase DB에 알림 저장 — 다른 기기에서 polling으로 수신 */
-/* ════════════════════════════════════════════════════════
-   🔔 [알림] Supabase notifications 테이블에 알림 저장
-   target_roles: 수신할 역할 배열 예) ['accounting','admin']
-   type: 알림 종류 (noti-sales | noti-accounting | noti-factory | noti-overdue)
-   ⚠️  Supabase에 notifications 테이블이 없으면 알림이 작동 안 됩니다.
-       SQL: create table notifications (id bigserial primary key,
-            target_roles text[], type text, message text,
-            created_at timestamptz default now(), read boolean default false);
-════════════════════════════════════════════════════════ */
 async function pushNotification(targetRoles, type, message) {
     try {
-        await sb.from('notifications').insert([{
-            target_roles: targetRoles,   /* 수신 역할 배열 */
-            type,                        /* noti-sales | noti-accounting | noti-factory | noti-overdue */
+        await db.collection('notifications').add({
+            target_roles: targetRoles,
+            type,
             message,
-            created_at: new Date().toISOString(),
+            created_at: Date.now(),
             read: false,
-        }]);
+        });
     } catch(e) { console.warn('알림 저장 실패:', e); }
 }
 
-/* 브라우저 푸시 알림 권한 요청 */
 async function requestNotificationPermission() {
     if (!('Notification' in window)) return;
     const result = await Notification.requestPermission();
@@ -1180,7 +1063,6 @@ async function requestNotificationPermission() {
     }
 }
 
-/* 브라우저 푸시 알림 발송 (이 기기에서 직접) */
 function sendBrowserNoti(title, body, icon) {
     if (Notification.permission !== 'granted') return;
     try {
@@ -1194,7 +1076,6 @@ function sendBrowserNoti(title, body, icon) {
     } catch(e) {}
 }
 
-/* 인앱 토스트 표시 */
 let toastId = 0;
 function showToast(type, icon, title, msg, duration) {
     duration = duration || 5000;
@@ -1220,7 +1101,6 @@ function dismissToast(id) {
     setTimeout(() => el.remove(), 300);
 }
 
-/* ── 미수금 초과 체크 (앱 열 때마다) ── */
 function checkOverdueReceivables() {
     if (!orders.length) return;
     const today    = new Date(); today.setHours(0,0,0,0);
@@ -1240,54 +1120,44 @@ function checkOverdueReceivables() {
     }
 }
 
-/* ── Supabase 실시간 알림 polling (3초마다) ── */
-let lastNotiCheck = new Date().toISOString();
-let notiPoller    = null;
+let notiPoller = null;
 
 function startNotiPoller() {
     if (notiPoller) return;
-    notiPoller = setInterval(async () => {
-        if (!currentUser) return;
-        try {
-            const { data } = await sb.from('notifications')
-                .select('*')
-                .eq('read', false)
-                .gt('created_at', lastNotiCheck)
-                .order('created_at', { ascending: true });
+    
+    notiPoller = db.collection('notifications')
+        .where('read', '==', false)
+        .onSnapshot(snapshot => {
+            if (!currentUser) return;
+            
+            snapshot.docChanges().forEach(change => {
+                if (change.type === 'added') {
+                    const n = { id: change.doc.id, ...change.doc.data() };
+                    
+                    const targets = Array.isArray(n.target_roles) ? n.target_roles : [];
+                    if (!targets.includes(currentUser.role)) return;
 
-            if (!data || !data.length) return;
+                    const icons = {
+                        'noti-sales':      '📝',
+                        'noti-accounting': '✅',
+                        'noti-factory':    '🏭',
+                        'noti-overdue':    '⚠️',
+                    };
+                    const titles = {
+                        'noti-sales':      '신규 수주 보고',
+                        'noti-accounting': '회계 승인',
+                        'noti-factory':    '생산 완료',
+                        'noti-overdue':    '미수금 알림',
+                    };
+                    showToast(n.type, icons[n.type] || '🔔', titles[n.type] || '알림', n.message);
+                    sendBrowserNoti(titles[n.type] || '용진기업', n.message);
 
-            data.forEach(n => {
-                /* 내 역할이 수신 대상인지 확인 */
-                const targets = Array.isArray(n.target_roles) ? n.target_roles : [];
-                if (!targets.includes(currentUser.role)) return;
-
-                const icons = {
-                    'noti-sales':      '📝',
-                    'noti-accounting': '✅',
-                    'noti-factory':    '🏭',
-                    'noti-overdue':    '⚠️',
-                };
-                const titles = {
-                    'noti-sales':      '신규 수주 보고',
-                    'noti-accounting': '회계 승인',
-                    'noti-factory':    '생산 완료',
-                    'noti-overdue':    '미수금 알림',
-                };
-                showToast(n.type, icons[n.type] || '🔔', titles[n.type] || '알림', n.message);
-                sendBrowserNoti(titles[n.type] || '용진기업', n.message);
+                    db.collection('notifications').doc(n.id).update({ read: true });
+                }
             });
-
-            /* 읽음 처리 */
-            const ids = data.map(n => n.id);
-            await sb.from('notifications').update({ read: true }).in('id', ids);
-            lastNotiCheck = new Date().toISOString();
-
-        } catch(e) { /* 무시 */ }
-    }, 3000);
+        });
 }
 
-/* ── 알림 권한 배너 표시 ── */
 function checkNotiBanner() {
     if (!('Notification' in window)) return;
     if (localStorage.getItem('yj_noti_granted')) return;
@@ -1299,43 +1169,32 @@ function checkNotiBanner() {
     }
 }
 
-/* ════════════════════════════════════════════════════════
-   🔓 로그아웃
-   현재 세션을 종료하고 PIN 로그인 화면으로 돌아갑니다.
-════════════════════════════════════════════════════════ */
 function logout() {
     if (!confirm('로그아웃 하시겠습니까?')) return;
 
-    /* 상태 초기화 */
     currentUser   = null;
     pinBuffer     = '';
     chosenUserId  = null;
     orders        = [];
-    lastNotiCheck = new Date().toISOString();
 
-    /* 알림 폴러 중지 */
-    if (notiPoller) { clearInterval(notiPoller); notiPoller = null; }
+    if (notiPoller) { notiPoller(); notiPoller = null; } 
 
-    /* 탭 초기화 */
     document.getElementById('roleTabsWrap').innerHTML = '';
     document.getElementById('displayUser').textContent = '';
     document.getElementById('clearBtn').style.display = 'none';
     document.getElementById('notiBanner').style.display = 'none';
 
-    /* 모든 섹션 숨김 */
     ['sales','accounting','receivables','factory','history'].forEach(r => {
         const sec = document.getElementById('section-' + r);
         if (sec) { sec.classList.add('hidden'); sec.classList.remove('block'); }
     });
 
-    /* PIN 화면 초기화 후 표시 */
     document.querySelectorAll('.role-sel-btn').forEach(b => b.classList.remove('chosen'));
     updateDots();
     document.getElementById('pinErr').textContent = '';
     document.getElementById('loginOverlay').style.display = 'flex';
 }
 
-/* ══ 초기 실행 ══ */
 buildLoginUI();
 </script>
 </body>
