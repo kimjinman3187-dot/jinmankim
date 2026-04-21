@@ -89,8 +89,8 @@
         .login-logo span { color: #c8922a; }
         .login-sub { text-align: center; font-size: 11px; color: #94a3b8; font-weight: 600; margin-bottom: 20px; }
 
-        /* 역할 버튼 그리드 */
-        .role-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; max-height: 180px; overflow-y: auto; padding: 4px;}
+        /* 역할 버튼 그리드 (자동 로드되므로 max-height 추가) */
+        .role-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 20px; max-height: 180px; overflow-y: auto; padding: 4px;}
         .role-sel-btn {
             padding: 10px 4px; border: 2px solid #e2e8f0; border-radius: 12px;
             background: #f8fafc; font-family: inherit; font-size: 11px; font-weight: 700;
@@ -198,7 +198,7 @@
         <div class="login-sub">역할을 선택하고 PIN을 입력하세요</div>
 
         <div class="role-grid" id="roleGrid">
-            <p class="col-span-3 text-center text-xs text-slate-400 py-4">보안 서버와 통신 중...</p>
+            <p class="col-span-2 text-center text-xs text-slate-300 py-10">데이터 금고 연결 중...</p>
         </div>
 
         <div class="pin-dots">
@@ -231,7 +231,8 @@
 
     <nav class="bg-white border-b sticky top-0 z-50 px-4 py-3 shadow-sm">
         <div class="max-w-md mx-auto space-y-3">
-            <div id="roleTabsWrap" class="grid gap-1"></div>
+            <div id="roleTabsWrap" class="grid gap-1">
+                </div>
             <div class="flex items-center justify-between bg-blue-50 px-4 py-2 rounded-xl border border-blue-100">
                 <h1 class="text-sm font-black tracking-tighter text-slate-900 italic">YONGJIN ENT.</h1>
                 <div class="flex items-center gap-2">
@@ -401,7 +402,7 @@
 
 <script>
 /* ════════════════════════════════════════════════════════
-   🚀 파이어베이스(Firebase) 설정 및 전역 변수
+   🚀 파이어베이스(Firebase) 및 전역 변수
 ════════════════════════════════════════════════════════ */
 const firebaseConfig = {
   apiKey: "AIzaSyDGdi03xiK44WzrK8082VjUPsIujQmN7_A",
@@ -413,13 +414,13 @@ const firebaseConfig = {
 };
 
 let db, auth;
-let USERS = []; 
-let orders = [];
-let currentUser = null;
-let chosenUserId = null;
-let pinBuffer = '';
+let USERS = []; // 🛡️ 하드코딩 명단 삭제, DB 연동됨
+let orders          = [];
 let selectedWoodStr = '목재를 선택하세요';
-let notiPoller = null;
+let currentUser     = null;
+let pinBuffer       = '';
+let chosenUserId    = null;
+let notiPoller      = null;
 
 const ROLE_TABS = {
     sales:      ['sales',       'history'],
@@ -437,13 +438,15 @@ const TAB_META = {
 };
 
 /* ══════════════════════════════════════════════
-   보안 설정 및 서버 접속
+   🔒 보안 시작 및 실시간 유저 동기화
 ══════════════════════════════════════════════ */
 window.onload = async function() {
-    // 보안 차단
+    // 🛡️ 우클릭, 개발자도구 등 보안 설정
     document.addEventListener('contextmenu', e => e.preventDefault());
     document.addEventListener('keydown', e => {
-        if (e.keyCode === 123 || (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74)) || (e.ctrlKey && e.keyCode === 85)) e.preventDefault();
+        if (e.keyCode === 123 || (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74)) || (e.ctrlKey && e.keyCode === 85)) {
+            e.preventDefault();
+        }
     });
 
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
@@ -452,6 +455,7 @@ window.onload = async function() {
 
     try {
         await auth.signInAnonymously();
+        console.log("보안 터널 가동 성공");
         const snapshot = await db.collection('users').where('status', '==', 'active').get();
         USERS = snapshot.docs.map(doc => {
             const data = doc.data();
@@ -459,16 +463,17 @@ window.onload = async function() {
             return { id: doc.id, ...data };
         });
         buildLoginUI();
-    } catch (e) {
+    } catch (error) {
         document.getElementById('roleGrid').innerHTML = "<p class='text-red-500 text-xs col-span-3 text-center py-4 font-bold'>서버 통신 오류: 익명 인증을 확인하세요.</p>";
     }
 };
 
 /* ══════════════════════════════════════════════
-   🔒 PIN 로그인
+   🔒 PIN 로그인 — 역할 선택 + 키패드
 ══════════════════════════════════════════════ */
 function buildLoginUI() {
     const grid = document.getElementById('roleGrid');
+    if (!grid) return;
     grid.innerHTML = USERS.map(u => `
         <button class="role-sel-btn" id="rsb-${u.id}" onclick="chooseUser('${u.id}')">
             ${u.name}
@@ -476,7 +481,9 @@ function buildLoginUI() {
 }
 
 function chooseUser(uid) {
-    chosenUserId = uid; pinBuffer = ''; updateDots();
+    chosenUserId = uid;
+    pinBuffer    = '';
+    updateDots();
     document.getElementById('pinErr').textContent = '';
     document.querySelectorAll('.role-sel-btn').forEach(b => b.classList.remove('chosen'));
     document.getElementById('rsb-' + uid).classList.add('chosen');
@@ -485,14 +492,16 @@ function chooseUser(uid) {
 function kp(digit) {
     if (!chosenUserId) { document.getElementById('pinErr').textContent = '직원을 먼저 선택하세요'; return; }
     if (pinBuffer.length >= 4) return;
-    pinBuffer += digit; updateDots();
+    pinBuffer += digit;
+    updateDots();
     if (pinBuffer.length === 4) setTimeout(tryLogin, 120);
 }
 
 function kpDel() { pinBuffer = pinBuffer.slice(0, -1); updateDots(); }
 
 function updateDots() {
-    for (let i = 0; i < 4; i++) document.getElementById('pd' + i).className = 'pin-dot' + (i < pinBuffer.length ? ' on' : '');
+    for (let i = 0; i < 4; i++)
+        document.getElementById('pd' + i).className = 'pin-dot' + (i < pinBuffer.length ? ' on' : '');
 }
 
 async function tryLogin() {
@@ -500,13 +509,16 @@ async function tryLogin() {
     if (pinBuffer === user.pin) {
         currentUser = user;
         
-        try { await db.collection('audit_logs').add({ action: 'login', user: user.name, timestamp: Date.now() }); } catch(e){}
+        try { await db.collection('audit_logs').add({ action: 'LOGIN_SUCCESS', user: user.name, timestamp: Date.now() }); } catch(e){}
 
         document.getElementById('loginOverlay').style.display = 'none';
         document.getElementById('mainApp').classList.remove('hidden');
         document.getElementById('displayUser').textContent = user.name;
 
-        if (user.role === 'admin') document.getElementById('clearBtn').style.display = '';
+        if (user.role === 'admin') {
+            const btn = document.getElementById('clearBtn');
+            if(btn) btn.style.display = '';
+        }
 
         buildTabs();
         const firstTab = ROLE_TABS[user.role][0];
@@ -517,12 +529,13 @@ async function tryLogin() {
         startNotiPoller();
     } else {
         document.getElementById('pinErr').textContent = '❌ PIN이 틀렸습니다';
-        pinBuffer = ''; updateDots();
+        pinBuffer = '';
+        updateDots();
         setTimeout(() => { document.getElementById('pinErr').textContent = ''; }, 2000);
     }
 }
 
-/* ══ 탭 제어 ══ */
+/* ══ 탭 빌드 ══ */
 function buildTabs() {
     const tabs = ROLE_TABS[currentUser.role];
     const wrap = document.getElementById('roleTabsWrap');
@@ -554,7 +567,7 @@ function switchRole(role) {
 }
 
 /* ══════════════════════════════════════════════
-   ☁️ DB 통신 함수
+   ☁️ Firebase 데이터베이스 연동 함수들
 ══════════════════════════════════════════════ */
 async function fetchOrdersFromCloud() {
     if (!db) return;
@@ -568,17 +581,33 @@ async function fetchOrdersFromCloud() {
             switchRole(role);
         }
         if (currentUser) checkOverdueReceivables();
-    } catch (e) { console.error("데이터 로드 실패:", e); }
+    } catch (e) {
+        console.error("데이터 불러오기 실패:", e);
+    }
 }
 
 async function updateOrderInCloud(id, updates) {
-    try { await db.collection('orders').doc(id).update(updates); fetchOrdersFromCloud(); } 
-    catch (e) { alert('업데이트 오류: ' + e.message); }
+    if(!db) return;
+    try {
+        await db.collection('orders').doc(id).update(updates);
+        fetchOrdersFromCloud();
+    } catch (e) {
+        alert('업데이트 오류: ' + e.message);
+    }
 }
 
 /* ══════════════════════════════════════════════
-   🪵 목재 모달 (22종 완벽 복구 및 이미지 폴백)
+   🪵 목재 모달 로직 (22종 완벽 복구 및 폴백 추가)
 ══════════════════════════════════════════════ */
+function handleImageError(imgEl, color) {
+    imgEl.style.display = 'none';
+    const fb = imgEl.nextElementSibling;
+    if(fb) {
+        fb.style.backgroundColor = color;
+        fb.style.display = 'block';
+    }
+}
+
 function openWoodModal() {
     const woods = [
         ['무광PET/퍼펙트화이트',     'image_f06ce4.png', '#FDFCF8'],
@@ -607,8 +636,8 @@ function openWoodModal() {
 
     const items = woods.map(([name, img, color]) => `
         <div class="wood-btn-wrapper" onclick="selectWood('${name}','${img}','${color}')">
-            <img src="${img}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" class="wood-btn-img">
-            <div class="color-fallback" style="display:none; background-color:${color};"></div>
+            <img src="${img}" onerror="handleImageError(this,'${color}')" class="wood-btn-img">
+            <div class="color-fallback hidden"></div>
             <span class="text-[10px] font-bold text-slate-700 mt-2">${name}</span>
         </div>`).join('');
 
@@ -656,8 +685,10 @@ function updatePlateSize() {
     const w = document.getElementById('width').value  || 0;
     const l = document.getElementById('height').value || 0;
     const plate = document.getElementById('woodPlate');
+    
     document.getElementById('labelWidth').innerText  = w + ' mm';
     document.getElementById('labelLength').innerText = l + ' mm';
+    
     if (w > 0 && l > 0) {
         plate.style.width  = Math.min(240, 80 + (w / 10)) + 'px';
         plate.style.height = Math.min(160, 60 + (l / 10)) + 'px';
@@ -700,7 +731,7 @@ async function handleReport() {
 
     try {
         await db.collection('orders').add(newOrder);
-        showToast('noti-sales', '✅', '서버 저장 완료', '수주 데이터가 전송되었습니다.');
+        showToast('noti-sales', '✅', '서버 저장 완료', '수주 보고가 안전하게 전송되었습니다.');
         document.getElementById('clientName').value = '';
         fetchOrdersFromCloud();
     } catch(e) {
@@ -712,6 +743,7 @@ async function handleReport() {
    💼 회계
 ══════════════════════════════════════════════ */
 function renderAccounting() {
+    /* 승인 대기 */
     document.getElementById('accountingList').innerHTML =
         orders.filter(o => o.status === 'pending').map(o => `
             <div class="bg-white p-5 rounded-3xl border border-blue-200 mb-4 shadow-sm relative overflow-hidden">
@@ -732,6 +764,7 @@ function renderAccounting() {
                 </div>
             </div>`).join('') || '<p class="text-center py-4 text-xs text-slate-400">업무 없음</p>';
 
+    /* 공장 생산 현황 */
     document.getElementById('accountingFactoryList').innerHTML =
         orders.filter(o => o.status === 'approved').map(o => {
             const pct = Math.round((o.completedQty / o.qty) * 100) || 0;
@@ -746,6 +779,7 @@ function renderAccounting() {
             </div>`;
         }).join('') || '<p class="text-center text-[10px] text-slate-400">공정 없음</p>';
 
+    /* 청구 대기 */
     document.getElementById('accountingCompletedList').innerHTML =
         orders.filter(o => o.status === 'completed' && o.paymentStatus === 'unpaid').map(o =>
             `<div class="bg-slate-50 p-3 rounded-xl border mb-2 text-xs flex justify-between">
@@ -771,7 +805,11 @@ async function updateStatus(id, s) {
         logs: [...(o.logs || []), `${new Date().toLocaleString()}: ${currentUser.name} ${s === 'approved' ? '승인' : s}`],
     });
     if (s === 'approved') {
-        await pushNotification(['factory', 'admin'], 'noti-accounting', `[생산 지시] ${o.client} — ${o.material} ${o.qty}장`);
+        await pushNotification(
+            ['factory', 'admin'],
+            'noti-accounting',
+            `[생산 지시] ${o.client} — ${o.material} ${o.qty}장`
+        );
         showToast('noti-accounting', '✅', '승인 완료', `${o.client} 건이 공장에 전달됐습니다.`);
     }
 }
@@ -821,7 +859,11 @@ async function addProgress(id) {
     });
     
     if (newStatus === 'completed') {
-        await pushNotification(['accounting', 'admin'], 'noti-factory', `[생산 완료] ${o.client} — 계산서 발행 가능`);
+        await pushNotification(
+            ['accounting', 'admin'],
+            'noti-factory',
+            `[생산 완료] ${o.client} — 계산서 발행 가능`
+        );
         showToast('noti-factory', '🏭', '생산 완료', `${o.client} 건 출고 준비 완료. 계산서 발행하세요.`);
     }
 }
@@ -835,7 +877,10 @@ function renderReceivables() {
 
     document.getElementById('receivableBannerWrap').innerHTML = `
         <div class="receivable-banner">
-            <div><div class="rb-label">총 미수금액</div><div class="rb-amount">₩ ${total.toLocaleString()}</div></div>
+            <div>
+                <div class="rb-label">총 미수금액</div>
+                <div class="rb-amount">₩ ${total.toLocaleString()}</div>
+            </div>
             <div class="rb-count">${unpaid.length}건 미수</div>
         </div>`;
 
@@ -845,7 +890,10 @@ function renderReceivables() {
                 <p class="font-black text-amber-900">${o.client}</p>
                 <p class="text-xs text-slate-500 mt-1">${o.material} / 입금예정: ${o.payDate || '미정'}</p>
                 <p class="text-sm font-black text-red-600 mt-2">청구액: ₩${(o.price * o.qty).toLocaleString()}</p>
-                <button onclick="confirmPayment('${o.id}')" class="w-full py-3 mt-4 bg-amber-500 text-white rounded-xl font-bold active:scale-95">💵 입금 확인 완료</button>
+                <button onclick="confirmPayment('${o.id}')"
+                    class="w-full py-3 mt-4 bg-amber-500 text-white rounded-xl font-bold active:scale-95">
+                    💵 입금 확인 완료
+                </button>
             </div>`).join('') || '<p class="text-center py-10 text-slate-400 text-xs">미수금 없음 🎉</p>';
 }
 
@@ -861,39 +909,74 @@ async function confirmPayment(id) {
 function exportReceivablesCSV() {
     const unpaid = orders.filter(o => o.status === 'completed' && o.paymentStatus === 'unpaid');
     if (!unpaid.length) { alert('미수금 데이터가 없습니다.'); return; }
+
     const wb = XLSX.utils.book_new();
     const header = [['업체명', '목재', '가로(mm)', '세로(mm)', '두께', '수량', '단가', '합계금액', '출고일', '입금예정일']];
-    const rows = unpaid.map(o => [o.client, o.material, Number(o.width)||0, Number(o.height)||0, o.thickness||'-', o.qty, o.price, o.price * o.qty, o.dueDate||'-', o.payDate||'-']);
+    const rows = unpaid.map(o => [
+        o.client, o.material, Number(o.width)||0, Number(o.height)||0,
+        o.thickness||'-', o.qty, o.price, o.price * o.qty, o.dueDate||'-', o.payDate||'-'
+    ]);
     const total = unpaid.reduce((s,o) => s + o.price * o.qty, 0);
     rows.push(['', '', '', '', '', '', '합계', total, '', '']);
+
     const ws = XLSX.utils.aoa_to_sheet([...header, ...rows]);
-    ws['!cols'] = [{wch:18},{wch:22},{wch:10},{wch:10},{wch:8},{wch:8},{wch:12},{wch:14},{wch:12},{wch:12}];
+    ws['!cols'] = [
+        {wch:18},{wch:22},{wch:10},{wch:10},{wch:8},
+        {wch:8},{wch:12},{wch:14},{wch:12},{wch:12}
+    ];
+
     XLSX.utils.book_append_sheet(wb, ws, '미수금현황');
-    XLSX.writeFile(wb, `용진기업_미수금_${new Date().toISOString().slice(0,7).replace('-','년') + '월'}.xlsx`);
+    const ym = new Date().toISOString().slice(0,7).replace('-','년') + '월';
+    XLSX.writeFile(wb, `용진기업_미수금_${ym}.xlsx`);
 }
 
 function exportExcel() {
     if (!orders.length) { alert('데이터가 없습니다.'); return; }
+
     const wb   = XLSX.utils.book_new();
     const ym   = new Date().toISOString().slice(0,7).replace('-','년') + '월';
     const now  = new Date().toLocaleDateString('ko-KR');
+
     const statusKr = { pending:'승인대기', approved:'생산중', completed:'완료', rejected:'거절됨' };
     const payKr    = { paid:'입금완료', unpaid:'미수' };
 
-    const s1Header = [[`용진기업 전체 수주 현황 (${ym} 기준 / 출력일: ${now})`],[],['업체명','목재','두께','가로(mm)','세로(mm)','수량','단가','합계금액','상태','결제상태','출고일','입금예정일','보고자']];
-    const s1Rows = [...orders].reverse().map(o => [o.client, o.material, o.thickness||'-', Number(o.width)||0, Number(o.height)||0, o.qty, o.price, o.price * o.qty, statusKr[o.status] || o.status, o.status === 'completed' ? (payKr[o.paymentStatus]||'-') : '-', o.dueDate||'-', o.payDate||'-', o.reportedBy||'-']);
+    const s1Header = [
+        [`용진기업 전체 수주 현황 (${ym} 기준 / 출력일: ${now})`],
+        [],
+        ['업체명','목재','두께','가로(mm)','세로(mm)','수량','단가','합계금액','상태','결제상태','출고일','입금예정일','보고자']
+    ];
+    const s1Rows = [...orders].reverse().map(o => [
+        o.client, o.material, o.thickness||'-',
+        Number(o.width)||0, Number(o.height)||0,
+        o.qty, o.price, o.price * o.qty,
+        statusKr[o.status] || o.status,
+        o.status === 'completed' ? (payKr[o.paymentStatus]||'-') : '-',
+        o.dueDate||'-', o.payDate||'-', o.reportedBy||'-'
+    ]);
     const s1Total = orders.reduce((s,o) => s + o.price * o.qty, 0);
     s1Rows.push(['','','','','','','합계',s1Total,'','','','','']);
+
     const ws1 = XLSX.utils.aoa_to_sheet([...s1Header, ...s1Rows]);
-    ws1['!cols'] = [{wch:18},{wch:22},{wch:6},{wch:10},{wch:10},{wch:8},{wch:12},{wch:14},{wch:10},{wch:10},{wch:12},{wch:12},{wch:10}];
+    ws1['!cols'] = [
+        {wch:18},{wch:22},{wch:6},{wch:10},{wch:10},
+        {wch:8},{wch:12},{wch:14},{wch:10},{wch:10},
+        {wch:12},{wch:12},{wch:10}
+    ];
     ws1['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:12} }];
     XLSX.utils.book_append_sheet(wb, ws1, '전체수주현황');
 
     const unpaid = orders.filter(o => o.status === 'completed' && o.paymentStatus === 'unpaid');
-    const s2Header = [[`용진기업 미수금 요약 (${ym})`],[],['업체명','목재','합계금액','출고일','입금예정일']];
-    const s2Rows = unpaid.map(o => [o.client, o.material, o.price * o.qty, o.dueDate||'-', o.payDate||'-']);
+    const s2Header = [
+        [`용진기업 미수금 요약 (${ym})`],
+        [],
+        ['업체명','목재','합계금액','출고일','입금예정일']
+    ];
+    const s2Rows = unpaid.map(o => [
+        o.client, o.material, o.price * o.qty, o.dueDate||'-', o.payDate||'-'
+    ]);
     const s2Total = unpaid.reduce((s,o) => s + o.price * o.qty, 0);
     s2Rows.push(['','합계',s2Total,'','']);
+
     const ws2 = XLSX.utils.aoa_to_sheet([...s2Header, ...s2Rows]);
     ws2['!cols'] = [{wch:18},{wch:22},{wch:14},{wch:12},{wch:12}];
     ws2['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:4} }];
@@ -902,10 +985,27 @@ function exportExcel() {
     let pC=0,pS=0, aC=0,aS=0, uC=0,uS=0, cC=0,cS=0;
     orders.forEach(o => {
         const tot = (o.price||0) * (o.qty||0);
-        if (o.status==='pending') { pC++; pS+=tot; } else if (o.status==='approved') { aC++; aS+=tot; } else if (o.status==='completed' && o.paymentStatus==='unpaid') { uC++; uS+=tot; } else if (o.status==='completed' && o.paymentStatus==='paid') { cC++; cS+=tot; }
+        if      (o.status==='pending')                                    { pC++; pS+=tot; }
+        else if (o.status==='approved')                                   { aC++; aS+=tot; }
+        else if (o.status==='completed' && o.paymentStatus==='unpaid')    { uC++; uS+=tot; }
+        else if (o.status==='completed' && o.paymentStatus==='paid')      { cC++; cS+=tot; }
     });
-    const ws3 = XLSX.utils.aoa_to_sheet([[`용진기업 집계 요약 (${ym})`],[],['구분','건수','금액'],['승인대기', pC, pS],['생산중', aC, aS],['미수금', uC, uS],['수금완료', cC, cS],[],['전체합계', pC+aC+uC+cC, pS+aS+uS+cS]]);
-    ws3['!cols'] = [{wch:12},{wch:8},{wch:16}]; ws3['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:2} }];
+    const totalAll = pS + aS + uS + cS;
+
+    const s3Data = [
+        [`용진기업 집계 요약 (${ym})`],
+        [],
+        ['구분','건수','금액'],
+        ['승인대기', pC, pS],
+        ['생산중',   aC, aS],
+        ['미수금',   uC, uS],
+        ['수금완료', cC, cS],
+        [],
+        ['전체합계', pC+aC+uC+cC, totalAll],
+    ];
+    const ws3 = XLSX.utils.aoa_to_sheet(s3Data);
+    ws3['!cols'] = [{wch:12},{wch:8},{wch:16}];
+    ws3['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:2} }];
     XLSX.utils.book_append_sheet(wb, ws3, '집계요약');
 
     XLSX.writeFile(wb, `용진기업_통합현황_${ym}.xlsx`);
@@ -919,15 +1019,30 @@ function renderHistory() {
     let pC=0,pS=0, aC=0,aS=0, uC=0,uS=0, cC=0,cS=0;
     orders.forEach(o => {
         const tot = (o.price||0) * (o.qty||0);
-        if (o.status === 'pending') { pC++; pS += tot; } else if (o.status === 'approved') { aC++; aS += tot; } else if (o.status === 'completed' && o.paymentStatus === 'unpaid') { uC++; uS += tot; } else if (o.status === 'completed' && o.paymentStatus === 'paid') { cC++; cS += tot; }
+        if      (o.status === 'pending')                                     { pC++; pS += tot; }
+        else if (o.status === 'approved')                                    { aC++; aS += tot; }
+        else if (o.status === 'completed' && o.paymentStatus === 'unpaid')   { uC++; uS += tot; }
+        else if (o.status === 'completed' && o.paymentStatus === 'paid')     { cC++; cS += tot; }
     });
 
     document.getElementById('dashBoard').innerHTML = `
         <div class="grid grid-cols-2 gap-2 mb-2">
-            <div class="bg-yellow-50 border border-yellow-200 p-3 rounded-xl text-[10px]"><div class="font-bold text-yellow-700 mb-1">⏳ 승인대기 (${pC}건)</div><div class="font-black text-slate-800">₩${pS.toLocaleString()}</div></div>
-            <div class="bg-blue-50 border border-blue-200 p-3 rounded-xl text-[10px]"><div class="font-bold text-blue-700 mb-1">🏭 생산중 (${aC}건)</div><div class="font-black text-slate-800">₩${aS.toLocaleString()}</div></div>
-            <div class="bg-red-50 border border-red-200 p-3 rounded-xl text-[10px]"><div class="font-bold text-red-700 mb-1">💰 미수금 (${uC}건)</div><div class="font-black text-slate-800">₩${uS.toLocaleString()}</div></div>
-            <div class="bg-green-50 border border-green-200 p-3 rounded-xl text-[10px]"><div class="font-bold text-green-700 mb-1">✅ 수금완료 (${cC}건)</div><div class="font-black text-slate-800">₩${cS.toLocaleString()}</div></div>
+            <div class="bg-yellow-50 border border-yellow-200 p-3 rounded-xl text-[10px]">
+                <div class="font-bold text-yellow-700 mb-1">⏳ 승인대기 (${pC}건)</div>
+                <div class="font-black text-slate-800">₩${pS.toLocaleString()}</div>
+            </div>
+            <div class="bg-blue-50 border border-blue-200 p-3 rounded-xl text-[10px]">
+                <div class="font-bold text-blue-700 mb-1">🏭 생산중 (${aC}건)</div>
+                <div class="font-black text-slate-800">₩${aS.toLocaleString()}</div>
+            </div>
+            <div class="bg-red-50 border border-red-200 p-3 rounded-xl text-[10px]">
+                <div class="font-bold text-red-700 mb-1">💰 미수금 (${uC}건)</div>
+                <div class="font-black text-slate-800">₩${uS.toLocaleString()}</div>
+            </div>
+            <div class="bg-green-50 border border-green-200 p-3 rounded-xl text-[10px]">
+                <div class="font-bold text-green-700 mb-1">✅ 수금완료 (${cC}건)</div>
+                <div class="font-black text-slate-800">₩${cS.toLocaleString()}</div>
+            </div>
         </div>`;
 
     const statusLabel = { pending:'승인대기', approved:'생산중', completed:'완료', rejected:'거절됨' };
@@ -952,21 +1067,39 @@ function renderHistory() {
             </div>`).join('');
 }
 
+async function clearAllData() {
+    if (currentUser.role !== 'admin') { alert('관리자만 초기화할 수 있습니다.'); return; }
+    if (!confirm('⚠️ 모든 데이터를 초기화합니까?\n되돌릴 수 없습니다.')) return;
+    if (prompt('확인을 위해 "초기화" 를 입력하세요:') !== '초기화') { alert('취소됐습니다.'); return; }
+
+    for (const o of orders) {
+        await db.collection('orders').doc(o.id).delete();
+    }
+    orders = [];
+    renderHistory();
+    alert('초기화 완료');
+}
+
 /* ══════════════════════════════════════════════
-   🔔 알림 시스템 및 기타 유틸리티
+   🔔 알림 시스템 (Firebase 호환)
 ══════════════════════════════════════════════ */
 async function pushNotification(targetRoles, type, message) {
-    if(!db) return;
-    try { await db.collection('notifications').add({ target_roles: targetRoles, type, message, created_at: Date.now(), read: false }); } 
-    catch(e) { console.warn('알림 저장 실패:', e); }
+    try {
+        await db.collection('notifications').add({
+            target_roles: targetRoles,
+            type,
+            message,
+            created_at: Date.now(),
+            read: false,
+        });
+    } catch(e) { console.warn('알림 저장 실패:', e); }
 }
 
 async function requestNotificationPermission() {
     if (!('Notification' in window)) return;
     const result = await Notification.requestPermission();
     if (result === 'granted') {
-        const banner = document.getElementById('notiBanner');
-        if(banner) banner.style.display = 'none';
+        document.getElementById('notiBanner').style.display = 'none';
         showToast('noti-accounting', '✅', '알림 허용됨', '이제 수주·승인·생산 알림을 받을 수 있습니다.');
         localStorage.setItem('yj_noti_granted', '1');
     }
@@ -974,7 +1107,15 @@ async function requestNotificationPermission() {
 
 function sendBrowserNoti(title, body, icon) {
     if (Notification.permission !== 'granted') return;
-    try { new Notification(title, { body, icon: icon || 'https://cdn-icons-png.flaticon.com/512/2620/2620244.png', badge: 'https://cdn-icons-png.flaticon.com/512/2620/2620244.png', tag: 'yongjin-' + Date.now(), requireInteraction: false }); } catch(e) {}
+    try {
+        new Notification(title, {
+            body,
+            icon: icon || 'https://cdn-icons-png.flaticon.com/512/2620/2620244.png',
+            badge: 'https://cdn-icons-png.flaticon.com/512/2620/2620244.png',
+            tag: 'yongjin-' + Date.now(),
+            requireInteraction: false,
+        });
+    } catch(e) {}
 }
 
 let toastId = 0;
@@ -982,10 +1123,16 @@ function showToast(type, icon, title, msg, duration) {
     duration = duration || 5000;
     const id  = 'toast-' + (++toastId);
     const el  = document.createElement('div');
-    el.className = `toast ${type}`; el.id = id;
-    el.innerHTML = `<div class="toast-icon">${icon}</div><div class="toast-body"><div class="toast-title">${title}</div><div class="toast-msg">${msg}</div></div><button class="toast-close" onclick="dismissToast('${id}')">✕</button>`;
-    const wrap = document.getElementById('toastWrap');
-    if(wrap) wrap.appendChild(el);
+    el.className = `toast ${type}`;
+    el.id = id;
+    el.innerHTML = `
+        <div class="toast-icon">${icon}</div>
+        <div class="toast-body">
+            <div class="toast-title">${title}</div>
+            <div class="toast-msg">${msg}</div>
+        </div>
+        <button class="toast-close" onclick="dismissToast('${id}')">✕</button>`;
+    document.getElementById('toastWrap').appendChild(el);
     setTimeout(() => dismissToast(id), duration);
 }
 
@@ -998,48 +1145,96 @@ function dismissToast(id) {
 
 function checkOverdueReceivables() {
     if (!orders.length) return;
-    const today = new Date(); today.setHours(0,0,0,0);
-    const overdue = orders.filter(o => o.status === 'completed' && o.paymentStatus === 'unpaid' && o.payDate && new Date(o.payDate) < today);
+    const today    = new Date(); today.setHours(0,0,0,0);
+    const overdue  = orders.filter(o =>
+        o.status === 'completed' &&
+        o.paymentStatus === 'unpaid' &&
+        o.payDate && new Date(o.payDate) < today
+    );
     if (overdue.length > 0) {
         const total = overdue.reduce((s, o) => s + o.price * o.qty, 0);
-        showToast('noti-overdue', '⚠️', '미수금 입금기일 초과', `${overdue.length}건 / ₩${total.toLocaleString()} 입금 지연 중`);
-        if (currentUser && currentUser.role === 'admin') sendBrowserNoti('⚠️ 미수금 입금기일 초과', `${overdue.length}건 / ₩${total.toLocaleString()} 입금 지연`);
+        showToast('noti-overdue', '⚠️', '미수금 입금기일 초과',
+            `${overdue.length}건 / ₩${total.toLocaleString()} 입금 지연 중`);
+        if (currentUser && currentUser.role === 'admin') {
+            sendBrowserNoti('⚠️ 미수금 입금기일 초과',
+                `${overdue.length}건 / ₩${total.toLocaleString()} 입금 지연`);
+        }
     }
 }
 
 function startNotiPoller() {
-    if (notiPoller || !db) return;
-    notiPoller = db.collection('notifications').where('read', '==', false).onSnapshot(snapshot => {
-        if (!currentUser) return;
-        snapshot.docChanges().forEach(change => {
-            if (change.type === 'added') {
-                const n = { id: change.doc.id, ...change.doc.data() };
-                const targets = Array.isArray(n.target_roles) ? n.target_roles : [];
-                if (!targets.includes(currentUser.role)) return;
-                const icons = { 'noti-sales': '📝', 'noti-accounting': '✅', 'noti-factory': '🏭', 'noti-overdue': '⚠️' };
-                const titles = { 'noti-sales': '신규 수주 보고', 'noti-accounting': '회계 승인', 'noti-factory': '생산 완료', 'noti-overdue': '미수금 알림' };
-                showToast(n.type, icons[n.type] || '🔔', titles[n.type] || '알림', n.message);
-                sendBrowserNoti(titles[n.type] || '용진기업', n.message);
-                db.collection('notifications').doc(n.id).update({ read: true });
-            }
+    if (notiPoller) return;
+    
+    notiPoller = db.collection('notifications')
+        .where('read', '==', false)
+        .onSnapshot(snapshot => {
+            if (!currentUser) return;
+            
+            snapshot.docChanges().forEach(change => {
+                if (change.type === 'added') {
+                    const n = { id: change.doc.id, ...change.doc.data() };
+                    
+                    const targets = Array.isArray(n.target_roles) ? n.target_roles : [];
+                    if (!targets.includes(currentUser.role)) return;
+
+                    const icons = {
+                        'noti-sales':      '📝',
+                        'noti-accounting': '✅',
+                        'noti-factory':    '🏭',
+                        'noti-overdue':    '⚠️',
+                    };
+                    const titles = {
+                        'noti-sales':      '신규 수주 보고',
+                        'noti-accounting': '회계 승인',
+                        'noti-factory':    '생산 완료',
+                        'noti-overdue':    '미수금 알림',
+                    };
+                    showToast(n.type, icons[n.type] || '🔔', titles[n.type] || '알림', n.message);
+                    sendBrowserNoti(titles[n.type] || '용진기업', n.message);
+
+                    db.collection('notifications').doc(n.id).update({ read: true });
+                }
+            });
         });
-    });
 }
 
 function checkNotiBanner() {
     if (!('Notification' in window)) return;
     if (localStorage.getItem('yj_noti_granted')) return;
-    if (Notification.permission === 'granted') { localStorage.setItem('yj_noti_granted', '1'); return; }
+    if (Notification.permission === 'granted') {
+        localStorage.setItem('yj_noti_granted', '1'); return;
+    }
     if (Notification.permission !== 'denied') {
-        const banner = document.getElementById('notiBanner');
-        if(banner) banner.style.display = 'block';
+        document.getElementById('notiBanner').style.display = 'block';
     }
 }
 
 function logout() {
     if (!confirm('로그아웃 하시겠습니까?')) return;
-    location.reload(); 
+
+    currentUser   = null;
+    pinBuffer     = '';
+    chosenUserId  = null;
+    orders        = [];
+
+    if (notiPoller) { notiPoller(); notiPoller = null; } 
+
+    document.getElementById('roleTabsWrap').innerHTML = '';
+    document.getElementById('displayUser').textContent = '';
+    document.getElementById('clearBtn').style.display = 'none';
+    document.getElementById('notiBanner').style.display = 'none';
+
+    ['sales','accounting','receivables','factory','history'].forEach(r => {
+        const sec = document.getElementById('section-' + r);
+        if (sec) { sec.classList.add('hidden'); sec.classList.remove('block'); }
+    });
+
+    document.querySelectorAll('.role-sel-btn').forEach(b => b.classList.remove('chosen'));
+    updateDots();
+    document.getElementById('pinErr').textContent = '';
+    document.getElementById('loginOverlay').style.display = 'flex';
 }
+
 </script>
 </body>
 </html>
