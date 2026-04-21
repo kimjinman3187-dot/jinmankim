@@ -8,6 +8,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="용진기업">
     <link rel="icon" type="image/png" href="favicon.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -19,7 +20,7 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+KR:wght@300;500;700;900&display=swap');
         
-        /* 🛡️ 보안: 텍스트 선택 및 드래그 전면 차단 */
+        /* 🛡️ 보안 1단계: CSS 레벨 드래그 및 복사 차단 */
         body { 
             font-family: 'Inter', 'Noto Sans KR', sans-serif; 
             background-color: #f1f5f9; margin: 0; padding: 0; 
@@ -41,18 +42,19 @@
         
         #loginOverlay { position: fixed; inset: 0; z-index: 9999; background: linear-gradient(160deg, #0f2554 0%, #1e3a8a 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         .login-card { width: 100%; max-width: 340px; background: #fff; border-radius: 28px; padding: 28px 24px 24px; box-shadow: 0 24px 60px rgba(0,0,0,0.35); }
-        .login-logo { text-align: center; font-size: 18px; font-weight: 900; color: #0f2554; margin-bottom: 4px; }
+        .login-logo { text-align: center; font-size: 18px; font-weight: 900; letter-spacing: -0.5px; color: #0f2554; margin-bottom: 4px; }
         .login-logo span { color: #c8922a; }
         
-        .role-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 20px; max-height: 220px; overflow-y: auto; padding: 4px; }
+        .role-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 20px; max-height: 240px; overflow-y: auto; padding: 4px; border-radius: 12px; border: 1px solid #f1f5f9; }
         .role-sel-btn { padding: 12px 4px; border: 2px solid #e2e8f0; border-radius: 12px; background: #f8fafc; font-size: 12px; font-weight: 700; color: #475569; cursor: pointer; transition: all 0.15s; }
         .role-sel-btn.chosen { border-color: #1e3a8a; background: #1e3a8a; color: #fff; }
 
         .pin-dots { display: flex; justify-content: center; gap: 14px; margin-bottom: 16px; }
         .pin-dot { width: 13px; height: 13px; border-radius: 50%; border: 2px solid #cbd5e1; background: #f1f5f9; }
         .pin-dot.on { background: #1e3a8a; border-color: #1e3a8a; }
+        
         .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-        .kp-btn { padding: 14px; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; font-size: 18px; font-weight: 700; cursor: pointer; }
+        .kp-btn { padding: 14px; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; font-size: 18px; font-weight: 700; cursor: pointer; color: #1e293b; }
         .kp-btn:active { transform: scale(0.92); background: #dbeafe; }
         .pin-err { text-align: center; font-size: 11px; color: #dc2626; font-weight: 700; min-height: 18px; margin-top: 10px; }
         
@@ -60,27 +62,32 @@
         .badge-pending { background:#fef3c7; color:#92400e; }
         .badge-approved { background:#dbeafe; color:#1d4ed8; }
         .badge-completed { background:#dcfce7; color:#166534; }
-        .badge-paid { background:#d1fae5; color:#065f46; }
         .badge-unpaid { background:#fef9c3; color:#713f12; }
+        .badge-paid { background:#d1fae5; color:#065f46; }
         .receivable-banner { background: linear-gradient(135deg, #7c3aed, #4338ca); border-radius: 20px; padding: 18px 20px; color: #fff; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
-        #toastWrap { position: fixed; top: 84px; left: 50%; transform: translateX(-50%); z-index: 9000; display: flex; flex-direction: column; gap: 8px; width: calc(100% - 32px); max-width: 448px; pointer-events: none; }
-        .toast { background: #1e293b; color: #fff; border-radius: 16px; padding: 14px 18px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 12px; pointer-events: auto; }
+        #toastWrap { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9000; width: 90%; max-width: 400px; display: flex; flex-direction: column; gap: 8px; }
+        .toast { background: #1e293b; color: #fff; border-radius: 16px; padding: 14px 18px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 12px; font-size: 12px; }
+        .wood-btn-wrapper { display: flex; flex-direction: column; align-items: center; padding: 0.5rem; background: white; border: 1px solid #e2e8f0; border-radius: 1rem; cursor: pointer; transition: all 0.2s; }
+        .wood-btn-img { min-height: 70px; object-fit: cover; border-radius: 0.5rem; width: 100%; border: 1px solid #f1f5f9; }
     </style>
 </head>
-<body oncontextmenu="return false">
+<body oncontextmenu="return false" onselectstart="return false">
 
 <div id="toastWrap"></div>
 
 <div id="loginOverlay">
     <div class="login-card">
         <div class="login-logo">YONGJIN <span>ENT.</span></div>
-        <div class="text-center text-[10px] text-slate-400 font-bold mb-4">보안 7단계 가동 중</div>
+        <div class="text-center text-[10px] text-slate-400 font-bold mb-4">보안 7단계 실시간 DB 연동 중</div>
+        
         <div class="role-grid" id="roleGrid">
-            <p class="col-span-2 text-center text-xs text-slate-300 py-10">데이터 금고 연결 중...</p>
+            <p class="col-span-2 text-center text-xs text-slate-300 py-10">데이터 금고 접속 중...</p>
         </div>
+
         <div class="pin-dots">
             <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div><div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
         </div>
+
         <div class="keypad">
             <button class="kp-btn" onclick="kp('1')">1</button><button class="kp-btn" onclick="kp('2')">2</button><button class="kp-btn" onclick="kp('3')">3</button>
             <button class="kp-btn" onclick="kp('4')">4</button><button class="kp-btn" onclick="kp('5')">5</button><button class="kp-btn" onclick="kp('6')">6</button>
@@ -99,7 +106,7 @@
                 <h1 class="text-sm font-black text-slate-900 italic">YONGJIN ENT.</h1>
                 <div class="flex items-center gap-2">
                     <span id="displayUser" class="text-xs font-black text-blue-700 underline"></span>
-                    <button onclick="location.reload()" class="text-[9px] font-black text-slate-400 bg-slate-100 px-2 py-1 rounded-lg">로그아웃</button>
+                    <button onclick="location.reload()" class="text-[9px] font-black text-slate-400 bg-slate-100 hover:bg-red-50 px-2 py-1 rounded-lg">로그아웃</button>
                 </div>
             </div>
         </div>
@@ -108,33 +115,69 @@
     <main class="max-w-md mx-auto p-4 space-y-6">
         <div id="section-sales" class="hidden space-y-6">
             <section class="bg-white p-6 rounded-[2.5rem] shadow-sm border space-y-4">
-                <h3 class="font-bold text-lg text-slate-800">📝 신규 수주 보고</h3>
+                <h3 class="font-bold text-lg">📝 신규 수주 보고</h3>
                 <input type="text" id="clientName" placeholder="업체명 및 현장명" class="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none border-none">
                 <button onclick="openWoodModal()" class="w-full py-4 border-2 border-slate-800 rounded-2xl font-bold bg-slate-50">목재 종류 선택</button>
                 <div id="selectedWoodCard" class="bg-white p-4 rounded-2xl border border-blue-200 flex items-center gap-4 relative overflow-hidden">
                     <div class="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>
                     <div class="flex-1"><p class="font-bold text-sm" id="selectedWoodName">목재를 선택하세요</p></div>
                 </div>
-                <div class="grid grid-cols-2 gap-3"><input type="number" id="width" placeholder="가로폭(mm)" class="w-full p-4 border rounded-2xl"><input type="number" id="height" placeholder="세로폭(mm)" class="w-full p-4 border rounded-2xl"></div>
-                <div class="grid grid-cols-2 gap-3"><input type="number" id="unitPrice" oninput="calculate()" placeholder="단가" class="w-full p-4 border rounded-2xl"><input type="number" id="qty" oninput="calculate()" value="100" class="w-full p-4 border rounded-2xl"></div>
-                <div class="gradient-bg p-6 rounded-[2rem] text-white text-center shadow-xl">
+                <div class="grid grid-cols-2 gap-3">
+                    <input type="number" id="width" placeholder="가로 폭(mm)" class="w-full p-4 border rounded-2xl">
+                    <input type="number" id="height" placeholder="세로 길이(mm)" class="w-full p-4 border rounded-2xl">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <input type="number" id="unitPrice" oninput="calculate()" placeholder="단가(원)" class="w-full p-4 border rounded-2xl">
+                    <input type="number" id="qty" oninput="calculate()" value="100" class="w-full p-4 border rounded-2xl">
+                </div>
+                <div class="gradient-bg p-6 rounded-[2rem] text-white text-center">
                     <div class="text-3xl font-black italic">₩ <span id="totalDisplay">0</span></div>
                 </div>
-                <button onclick="handleReport()" class="w-full bg-blue-600 text-white py-5 rounded-3xl font-black text-lg active:scale-95 transition-transform">✅ 수주 전송</button>
+                <button onclick="handleReport()" class="w-full bg-blue-600 text-white py-5 rounded-3xl font-black text-lg active:scale-95 transition-transform">✅ 수주 데이터 전송</button>
             </section>
         </div>
 
-        <div id="section-accounting" class="hidden space-y-6"><div id="accountingList"></div></div>
-        <div id="section-receivables" class="hidden space-y-6"><div id="receivableBannerWrap"></div><div id="receivablesList"></div></div>
-        <div id="section-factory" class="hidden space-y-6"><div id="productionList"></div></div>
-        <div id="section-history" class="hidden space-y-6"><div id="dashBoard"></div><div id="historyList"></div></div>
+        <div id="section-accounting" class="hidden space-y-6">
+            <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-blue-100">
+                <h3 class="font-bold text-blue-800 mb-4 flex items-center gap-2">💼 신규 승인 대기</h3>
+                <div id="accountingList" class="space-y-4"></div>
+            </section>
+        </div>
+
+        <div id="section-factory" class="hidden space-y-6">
+            <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-orange-100">
+                <h3 class="font-bold text-orange-800 mb-6">🏭 생산 공정 현황</h3>
+                <div id="productionList" class="space-y-4"></div>
+            </section>
+        </div>
+
+        <div id="section-receivables" class="hidden space-y-6">
+            <div id="receivableBannerWrap"></div>
+            <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-amber-200">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-amber-700">💰 채권 및 수금 관리</h3>
+                </div>
+                <div id="receivablesList" class="space-y-4"></div>
+            </section>
+        </div>
+
+        <div id="section-history" class="hidden space-y-6">
+            <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-200">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-slate-800">📊 통합 대시보드</h3>
+                    <button onclick="exportExcel()" class="text-[10px] bg-green-600 text-white px-3 py-2 rounded-lg font-bold">📊 엑셀 저장</button>
+                </div>
+                <div id="dashBoard"></div>
+                <div id="historyList" class="space-y-3 mt-4 text-xs"></div>
+            </section>
+        </div>
     </main>
 </div>
 
 <div id="modalContainer"></div>
 
 <script>
-/* ⚙️ 시스템 설정 */
+/* ⚙️ Firebase 및 시스템 초기화 */
 const firebaseConfig = {
   apiKey: "AIzaSyDGdi03xiK44WzrK8082VjUPsIujQmN7_A",
   authDomain: "yongjin-enterprise.firebaseapp.com",
@@ -167,9 +210,6 @@ const TAB_META = {
     history: {label:'현황', emoji:'📊'}
 };
 
-/* ══════════════════════════════════════════════
-   🚀 [보안 7단계] 초기화 및 데이터 동기화
-══════════════════════════════════════════════ */
 window.onload = async function() {
     applySecurityLock();
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
@@ -179,9 +219,9 @@ window.onload = async function() {
     try {
         await auth.signInAnonymously();
         console.log("보안 채널 활성화");
-        await syncEmployeeData();
+        await syncEmployees();
     } catch (e) {
-        document.getElementById('roleGrid').innerHTML = "<p class='text-red-500 text-xs col-span-2 text-center'>서버 통신 오류: 익명 인증을 확인하세요</p>";
+        document.getElementById('roleGrid').innerHTML = "<p class='text-red-500 text-xs col-span-2 text-center py-10'>서버 보안 통신 오류<br>익명 인증이 꺼져있거나 규칙 위반입니다.</p>";
     }
 };
 
@@ -194,12 +234,18 @@ function applySecurityLock() {
     });
 }
 
-async function syncEmployeeData() {
+async function syncEmployees() {
     try {
+        // [회계2 오타 대비 로직 포함]
         const snapshot = await db.collection('users').where('status', '==', 'active').get();
-        USERS = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        USERS = snapshot.docs.map(doc => {
+            const data = doc.data();
+            // DB에 ccounting(오타)으로 적혀있어도 내부적으로는 accounting으로 인식하게 보정
+            if (data.role === 'ccounting') data.role = 'accounting';
+            return { id: doc.id, ...data };
+        });
         buildLoginUI();
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("데이터 로드 에러:", e); }
 }
 
 function buildLoginUI() {
@@ -211,12 +257,14 @@ function buildLoginUI() {
 
 function chooseUser(uid) {
     chosenUserId = uid; pinBuffer = ''; updateDots();
+    document.getElementById('pinErr').textContent = '';
     document.querySelectorAll('.role-sel-btn').forEach(b => b.classList.remove('chosen'));
     document.getElementById('rsb-' + uid).classList.add('chosen');
 }
 
 function kp(digit) {
-    if (!chosenUserId || pinBuffer.length >= 4) return;
+    if (!chosenUserId) { document.getElementById('pinErr').textContent = '직원을 먼저 선택하세요'; return; }
+    if (pinBuffer.length >= 4) return;
     pinBuffer += digit; updateDots();
     if (pinBuffer.length === 4) setTimeout(tryLogin, 150);
 }
@@ -233,8 +281,8 @@ async function tryLogin() {
     const user = USERS.find(u => u.id === chosenUserId);
     if (pinBuffer === user.pin) {
         currentUser = user;
-        // 🛡️ 로그인 감사 로그 기록
-        await db.collection('audit_logs').add({ action: 'LOGIN_SUCCESS', user: user.name, timestamp: Date.now() });
+        // 🛡️ 감사 로그 기록
+        await db.collection('audit_logs').add({ action: 'LOGIN_SUCCESS', user: user.name, role: user.role, timestamp: Date.now() });
         
         document.getElementById('loginOverlay').style.display = 'none';
         document.getElementById('mainApp').classList.remove('hidden');
@@ -243,7 +291,7 @@ async function tryLogin() {
         initTabs();
         fetchOrders();
     } else {
-        document.getElementById('pinErr').textContent = '❌ PIN 번호 오류';
+        document.getElementById('pinErr').textContent = '❌ PIN 번호가 틀렸습니다';
         pinBuffer = ''; updateDots();
     }
 }
@@ -253,7 +301,7 @@ function initTabs() {
     const wrap = document.getElementById('roleTabsWrap');
     wrap.style.gridTemplateColumns = `repeat(${tabs.length}, 1fr)`;
     wrap.innerHTML = tabs.map(t => `
-        <button onclick="switchTab('${t}')" id="role-${t}" class="py-2 text-[10px] font-bold bg-slate-100 rounded-lg transition-all">
+        <button onclick="switchTab('${t}')" id="role-${t}" class="py-2 text-[10px] font-bold bg-slate-100 rounded-lg">
             ${TAB_META[t].emoji} ${TAB_META[t].label}
         </button>
     `).join('');
@@ -278,12 +326,13 @@ function switchTab(tabId) {
 }
 
 /* ══════════════════════════════════════════════
-   💼 수주 및 업무 로직
+   💼 데이터 처리 로직 (전체 복구)
 ══════════════════════════════════════════════ */
 async function fetchOrders() {
-    const snapshot = await db.collection('orders').orderBy('createdAt', 'asc').get();
+    const snapshot = await db.collection('orders').orderBy('createdAt', 'desc').get();
     orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    renderHistory(); // 초기 로드 시 현황 업데이트
+    const activeTab = document.querySelector('.active-role').id.replace('role-', '');
+    switchTab(activeTab);
 }
 
 function calculate() {
@@ -296,38 +345,47 @@ async function handleReport() {
     const client = document.getElementById('clientName').value;
     const qty = parseInt(document.getElementById('qty').value || 0);
     const price = parseInt(document.getElementById('unitPrice').value || 0);
+    const w = document.getElementById('width').value || 0;
+    const h = document.getElementById('height').value || 0;
+
     if (!client || qty <= 0) return alert('정보를 입력하세요.');
 
     const newOrder = {
         client, material: selectedWoodStr, price, qty, completedQty: 0,
+        width: w, height: h,
         status: 'pending', paymentStatus: 'unpaid',
         reportedBy: currentUser.name, createdAt: Date.now()
     };
     await db.collection('orders').add(newOrder);
-    alert('수주 보고 완료');
-    fetchOrders(); // 데이터 갱신
+    alert('수주 보고가 성공적으로 전송되었습니다.');
+    fetchOrders();
 }
 
 function renderAccounting() {
     const list = document.getElementById('accountingList');
-    list.innerHTML = orders.filter(o => o.status === 'pending').map(o => `
-        <div class="bg-white p-4 border rounded-2xl mb-2">
-            <p class="font-bold text-slate-800">${o.client}</p>
-            <p class="text-xs text-slate-500">₩${(o.price * o.qty).toLocaleString()} / ${o.material}</p>
-            <button onclick="updateStatus('${o.id}', 'approved')" class="w-full mt-2 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold">승인</button>
+    const filtered = orders.filter(o => o.status === 'pending');
+    list.innerHTML = filtered.map(o => `
+        <div class="bg-white p-5 rounded-3xl border border-blue-200 mb-4 shadow-sm relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+            <p class="font-black text-lg pl-2">${o.client}</p>
+            <p class="text-xs text-slate-500 pl-2">${o.material} / ₩${(o.price * o.qty).toLocaleString()}</p>
+            <div class="flex gap-2 mt-4 ml-2">
+                <button onclick="updateOrderStatus('${o.id}', 'approved')" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold">승인</button>
+            </div>
         </div>
-    `).join('') || '<p class="text-center py-20 text-slate-400 text-xs">승인 대기 중인 수주가 없습니다.</p>';
+    `).join('') || '<p class="text-center py-20 text-slate-400">대기 없음</p>';
 }
 
 function renderFactory() {
     const list = document.getElementById('productionList');
-    list.innerHTML = orders.filter(o => o.status === 'approved').map(o => `
-        <div class="bg-white p-4 border rounded-2xl mb-2">
-            <p class="font-bold">${o.client}</p>
-            <p class="text-xs text-slate-500">${o.material} - ${o.qty}장</p>
-            <button onclick="updateStatus('${o.id}', 'completed')" class="w-full mt-2 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold">생산 완료 보고</button>
+    const filtered = orders.filter(o => o.status === 'approved');
+    list.innerHTML = filtered.map(o => `
+        <div class="bg-white p-5 rounded-3xl border shadow-sm border-l-4 border-l-orange-500 mb-4">
+            <p class="font-black text-lg">${o.client}</p>
+            <p class="text-xs text-slate-500 mb-2">${o.material} - ${o.qty}장</p>
+            <button onclick="updateOrderStatus('${o.id}', 'completed')" class="w-full mt-2 py-3 bg-orange-500 text-white rounded-xl font-bold">공정 완료 처리</button>
         </div>
-    `).join('') || '<p class="text-center py-20 text-slate-400 text-xs">현재 생산 공정 중인 수주가 없습니다.</p>';
+    `).join('') || '<p class="text-center py-20 text-slate-400">생산 중인 수금 없음</p>';
 }
 
 function renderReceivables() {
@@ -337,17 +395,17 @@ function renderReceivables() {
     
     document.getElementById('receivableBannerWrap').innerHTML = `
         <div class="receivable-banner">
-            <div><div class="text-[10px] opacity-70">미수금 총액</div><div class="text-xl font-black">₩ ${total.toLocaleString()}</div></div>
+            <div><div class="text-[10px] opacity-70">총 미수금</div><div class="text-xl font-black">₩ ${total.toLocaleString()}</div></div>
             <div class="font-bold">${unpaid.length}건</div>
         </div>`;
         
     list.innerHTML = unpaid.map(o => `
-        <div class="bg-amber-50 p-4 border border-amber-200 rounded-2xl mb-2">
-            <p class="font-bold">${o.client}</p>
-            <p class="text-red-600 font-bold">₩${(o.price * o.qty).toLocaleString()}</p>
-            <button onclick="confirmPayment('${o.id}')" class="w-full mt-2 py-3 bg-amber-500 text-white rounded-xl text-xs font-bold">입금 확인 완료</button>
+        <div class="bg-amber-50 p-5 border border-amber-200 rounded-3xl mb-3 shadow-sm">
+            <p class="font-black text-amber-900">${o.client}</p>
+            <p class="text-sm font-black text-red-600 mt-1">₩${(o.price * o.qty).toLocaleString()}</p>
+            <button onclick="confirmPayment('${o.id}')" class="w-full mt-4 py-3 bg-amber-500 text-white rounded-xl font-bold">입금 확인 완료</button>
         </div>
-    `).join('') || '<p class="text-center py-20 text-slate-400 text-xs">미수금이 없습니다 🎉</p>';
+    `).join('') || '<p class="text-center py-20 text-slate-400">미수금 없음</p>';
 }
 
 function renderHistory() {
@@ -363,21 +421,22 @@ function renderHistory() {
 
     document.getElementById('dashBoard').innerHTML = `
         <div class="grid grid-cols-2 gap-2 mb-4 text-[10px]">
-            <div class="bg-yellow-50 p-3 rounded-xl border border-yellow-100">⏳ 대기: ₩${pS.toLocaleString()}</div>
-            <div class="bg-blue-50 p-3 rounded-xl border border-blue-100">🏭 생산: ₩${aS.toLocaleString()}</div>
-            <div class="bg-red-50 p-3 rounded-xl border border-red-100">💰 미수: ₩${uS.toLocaleString()}</div>
-            <div class="bg-green-50 p-3 rounded-xl border border-green-100">✅ 수금: ₩${cS.toLocaleString()}</div>
+            <div class="bg-yellow-50 p-3 rounded-xl border border-yellow-200">⏳ 대기: ₩${pS.toLocaleString()}</div>
+            <div class="bg-blue-50 p-3 rounded-xl border border-blue-200">🏭 생산: ₩${aS.toLocaleString()}</div>
+            <div class="bg-red-50 p-3 rounded-xl border border-red-200">💰 미수: ₩${uS.toLocaleString()}</div>
+            <div class="bg-green-50 p-3 rounded-xl border border-green-200">✅ 완료: ₩${cS.toLocaleString()}</div>
         </div>`;
 
-    list.innerHTML = [...orders].reverse().map(o => `
+    list.innerHTML = orders.map(o => `
         <div class="bg-white p-3 border rounded-xl mb-2 text-[11px] flex justify-between items-center">
             <div><b>${o.client}</b><br><span class="text-slate-400">${o.material}</span></div>
             <div class="text-right">₩${(o.price * o.qty).toLocaleString()}<br><span class="badge ${o.status==='pending'?'badge-pending':o.status==='approved'?'badge-approved':'badge-completed'}">${o.status}</span></div>
-        </div>`).join('');
+        </div>
+    `).join('');
 }
 
-async function updateStatus(id, s) {
-    if(confirm('상태를 변경하시겠습니까?')) {
+async function updateOrderStatus(id, s) {
+    if(confirm('진행 상태를 변경하시겠습니까?')) {
         await db.collection('orders').doc(id).update({ status: s });
         fetchOrders();
     }
@@ -392,21 +451,50 @@ async function confirmPayment(id) {
 
 /* 🪵 목재 모달 */
 function openWoodModal() {
-    const woods = [['무광PET/화이트', 'image_f06ce4.png'], ['유광하이그로시', 'image_f06ca6.png'], ['자작합판', 'image_f065fb.png'], ['미송집성목', 'image_f0655e.png']];
+    const woods = [
+        ['무광PET/화이트', 'image_f06ce4.png'], ['유광하이그로시', 'image_f06ca6.png'],
+        ['자작합판', 'image_f065fb.png'], ['미송집성목', 'image_f0655e.png'],
+        ['전체코팅/미백', 'image_f068c3.png'], ['MDF', 'image_f05719.png']
+    ];
     document.getElementById('modalContainer').innerHTML = `
         <div class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[1000]">
             <div class="bg-white w-full max-w-md p-6 rounded-t-[2.5rem] h-[60vh] overflow-y-auto">
-                <p class="font-black text-lg mb-4 text-slate-800">목재 종류 선택</p>
-                <div class="grid grid-cols-2 gap-3">
-                    ${woods.map(w => `<div onclick="selectWood('${w[0]}')" class="wood-btn-wrapper p-4 border rounded-2xl text-center font-bold text-xs hover:bg-blue-50 transition-colors">${w[0]}</div>`).join('')}
+                <div class="flex justify-between items-center mb-6">
+                    <p class="font-black text-lg text-slate-800">목재 자재 선택</p>
+                    <button onclick="closeWoodModal()" class="w-8 h-8 bg-slate-100 rounded-full">✕</button>
                 </div>
-                <button onclick="closeWoodModal()" class="w-full py-4 mt-6 bg-slate-100 rounded-2xl font-bold text-slate-500">닫기</button>
+                <div class="grid grid-cols-2 gap-3">
+                    ${woods.map(w => `<div onclick="selectWood('${w[0]}')" class="wood-btn-wrapper p-4 border rounded-2xl text-center font-bold text-xs hover:bg-blue-50 transition-all">${w[0]}</div>`).join('')}
+                </div>
             </div>
         </div>`;
 }
 
 function closeWoodModal() { document.getElementById('modalContainer').innerHTML = ''; }
 function selectWood(name) { selectedWoodStr = name; document.getElementById('selectedWoodName').innerText = name; closeWoodModal(); }
+
+/* 📊 엑셀 저장 ( v1.3 기능 복구 ) */
+function exportExcel() {
+    if (!orders.length) return alert('데이터가 없습니다.');
+    const wb = XLSX.utils.book_new();
+    const rows = orders.map(o => [o.client, o.material, o.qty, o.price, o.price * o.qty, o.status]);
+    const ws = XLSX.utils.aoa_to_sheet([['업체명', '목재', '수량', '단가', '합계', '상태'], ...rows]);
+    XLSX.utils.book_append_sheet(wb, ws, '수주현황');
+    XLSX.writeFile(wb, `용진기업_현황_${new Date().toLocaleDateString()}.xlsx`);
+}
+
+function showToast(title, msg) {
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.innerHTML = `<div><b>${title}</b><br>${msg}</div>`;
+    document.getElementById('toastWrap').appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+}
+
+function logout() { location.reload(); }
+function requestNotificationPermission() { Notification.requestPermission(); }
+function startNotiPoller() { /* 서버 푸시 대신 정기 폴링 시뮬레이션 가능 */ }
+function checkNotiBanner() { if(Notification.permission !== 'granted') document.getElementById('notiBanner').classList.remove('hidden'); }
 
 </script>
 </body>
