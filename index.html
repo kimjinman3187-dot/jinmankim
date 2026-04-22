@@ -7,8 +7,12 @@
     <meta name="theme-color" content="#1e3a8a">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="용진기업">
+    <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" href="favicon.png">
-
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
@@ -21,13 +25,10 @@
         body { 
             font-family: 'Inter', 'Noto Sans KR', sans-serif; 
             background-color: #f1f5f9; 
-            margin: 0; 
-            padding: 0; 
-            -webkit-user-select: none; 
-            user-select: none; 
-            -webkit-touch-callout: none; 
+            margin: 0; padding: 0; 
+            -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
         }
-        
+
         input, textarea, select { 
             -webkit-user-select: text; 
             user-select: text; 
@@ -39,11 +40,12 @@
             color: white !important; 
             transform: scale(1.02); 
         }
-        
+
         .gradient-bg { 
             background: linear-gradient(135deg, #1e3a8a 0%, #000000 100%); 
         }
         
+        /* 3D 목재 미리보기 엔진 */
         .preview-container { 
             perspective: 800px; 
             display: flex; 
@@ -51,132 +53,31 @@
             align-items: center; 
             padding: 30px; 
         }
-        
-        .wood-plate { 
-            width: 120px; 
-            height: 80px; 
-            transform: rotateX(45deg) rotateZ(-15deg); 
-            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
-            box-shadow: 20px 20px 30px rgba(0,0,0,0.15); 
-            background-size: cover; 
-            border-radius: 4px; 
-            border-bottom: 5px solid rgba(0,0,0,0.2); 
+
+        .wood-plate {
+            width: 120px; height: 80px;
+            transform: rotateX(45deg) rotateZ(-15deg);
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 20px 20px 30px rgba(0,0,0,0.15), -2px -2px 5px rgba(255,255,255,0.8);
+            border-bottom: 6px solid rgba(0,0,0,0.2);
+            border-right: 4px solid rgba(0,0,0,0.1);
+            background-size: cover;
+            background-position: top center;
+            border-radius: 4px;
         }
-        
-        #loginOverlay { 
-            position: fixed; 
-            inset: 0; 
-            z-index: 9999; 
-            background: linear-gradient(160deg, #0f2554 0%, #1e3a8a 100%); 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            padding: 20px; 
-        }
-        
-        .login-card { 
+
+        /* 커스텀 UI 컴포넌트 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        .wood-btn-img { 
+            min-height: 70px; 
+            object-fit: cover; 
+            border-radius: 0.5rem; 
             width: 100%; 
-            max-width: 340px; 
-            background: #fff; 
-            border-radius: 28px; 
-            padding: 28px 24px 24px; 
-            box-shadow: 0 24px 60px rgba(0,0,0,0.35); 
+            border: 1px solid #f1f5f9; 
         }
-        
-        .role-grid { 
-            display: grid; 
-            grid-template-columns: repeat(2, 1fr); 
-            gap: 8px; 
-            margin-bottom: 20px; 
-            max-height: 180px; 
-            overflow-y: auto; 
-            padding: 4px; 
-        }
-        
-        .role-sel-btn { 
-            padding: 12px 4px; 
-            border: 2px solid #e2e8f0; 
-            border-radius: 12px; 
-            background: #f8fafc; 
-            font-size: 12px; 
-            font-weight: 700; 
-            color: #475569; 
-            cursor: pointer; 
-            transition: all 0.15s; 
-        }
-        
-        .role-sel-btn.chosen { 
-            border-color: #1e3a8a; 
-            background: #1e3a8a; 
-            color: #fff; 
-        }
-        
-        .pin-dots { 
-            display: flex; 
-            justify-content: center; 
-            gap: 14px; 
-            margin-bottom: 16px; 
-        }
-        
-        .pin-dot { 
-            width: 13px; 
-            height: 13px; 
-            border-radius: 50%; 
-            border: 2px solid #cbd5e1; 
-            background: #f1f5f9; 
-        }
-        
-        .pin-dot.on { 
-            background: #1e3a8a; 
-            border-color: #1e3a8a; 
-        }
-        
-        .keypad { 
-            display: grid; 
-            grid-template-columns: repeat(3, 1fr); 
-            gap: 8px; 
-        }
-        
-        .kp-btn { 
-            padding: 14px; 
-            background: #f8fafc; 
-            border: 1.5px solid #e2e8f0; 
-            border-radius: 12px; 
-            font-size: 18px; 
-            font-weight: 700; 
-            cursor: pointer; 
-        }
-        
-        .kp-btn:active { 
-            transform: scale(0.92); 
-            background: #dbeafe; 
-        }
-        
-        .badge { 
-            display: inline-block; 
-            font-size: 9px; 
-            font-weight: 700; 
-            padding: 2px 8px; 
-            border-radius: 20px; 
-        }
-        
-        .badge-pending { background: #fef3c7; color: #92400e; }
-        .badge-approved { background: #dbeafe; color: #1d4ed8; }
-        .badge-completed { background: #dcfce7; color: #166534; }
-        .badge-rejected { background: #fee2e2; color: #991b1b; }
-        
-        .receivable-banner { 
-            background: linear-gradient(135deg, #7c3aed, #4338ca); 
-            border-radius: 20px; 
-            padding: 18px 20px; 
-            color: #fff; 
-            margin-bottom: 16px; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-        }
-        
+
         .wood-btn-wrapper { 
             display: flex; 
             flex-direction: column; 
@@ -185,59 +86,117 @@
             background: white; 
             border: 1px solid #e2e8f0; 
             border-radius: 1rem; 
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05); 
             cursor: pointer; 
-            transition: all 0.2s; 
+            transition: all 0.2s;
         }
-        
+
         .wood-btn-wrapper:active { 
             transform: scale(0.95); 
             border-color: #1e3a8a; 
         }
-        
+
         .wood-fallback-color { 
             width: 100%; 
             height: 70px; 
             border-radius: 0.5rem; 
             border: 1px solid #e2e8f0; 
         }
-        
-        #toastWrap { 
-            position: fixed; 
-            top: 20px; 
-            left: 50%; 
-            transform: translateX(-50%); 
-            z-index: 9000; 
-            width: 90%; 
-            max-width: 400px; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 8px; 
-            pointer-events: none;
+
+        @keyframes slideUp { 
+            from { transform: translateY(100%); opacity: 0; } 
+            to { transform: translateY(0); opacity: 1; } 
         }
-        
-        .toast { 
-            background: #1e293b; 
-            color: #fff; 
-            border-radius: 16px; 
-            padding: 14px 18px; 
-            box-shadow: 0 8px 24px rgba(0,0,0,0.3); 
-            display: flex; 
-            align-items: center; 
-            gap: 12px; 
-            pointer-events: auto;
+        .modal-animate { 
+            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; 
         }
-        
-        /* 거절 사유 박스 스타일 보존 */
-        .reject-reason-box {
-            margin-top: 6px;
-            background: #fff1f2; 
-            border: 1px solid #fecdd3;
-            border-radius: 8px; 
-            padding: 7px 10px;
-            font-size: 10px; 
-            color: #9f1239; 
-            font-weight: 600;
+
+        /* 🔒 보안 로그인 레이어 */
+        #loginOverlay {
+            position: fixed; inset: 0; z-index: 9999;
+            background: linear-gradient(160deg, #0f2554 0%, #1e3a8a 100%);
+            display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; padding: 20px;
         }
+
+        .login-card {
+            width: 100%; max-width: 340px; background: #fff; border-radius: 28px;
+            padding: 28px 24px 24px; box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+        }
+
+        .role-grid { 
+            display: grid; 
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 10px; margin-bottom: 20px; 
+            max-height: 240px; overflow-y: auto; padding: 4px; 
+        }
+
+        .role-sel-btn {
+            padding: 14px 4px; border: 2px solid #e2e8f0; border-radius: 12px;
+            background: #f8fafc; font-size: 13px; font-weight: 900; color: #475569;
+            cursor: pointer; transition: all 0.15s; text-align: center;
+        }
+
+        .role-sel-btn:hover { 
+            border-color: #93c5fd; background: #eff6ff; color: #1d4ed8; 
+        }
+
+        .role-sel-btn.chosen { 
+            border-color: #1e3a8a; background: #1e3a8a; color: #fff; 
+            box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2); 
+        }
+
+        .pin-dots { display: flex; justify-content: center; gap: 14px; margin-bottom: 16px; }
+        .pin-dot { width: 13px; height: 13px; border-radius: 50%; border: 2px solid #cbd5e1; background: #f1f5f9; }
+        .pin-dot.on { background: #1e3a8a; border-color: #1e3a8a; }
+
+        .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .kp-btn { 
+            padding: 14px; background: #f8fafc; border: 1.5px solid #e2e8f0; 
+            border-radius: 12px; font-size: 18px; font-weight: 700; cursor: pointer; 
+        }
+        .kp-btn:active { transform: scale(0.92); background: #dbeafe; }
+        .kp-btn.del { font-size: 13px; background: #fee2e2; border-color: #fecaca; color: #dc2626; }
+
+        /* 상태 표현 */
+        .badge { display: inline-block; font-size: 9px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+        .badge-pending { background: #fef3c7; color: #92400e; }
+        .badge-approved { background: #dbeafe; color: #1d4ed8; }
+        .badge-completed { background: #dcfce7; color: #166534; }
+        .badge-rejected { background: #fee2e2; color: #991b1b; }
+        
+        .receivable-banner {
+            background: linear-gradient(135deg, #7c3aed, #4338ca);
+            border-radius: 20px; padding: 18px 20px; color: #fff; margin-bottom: 16px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .reject-reason-box { 
+            margin-top: 6px; background: #fff1f2; border: 1px solid #fecdd3; 
+            border-radius: 8px; padding: 7px 10px; font-size: 10px; 
+            color: #9f1239; font-weight: 600; 
+        }
+
+        /* 인앱 토스트 알림 */
+        #toastWrap {
+            position: fixed; top: 84px; left: 50%; transform: translateX(-50%);
+            z-index: 9000; display: flex; flex-direction: column; gap: 8px;
+            width: calc(100% - 32px); max-width: 448px; pointer-events: none;
+        }
+        .toast {
+            background: #1e293b; color: #fff; border-radius: 16px; padding: 14px 18px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 12px;
+            pointer-events: auto; animation: toastIn 0.3s cubic-bezier(0.16,1,0.3,1) forwards;
+        }
+        .toast.out { animation: toastOut 0.3s ease forwards; }
+        .toast-icon { font-size: 22px; flex-shrink: 0; }
+        .toast-body { flex: 1; }
+        .toast-title { font-size: 10px; opacity: 0.55; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 2px; }
+        .toast-msg { font-size: 13px; font-weight: 700; line-height: 1.4; }
+        .toast-close { background: none; border: none; color: rgba(255,255,255,0.4); font-size: 18px; cursor: pointer; padding: 0 0 0 4px; }
+        
+        @keyframes toastIn { from { opacity:0; transform:translateY(-14px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes toastOut { from { opacity:1; transform:translateY(0); } to { opacity:0; transform:translateY(-8px); } }
     </style>
 </head>
 <body oncontextmenu="return false">
@@ -250,8 +209,8 @@
 
 <div id="loginOverlay">
     <div class="login-card">
-        <div class="text-center font-black text-blue-900 text-lg mb-1 italic">YONGJIN ENT.</div>
-        <div id="securityStatus" class="text-center text-[10px] text-slate-400 font-bold mb-4 uppercase tracking-widest">Security Gateway</div>
+        <div class="text-center font-black text-blue-900 text-lg mb-1 italic uppercase tracking-tighter">Yongjin ENT.</div>
+        <div id="securityStatus" class="text-center text-[9px] text-slate-400 font-bold mb-5 uppercase tracking-[0.2em]">Authority Required</div>
         
         <div class="role-grid" id="roleGrid">
             <p class="col-span-2 text-center text-xs text-slate-300 py-10">데이터 연결 중...</p>
@@ -280,6 +239,7 @@
         </div>
         <div id="pinErr" class="text-center text-[10px] text-red-600 mt-3 min-h-[15px] font-bold"></div>
     </div>
+    <p style="margin-top:20px;font-size:10px;color:rgba(255,255,255,0.3);font-weight:700;letter-spacing:2px;">SECURE DATA TERMINAL</p>
 </div>
 
 <div id="mainApp" class="hidden pb-24">
@@ -291,7 +251,7 @@
                 <h1 class="text-sm font-black text-slate-900 italic">YONGJIN ENT.</h1>
                 <div class="flex items-center gap-2">
                     <span id="displayUser" class="text-xs font-black text-blue-700 underline"></span>
-                    <button onclick="logout()" class="text-[9px] font-black text-slate-400 bg-slate-100 px-2 py-1 rounded-lg">로그아웃</button>
+                    <button onclick="logout()" class="text-[9px] font-black text-slate-400 bg-slate-100 hover:bg-red-100 hover:text-red-500 px-2 py-1 rounded-lg transition-colors">로그아웃</button>
                 </div>
             </div>
         </div>
@@ -355,39 +315,78 @@
                     </div>
                 </div>
 
-                <div class="gradient-bg p-6 rounded-[2rem] text-white text-center shadow-xl">
+                <div class="gradient-bg p-6 rounded-[2rem] text-white text-center shadow-xl mt-4">
                     <div class="text-[10px] opacity-80 mb-1 font-bold">예상 총 합계 금액</div>
                     <div class="text-3xl font-black italic tracking-tighter">₩ <span id="totalDisplay">0</span></div>
                 </div>
 
-                <button id="btnSubmitOrder" onclick="handleReport()" class="w-full bg-blue-600 text-white py-5 rounded-3xl font-black text-lg active:scale-95 transition-all shadow-lg shadow-blue-200">
-                    ✅ 수주 데이터 전송
+                <button id="btnSubmitOrder" onclick="handleReport()" class="w-full bg-blue-600 text-white py-5 rounded-3xl font-black text-lg active:scale-95 transition-all shadow-lg shadow-blue-200 mt-4">
+                    ✅ 서버로 수주 전송하기
                 </button>
             </section>
         </div>
 
         <div id="section-accounting" class="hidden space-y-6">
-            <div id="accountingList" class="space-y-4"></div>
+            <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-blue-100">
+                <h3 class="font-bold text-blue-800 mb-4 flex items-center gap-2">
+                    <span class="bg-blue-100 p-1.5 rounded-lg">💼</span> 신규 승인 대기
+                </h3>
+                <div id="accountingList" class="space-y-4 mb-6">로딩중...</div>
+
+                <div class="border-t border-dashed border-gray-200 pt-6 mb-6">
+                    <h3 class="font-bold text-orange-600 mb-4 text-sm flex items-center gap-2">
+                        <span class="bg-orange-100 p-1.5 rounded-lg">🏭</span> 공장 생산 현황
+                    </h3>
+                    <div id="accountingFactoryList" class="space-y-3"></div>
+                </div>
+
+                <div class="border-t border-dashed border-gray-200 pt-6">
+                    <h3 class="font-bold text-slate-600 mb-4 text-sm flex items-center gap-2">
+                        <span class="bg-slate-100 p-1.5 rounded-lg">🧾</span> 청구 대기 (계산서)
+                    </h3>
+                    <div id="accountingCompletedList" class="space-y-3"></div>
+                </div>
+            </section>
         </div>
 
         <div id="section-factory" class="hidden space-y-6">
-            <div id="productionList" class="space-y-6"></div>
+            <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-orange-100">
+                <h3 class="font-bold text-orange-800 mb-6 italic text-lg">🏭 생산 공정 제어판</h3>
+                <div id="productionList" class="space-y-6">로딩중...</div>
+            </section>
         </div>
 
         <div id="section-receivables" class="hidden space-y-6">
             <div id="receivableBannerWrap"></div>
-            <div id="receivablesList" class="space-y-4"></div>
+            <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-amber-200">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-amber-700">💰 채권관리 (미수금)</h3>
+                    <button onclick="exportReceivablesCSV()" class="text-[10px] bg-green-600 text-white px-3 py-2 rounded-lg font-bold shadow-sm">
+                        📊 엑셀 저장
+                    </button>
+                </div>
+                <div id="receivablesList" class="space-y-4">로딩중...</div>
+            </section>
         </div>
 
         <div id="section-history" class="hidden space-y-6">
             <div class="px-2 flex justify-between items-center mb-2">
                 <h3 class="font-bold text-slate-800 italic">📊 마스터 제어판 (ADMIN)</h3>
-                <button onclick="exportExcel()" class="text-[10px] bg-green-600 text-white px-3 py-1.5 rounded-lg font-bold">EXCEL 저장</button>
+                <button onclick="exportExcel()" class="text-[10px] bg-green-600 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm">EXCEL 저장</button>
             </div>
+            
             <div id="adminUserMonitor" class="hidden bg-white p-4 rounded-[2rem] border-2 border-red-100 mb-4 space-y-2 shadow-sm"></div>
             
-            <div id="dashBoard"></div>
-            <div id="historyList" class="space-y-3 mt-4 text-xs"></div>
+            <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-200">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-slate-800">통합 대시보드</h3>
+                    <button onclick="clearAllData()" class="text-[10px] bg-red-100 text-red-600 px-3 py-2 rounded-lg font-bold" id="clearBtn" style="display:none;">
+                        🗑 초기화
+                    </button>
+                </div>
+                <div id="dashBoard">로딩중...</div>
+                <div id="historyList" class="space-y-3 mt-4 text-xs"></div>
+            </section>
         </div>
     </main>
 </div>
@@ -499,10 +498,18 @@ window.onload = async function() {
 
 async function syncUsers() {
     const snapshot = await db.collection('users').where('status', '==', 'active').get();
-    USERS = snapshot.docs.map(doc => { 
+    let rawUsers = snapshot.docs.map(doc => { 
         const d = doc.data(); 
         if(d.role === 'ccounting') d.role = 'accounting'; 
         return { id: doc.id, ...d }; 
+    });
+
+    // 👑 오너십 반영 정렬 (윤정원 오너 최상단 배치)
+    const orderPref = ['윤정원', 'gene kim', '영업', '공장장', '회계1', '회계2'];
+    USERS = rawUsers.sort((a, b) => {
+        let idxA = orderPref.indexOf(a.name);
+        let idxB = orderPref.indexOf(b.name);
+        return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
     });
     
     const grid = document.getElementById('roleGrid');
@@ -578,6 +585,7 @@ async function tryLogin() {
         document.getElementById('loginOverlay').style.display = 'none'; 
         document.getElementById('mainApp').classList.remove('hidden');
         document.getElementById('displayUser').textContent = user.name; 
+        if (user.role === 'admin') document.getElementById('clearBtn').style.display = '';
         
         initTabs(); 
         fetchOrders(); 
@@ -609,7 +617,7 @@ async function renderAdminMonitor() {
     monitor.innerHTML = `<p class='text-[11px] font-black text-red-600 mb-2'>🛡️ 실시간 직원 보안 모니터링</p>` + 
         allUsers.map(u => {
             const isLocked = u.lockoutUntil > Date.now();
-            return `<div class="flex justify-between items-center text-[10px] bg-slate-50 p-2 rounded-lg border">
+            return `<div class="flex justify-between items-center text-[10px] bg-slate-50 p-2 rounded-lg border mb-1">
                 <span class="font-bold">${u.name} (${u.attempts || 0}회 실패)</span>
                 ${isLocked ? `<button onclick="forceUnlock('${u.id}')" class="bg-red-500 text-white px-3 py-1 rounded-full font-bold">강제 해제</button>` : `<span class='text-green-600 font-bold'>정상</span>`}
             </div>`;
@@ -645,10 +653,12 @@ function switchTab(tabId) {
     if(btn) btn.classList.add('active-role');
     
     ['sales', 'accounting', 'factory', 'receivables', 'history'].forEach(s => {
-        document.getElementById('section-' + s).classList.add('hidden');
+        const el = document.getElementById('section-' + s);
+        if(el) el.classList.add('hidden');
     });
     
-    document.getElementById('section-' + tabId).classList.remove('hidden');
+    const targetSec = document.getElementById('section-' + tabId);
+    if(targetSec) targetSec.classList.remove('hidden');
     
     if(tabId === 'accounting') renderAccounting(); 
     else if(tabId === 'factory') renderFactory(); 
@@ -692,7 +702,7 @@ function calculate() {
     document.getElementById('totalDisplay').innerText = (p * q).toLocaleString(); 
 }
 
-/* 🛡️ P2: 데이터 5중 유효성 검증 (타임존 에러 해결 방식 적용) */
+/* 🛡️ P2: 데이터 5중 유효성 검증 */
 function validateOrder() {
     const errors = [];
     const client = document.getElementById('clientName').value.trim();
@@ -712,7 +722,6 @@ function validateOrder() {
     if (!dD || !pD) {
         errors.push('출고일과 입금기한을 모두 지정해 주세요.');
     } else {
-        // String 직접 비교 방식으로 타임존 오류 원천 차단
         const todayStr = new Date().toISOString().split('T')[0];
         if (dD < todayStr) errors.push('출고일(납기)은 오늘 또는 그 이후여야 합니다.');
         if (pD < dD) errors.push('입금기한은 출고일 이후여야 합니다.');
@@ -722,10 +731,8 @@ function validateOrder() {
 
 /* 🛡️ P1 & P2: 중복 제출 방지 및 감사 로그 추가된 수주 전송 로직 */
 async function handleReport() {
-    // 1차 방어: 이미 제출 중이면 즉시 리턴
     if (isSubmitting) return; 
     
-    // 2차 방어: 유효성 검증
     const errors = validateOrder();
     if (errors) {
         return alert('❌ 입력 오류:\n\n' + errors.join('\n'));
@@ -733,7 +740,6 @@ async function handleReport() {
 
     if (!confirm('서버로 수주를 전송하시겠습니까?')) return;
 
-    // 3차 방어: 버튼 잠금 및 플래그 켜기
     isSubmitting = true;
     const btn = document.getElementById('btnSubmitOrder');
     btn.disabled = true; 
@@ -794,6 +800,18 @@ function renderAccounting() {
                 <button onclick="updateStatus('${o.id}', 'approved')" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-100">수주 승인</button>
             </div>
         </div>`).join('') || '<p class="text-center py-20 text-slate-400">대기 중인 수주가 없습니다.</p>';
+        
+    document.getElementById('accountingFactoryList').innerHTML = orders.filter(o => o.status === 'approved').map(o => {
+        const pct = Math.round((o.completedQty / o.qty) * 100);
+        return `<div class="bg-white p-3 rounded-xl border mb-2 text-xs flex justify-between shadow-sm">
+            <span>${o.client}</span><span class="font-bold text-orange-600">${pct}% 진행</span>
+        </div>`;
+    }).join('') || '<p class="text-center text-[10px] py-2">공정 없음</p>';
+
+    document.getElementById('accountingCompletedList').innerHTML = orders.filter(o => o.status === 'completed' && o.paymentStatus === 'unpaid').map(o =>
+        `<div class="bg-slate-50 p-3 rounded-xl border mb-2 text-xs flex justify-between">
+            <span>${o.client}</span><span class="text-amber-600 font-bold">₩${(o.price * o.qty).toLocaleString()}</span>
+        </div>`).join('') || '<p class="text-center text-[10px] text-slate-400 py-2">대기 없음</p>';
 }
 
 function renderFactory() {
@@ -801,8 +819,11 @@ function renderFactory() {
         const pct = Math.round(((o.completedQty || 0) / o.qty) * 100);
         return `
         <div class="bg-white p-5 rounded-3xl border shadow-sm border-l-4 border-l-orange-500 mb-5">
-            <p class="font-black text-lg">${o.client}</p>
-            <p class="text-[10px] text-red-500 mb-2 font-bold">납기: ${o.dueDate}</p>
+            <div class="flex justify-between mb-1">
+                <p class="font-black text-lg">${o.client}</p>
+                <span class="text-xs font-bold text-red-500">납기: ${o.dueDate}</span>
+            </div>
+            <p class="text-[11px] text-slate-500 mb-3 font-bold">${o.material} / ${o.qty}장 요청</p>
             <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden mb-4 border">
                 <div class="bg-orange-500 h-full rounded-full transition-all" style="width:${pct}%"></div>
             </div>
@@ -815,36 +836,32 @@ function renderFactory() {
 }
 
 /* 🛡️ P4: 생산량 입력 정규식 검증 추가 */
-/* 🛡️ v1.5.2 최종 보안 패치: 생산 보고 및 감사 로그 통합 */
 async function addProgress(id) { 
     const o = orders.find(x => x.id === id); 
     const inputEl = document.getElementById('in-' + id);
     if (!inputEl) return;
     const inputVal = inputEl.value.trim();
     
-    // 1. 데이터 검증 (정수 확인 및 수량 체크)
     if (!/^\d+$/.test(inputVal)) return alert('정수(숫자)만 입력 가능합니다. (소수점, 공백 불가)');
     const val = parseInt(inputVal); 
     if (val <= 0) return alert('0보다 큰 수를 입력하세요.'); 
     if ((o.completedQty || 0) + val > o.qty) return alert(`초과! 남은 수량: ${o.qty - (o.completedQty || 0)}장`); 
     
-    // 2. 즉시 UI 초기화 (서버 응답 대기 전 미리 비워 중복 입력 방지)
     inputEl.value = ''; 
 
     const newQty = (o.completedQty || 0) + val; 
     const newStatus = newQty >= o.qty ? 'completed' : 'approved'; 
     
     try {
-        // DB 업데이트 및 감사 로그 기록
         await db.collection('orders').doc(id).update({ completedQty: newQty, status: newStatus }); 
         await logAction('FACTORY_PROGRESS', id, { added: val, total: newQty, status: newStatus }); 
-        fetchOrders(); // 화면 실시간 갱신
+        fetchOrders(); 
     } catch (e) {
-        // 서버 전송 실패 시 사용자가 적었던 값을 다시 복구하여 손실 방지
         inputEl.value = inputVal; 
         alert('서버 전송 실패: ' + e.message);
     }
 }
+
 function renderReceivables() {
     const unpaid = orders.filter(o => o.status === 'completed' && o.paymentStatus === 'unpaid');
     const total = unpaid.reduce((s, o) => s + (o.price * o.qty), 0);
@@ -905,13 +922,11 @@ function renderHistory() {
 /* 🛡️ P3: 상태 전이 매트릭스 도입 */
 async function updateStatus(id, s) { 
     const o = orders.find(x => x.id === id);
-    
-    // 상태 전이 제약 (State Machine)
     const validTransitions = {
         'pending':   ['approved', 'rejected'],
         'approved':  ['completed', 'rejected'],
-        'completed': [],  // 완료 후 변경 불가
-        'rejected':  []   // 거절 후 변경 불가
+        'completed': [],  
+        'rejected':  []   
     };
     
     if (!validTransitions[o.status] || !validTransitions[o.status].includes(s)) {
@@ -934,10 +949,7 @@ async function rejectOrder(id) {
         return alert('❌ 거절할 수 없는 상태입니다.');
     }
     
-    await db.collection('orders').doc(id).update({ 
-        status: 'rejected', 
-        rejectReason: reason 
-    });
+    await db.collection('orders').doc(id).update({ status: 'rejected', rejectReason: reason });
     await logAction('ORDER_REJECTED', id, { reason: reason });
     fetchOrders();
 }
@@ -953,7 +965,7 @@ async function confirmPayment(id) {
 function openWoodModal() {
     const items = WOODS_DATA.map(([name, img, color]) => `
         <div class="wood-btn-wrapper" onclick="selectWood('${name}','${img}','${color}')">
-            <img src="${img}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" class="h-[70px] object-cover rounded-lg w-full border">
+            <img src="${img}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" class="h-[70px] object-cover rounded-lg w-full border border-slate-100">
             <div class="hidden w-full h-[70px] rounded-lg border shadow-inner" style="background-color: ${color};"></div>
             <span class="text-[10px] font-black text-slate-700 mt-2 text-center break-keep">${name}</span>
         </div>`).join('');
@@ -1006,26 +1018,53 @@ function exportExcel() {
     XLSX.writeFile(wb, `용진기업_현황_${new Date().toLocaleDateString()}.xlsx`); 
 }
 
+function exportReceivablesCSV() {
+    const unpaid = orders.filter(o => o.status === 'completed' && o.paymentStatus === 'unpaid');
+    if (!unpaid.length) return alert('미수금 데이터가 없습니다.'); 
+
+    const wb = XLSX.utils.book_new();
+    const header = [['업체명', '목재', '가로(mm)', '세로(mm)', '두께', '수량', '단가', '합계금액', '출고일', '입금예정일']];
+    const rows = unpaid.map(o => [
+        o.client, o.material, Number(o.width)||0, Number(o.height)||0,
+        o.thickness||'-', o.qty, o.price, o.price * o.qty, o.dueDate||'-', o.payDate||'-'
+    ]);
+    const total = unpaid.reduce((s,o) => s + o.price * o.qty, 0);
+    rows.push(['', '', '', '', '', '', '합계', total, '', '']);
+
+    const ws = XLSX.utils.aoa_to_sheet([...header, ...rows]);
+    ws['!cols'] = [{wch:18},{wch:22},{wch:10},{wch:10},{wch:8},{wch:8},{wch:12},{wch:14},{wch:12},{wch:12}];
+    XLSX.utils.book_append_sheet(wb, ws, '미수금현황');
+    XLSX.writeFile(wb, `용진기업_미수금_${new Date().toISOString().slice(0,7).replace('-','년') + '월'}.xlsx`);
+}
+
+async function clearAllData() {
+    if (currentUser.role !== 'admin') return alert('관리자만 초기화할 수 있습니다.'); 
+    if (!confirm('⚠️ 모든 데이터를 초기화합니까?\n되돌릴 수 없습니다.')) return;
+    if (prompt('확인을 위해 "초기화" 를 입력하세요:') !== '초기화') return alert('취소됐습니다.'); 
+
+    for (const o of orders) {
+        await db.collection('orders').doc(o.id).delete();
+    }
+    orders = [];
+    renderHistory();
+    alert('초기화 완료');
+}
+
 /* ══════════════════════════════════════════════
    🔔 알림 시스템 (에러 자동 복구 안정화)
 ══════════════════════════════════════════════ */
 async function pushNotification(targetRoles, type, message) { 
     try { 
         await db.collection('notifications').add({ 
-            target_roles: targetRoles, 
-            type, 
-            message, 
-            created_at: Date.now(), 
-            read: false 
+            target_roles: targetRoles, type, message, created_at: Date.now(), read: false 
         }); 
-    } catch(e) { } 
+    } catch(e) { console.warn('알림 실패'); } 
 }
 
 function showToast(type, icon, title, msg) {
     const id = 'toast-' + Date.now(); 
     const el = document.createElement('div'); 
-    el.className = `toast ${type}`; 
-    el.id = id;
+    el.className = `toast ${type}`; el.id = id;
     el.innerHTML = `
         <div class="toast-icon">${icon}</div>
         <div class="toast-body">
@@ -1039,10 +1078,7 @@ function showToast(type, icon, title, msg) {
 
 function dismissToast(id) { 
     const el = document.getElementById(id); 
-    if(el) { 
-        el.classList.add('out'); 
-        setTimeout(() => el.remove(), 300); 
-    } 
+    if(el) { el.classList.add('out'); setTimeout(() => el.remove(), 300); } 
 }
 
 function requestNotificationPermission() { 
