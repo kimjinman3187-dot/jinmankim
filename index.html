@@ -815,31 +815,36 @@ function renderFactory() {
 }
 
 /* 🛡️ P4: 생산량 입력 정규식 검증 추가 */
+/* 🛡️ v1.5.2 최종 보안 패치: 생산 보고 및 감사 로그 통합 */
 async function addProgress(id) { 
     const o = orders.find(x => x.id === id); 
     const inputEl = document.getElementById('in-' + id);
+    if (!inputEl) return;
     const inputVal = inputEl.value.trim();
     
-    if (!/^\d+$/.test(inputVal)) {
-        return alert('정수(숫자)만 입력 가능합니다. (소수점, 공백 불가)');
-    }
-    
+    // 1. 데이터 검증 (정수 확인 및 수량 체크)
+    if (!/^\d+$/.test(inputVal)) return alert('정수(숫자)만 입력 가능합니다. (소수점, 공백 불가)');
     const val = parseInt(inputVal); 
     if (val <= 0) return alert('0보다 큰 수를 입력하세요.'); 
-    if ((o.completedQty || 0) + val > o.qty) {
-        return alert(`초과! 남은 수량: ${o.qty - (o.completedQty || 0)}장`); 
-    }
+    if ((o.completedQty || 0) + val > o.qty) return alert(`초과! 남은 수량: ${o.qty - (o.completedQty || 0)}장`); 
     
-    inputEl.value = ''; // 입력창 초기화
-    
+    // 2. 즉시 UI 초기화 (서버 응답 대기 전 미리 비워 중복 입력 방지)
+    inputEl.value = ''; 
+
     const newQty = (o.completedQty || 0) + val; 
     const newStatus = newQty >= o.qty ? 'completed' : 'approved'; 
     
-    await db.collection('orders').doc(id).update({ completedQty: newQty, status: newStatus }); 
-    await logAction('FACTORY_PROGRESS', id, { added: val, total: newQty, status: newStatus }); 
-    fetchOrders(); 
+    try {
+        // DB 업데이트 및 감사 로그 기록
+        await db.collection('orders').doc(id).update({ completedQty: newQty, status: newStatus }); 
+        await logAction('FACTORY_PROGRESS', id, { added: val, total: newQty, status: newStatus }); 
+        fetchOrders(); // 화면 실시간 갱신
+    } catch (e) {
+        // 서버 전송 실패 시 사용자가 적었던 값을 다시 복구하여 손실 방지
+        inputEl.value = inputVal; 
+        alert('서버 전송 실패: ' + e.message);
+    }
 }
-
 function renderReceivables() {
     const unpaid = orders.filter(o => o.status === 'completed' && o.paymentStatus === 'unpaid');
     const total = unpaid.reduce((s, o) => s + (o.price * o.qty), 0);
