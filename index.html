@@ -496,28 +496,30 @@ window.onload = async function() {
     }
 };
 
+/* 👑 v1.5.6: DB 기반 동적 정렬 시스템 (이제 코드 수정 없이 DB에서 순서 관리) */
 async function syncUsers() {
-    const snapshot = await db.collection('users').where('status', '==', 'active').get();
-    let rawUsers = snapshot.docs.map(doc => { 
-        const d = doc.data(); 
-        if(d.role === 'ccounting') d.role = 'accounting'; 
-        return { id: doc.id, ...d }; 
+    // 1. DB에서 sort_index 숫자가 적은 순서(1, 2, 3...)대로 가져옴
+    // ⚠️ 주의: 모든 직원의 DB 문서에 'sort_index' 필드가 있어야 합니다.
+    const snapshot = await db.collection('users')
+                           .where('status', '==', 'active')
+                           .orderBy('sort_index', 'asc') 
+                           .get();
+
+    USERS = snapshot.docs.map(doc => {
+        const d = doc.data();
+        if(d.role === 'ccounting') d.role = 'accounting';
+        return { id: doc.id, ...d };
     });
 
-    // 👑 오너십 반영 정렬 (윤정원 오너 최상단 배치)
-    const orderPref = ['윤정원', 'gene kim', '영업', '공장장', '회계1', '회계2'];
-    USERS = rawUsers.sort((a, b) => {
-        let idxA = orderPref.indexOf(a.name);
-        let idxB = orderPref.indexOf(b.name);
-        return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
-    });
-    
+    // 2. 화면에 로그인 버튼 생성
     const grid = document.getElementById('roleGrid');
-    grid.innerHTML = USERS.map(u => `
-        <button class="role-sel-btn" id="rsb-${u.id}" onclick="chooseUser('${u.id}')">
-            ${u.name}
-        </button>`).join('');
-        
+    if (grid) {
+        grid.innerHTML = USERS.map(u => `
+            <button class="role-sel-btn" id="rsb-${u.id}" onclick="chooseUser('${u.id}')">
+                ${u.name}
+            </button>`).join('');
+    }
+
     if (chosenUserId) checkLockoutStatus();
 }
 
