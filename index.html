@@ -414,7 +414,13 @@ let chosenUserId = null;
 let pinBuffer = ''; 
 let selectedWoodStr = '목재를 선택하세요'; 
 let notiPoller = null;
-
+/* 🛡️ NaN 방지 안전 계산기 (반드시 영문 상태에서 복사하세요) */
+function safePercent(completed, total) {
+    const c = Number(completed) || 0;
+    const t = Number(total) || 0;
+    if (t <= 0) return 0;
+    return Math.round((c / t) * 100);
+}
 // 🛡️ P1: 중복 제출 방지 플래그 및 차등 잠금 정책
 let isSubmitting = false; 
 const LOCKOUT_MINUTES = 10; 
@@ -804,7 +810,7 @@ function renderAccounting() {
         </div>`).join('') || '<p class="text-center py-20 text-slate-400">대기 중인 수주가 없습니다.</p>';
         
     document.getElementById('accountingFactoryList').innerHTML = orders.filter(o => o.status === 'approved').map(o => {
-        const pct = Math.round((o.completedQty / o.qty) * 100);
+    const pct = safePercent(o.completedQty, o.qty);
         return `<div class="bg-white p-3 rounded-xl border mb-2 text-xs flex justify-between shadow-sm">
             <span>${o.client}</span><span class="font-bold text-orange-600">${pct}% 진행</span>
         </div>`;
@@ -818,7 +824,7 @@ function renderAccounting() {
 
 function renderFactory() {
     document.getElementById('productionList').innerHTML = orders.filter(o => o.status === 'approved').map(o => {
-        const pct = Math.round(((o.completedQty || 0) / o.qty) * 100);
+        const pct = safePercent(o.completedQty, o.qty);
         return `
         <div class="bg-white p-5 rounded-3xl border shadow-sm border-l-4 border-l-orange-500 mb-5">
             <div class="flex justify-between mb-1">
