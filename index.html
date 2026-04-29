@@ -392,7 +392,50 @@
 </div>
 
 <div id="modalContainer"></div>
+    <div class="sidebar-footer">
+    <p>Last Updated: 26.04.29 / v1.1.0</p>
+    <p>Designed by GENE KIM</p>
+</div>
+.sidebar-footer {
+    padding: 20px 25px;
+    margin-top: auto; /* 메뉴가 적어도 항상 하단에 위치하도록 고정 */
+    border-top: 1px solid rgba(255, 255, 255, 0.05); /* 은은한 구분선 */
+}
 
+.sidebar-footer p {
+    margin: 4px 0;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.3); /* 목재 패턴과 대비되지 않도록 낮은 명도 설정 */
+    font-family: 'Inter', sans-serif;
+    letter-spacing: 0.3px;
+    line-height: 1.4;
+}
+    .sidebar {
+    display: flex;
+    flex-direction: column; /* 세로 정렬 */
+    height: 100vh; /* 화면 전체 높이 확보 */
+}
+
+.sidebar-footer {
+    margin-top: auto; /* 남은 여백을 밀어내어 맨 하단으로 고정 */
+    padding-bottom: 30px; /* 바닥에서 약간 띄움 */
+}
+    .sidebar {
+    display: flex;
+    flex-direction: column; /* 세로로 쌓기 */
+    height: 100vh; /* 화면 전체 높이 사용 */
+}
+
+.sidebar-footer {
+    margin-top: auto; /* 위쪽 여백을 최대로 밀어내어 정보를 항상 바닥에 고정 */
+    padding: 20px;
+    opacity: 0.4; /* 평소에는 배경 목재 패턴과 섞여 있다가, 마우스를 올리면 선명해지게 설정 권장 */
+    transition: opacity 0.3s;
+}
+
+.sidebar-footer:hover {
+    opacity: 1; /* 마우스 오버 시 정보 강조 */
+}
 <script>
 /* ════════════════════════════════════════════════════════
    🚀 파이어베이스(Firebase) 설정 및 전역 변수
