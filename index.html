@@ -198,7 +198,7 @@
         @keyframes toastIn { from { opacity:0; transform:translateY(-14px); } to { opacity:1; transform:translateY(0); } }
         @keyframes toastOut { from { opacity:1; transform:translateY(0); } to { opacity:0; transform:translateY(-8px); } }
 
-        /* ⭐️ 하단 정보(버전/개발자) 고정 스타일 추가 */
+        /* ⭐️ 하단 정보(버전/개발자) 고정 스타일 */
         .system-footer {
             width: 100%;
             text-align: center;
@@ -449,6 +449,7 @@ let chosenUserId = null;
 let pinBuffer = ''; 
 let selectedWoodStr = '목재를 선택하세요'; 
 let notiPoller = null;
+
 /* 🛡️ NaN 방지 안전 계산기 */
 function safePercent(completed, total) {
     const c = Number(completed) || 0;
@@ -456,6 +457,7 @@ function safePercent(completed, total) {
     if (t <= 0) return 0;
     return Math.round((c / t) * 100);
 }
+
 // 🛡️ P1: 중복 제출 방지 플래그 및 차등 잠금 정책
 let isSubmitting = false; 
 const LOCKOUT_MINUTES = 10; 
@@ -645,7 +647,7 @@ async function tryLogin() {
     }
 }
 
-/* 🛡️ 관리자 강제 해제 */
+/* 🛡️ 관리자 강제 해제 (Force Unlock) */
 async function renderAdminMonitor() {
     if (currentUser.role !== 'admin') return;
     const monitor = document.getElementById('adminUserMonitor');
@@ -742,6 +744,7 @@ function calculate() {
     document.getElementById('totalDisplay').innerText = (p * q).toLocaleString(); 
 }
 
+/* 🛡️ P2: 데이터 5중 유효성 검증 */
 function validateOrder() {
     const errors = [];
     const client = document.getElementById('clientName').value.trim();
@@ -768,6 +771,7 @@ function validateOrder() {
     return errors.length > 0 ? errors : null;
 }
 
+/* 🛡️ P1 & P2: 중복 제출 방지 및 감사 로그 추가된 수주 전송 로직 */
 async function handleReport() {
     if (isSubmitting) return; 
     
@@ -873,6 +877,7 @@ function renderFactory() {
     }).join('') || '<p class="text-center py-20 text-slate-400 font-bold">진행 중인 공정 없음</p>';
 }
 
+/* 🛡️ P4: 생산량 입력 정규식 검증 추가 */
 async function addProgress(id) { 
     const o = orders.find(x => x.id === id); 
     const inputEl = document.getElementById('in-' + id);
@@ -956,6 +961,7 @@ function renderHistory() {
         </div>`).join('');
 }
 
+/* 🛡️ P3: 상태 전이 매트릭스 도입 */
 async function updateStatus(id, s) { 
     const o = orders.find(x => x.id === id);
     const validTransitions = {
