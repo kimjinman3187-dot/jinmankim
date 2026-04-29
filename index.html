@@ -197,6 +197,31 @@
         
         @keyframes toastIn { from { opacity:0; transform:translateY(-14px); } to { opacity:1; transform:translateY(0); } }
         @keyframes toastOut { from { opacity:1; transform:translateY(0); } to { opacity:0; transform:translateY(-8px); } }
+
+        /* ⭐️ 하단 정보(버전/개발자) 고정 스타일 추가 */
+        .system-footer {
+            width: 100%;
+            text-align: center;
+            padding: 20px 0;
+            margin-top: auto; 
+            pointer-events: none;
+        }
+        .system-footer p {
+            margin: 2px 0;
+            font-size: 10px;
+            font-family: 'Inter', sans-serif;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+        /* 메인화면을 플렉스로 만들어 하단을 밀어냅니다 */
+        #mainApp {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        main {
+            flex-grow: 1;
+        }
     </style>
 </head>
 <body oncontextmenu="return false">
@@ -239,10 +264,15 @@
         </div>
         <div id="pinErr" class="text-center text-[10px] text-red-600 mt-3 min-h-[15px] font-bold"></div>
     </div>
-    <p style="margin-top:20px;font-size:10px;color:rgba(255,255,255,0.3);font-weight:700;letter-spacing:2px;">SECURE DATA TERMINAL</p>
+    
+    <div class="system-footer" style="color: rgba(255,255,255,0.3);">
+        <p>Last Updated: 26.04.29 / v1.1.0</p>
+        <p>Designed by GENE KIM</p>
+        <p style="margin-top:10px; letter-spacing:2px; font-weight:700;">SECURE DATA TERMINAL</p>
+    </div>
 </div>
 
-<div id="mainApp" class="hidden pb-24">
+<div id="mainApp" class="hidden pb-10">
     
     <nav class="bg-white border-b sticky top-0 z-50 px-4 py-3 shadow-sm">
         <div class="max-w-md mx-auto space-y-3">
@@ -257,7 +287,7 @@
         </div>
     </nav>
 
-    <main class="max-w-md mx-auto p-4 space-y-6">
+    <main class="max-w-md mx-auto w-full p-4 space-y-6 flex-grow">
         
         <div id="section-sales" class="hidden space-y-6">
             <section class="bg-white p-6 rounded-[2.5rem] shadow-sm border space-y-4">
@@ -389,53 +419,15 @@
             </section>
         </div>
     </main>
+
+    <div class="system-footer pb-4" style="color: #94a3b8;">
+        <p>Last Updated: 26.04.29 / v1.1.0</p>
+        <p style="color: #64748b;">Designed by GENE KIM</p>
+    </div>
 </div>
 
 <div id="modalContainer"></div>
-    <div class="sidebar-footer">
-    <p>Last Updated: 26.04.29 / v1.1.0</p>
-    <p>Designed by GENE KIM</p>
-</div>
-.sidebar-footer {
-    padding: 20px 25px;
-    margin-top: auto; /* 메뉴가 적어도 항상 하단에 위치하도록 고정 */
-    border-top: 1px solid rgba(255, 255, 255, 0.05); /* 은은한 구분선 */
-}
 
-.sidebar-footer p {
-    margin: 4px 0;
-    font-size: 10px;
-    color: rgba(255, 255, 255, 0.3); /* 목재 패턴과 대비되지 않도록 낮은 명도 설정 */
-    font-family: 'Inter', sans-serif;
-    letter-spacing: 0.3px;
-    line-height: 1.4;
-}
-    .sidebar {
-    display: flex;
-    flex-direction: column; /* 세로 정렬 */
-    height: 100vh; /* 화면 전체 높이 확보 */
-}
-
-.sidebar-footer {
-    margin-top: auto; /* 남은 여백을 밀어내어 맨 하단으로 고정 */
-    padding-bottom: 30px; /* 바닥에서 약간 띄움 */
-}
-    .sidebar {
-    display: flex;
-    flex-direction: column; /* 세로로 쌓기 */
-    height: 100vh; /* 화면 전체 높이 사용 */
-}
-
-.sidebar-footer {
-    margin-top: auto; /* 위쪽 여백을 최대로 밀어내어 정보를 항상 바닥에 고정 */
-    padding: 20px;
-    opacity: 0.4; /* 평소에는 배경 목재 패턴과 섞여 있다가, 마우스를 올리면 선명해지게 설정 권장 */
-    transition: opacity 0.3s;
-}
-
-.sidebar-footer:hover {
-    opacity: 1; /* 마우스 오버 시 정보 강조 */
-}
 <script>
 /* ════════════════════════════════════════════════════════
    🚀 파이어베이스(Firebase) 설정 및 전역 변수
@@ -457,7 +449,7 @@ let chosenUserId = null;
 let pinBuffer = ''; 
 let selectedWoodStr = '목재를 선택하세요'; 
 let notiPoller = null;
-/* 🛡️ NaN 방지 안전 계산기 (반드시 영문 상태에서 복사하세요) */
+/* 🛡️ NaN 방지 안전 계산기 */
 function safePercent(completed, total) {
     const c = Number(completed) || 0;
     const t = Number(total) || 0;
@@ -545,10 +537,8 @@ window.onload = async function() {
     }
 };
 
-/* 👑 v1.5.6: DB 기반 동적 정렬 시스템 (이제 코드 수정 없이 DB에서 순서 관리) */
+/* 👑 v1.5.6: DB 기반 동적 정렬 시스템 */
 async function syncUsers() {
-    // 1. DB에서 sort_index 숫자가 적은 순서(1, 2, 3...)대로 가져옴
-    // ⚠️ 주의: 모든 직원의 DB 문서에 'sort_index' 필드가 있어야 합니다.
     const snapshot = await db.collection('users')
                            .where('status', '==', 'active')
                            .orderBy('sort_index', 'asc') 
@@ -560,7 +550,6 @@ async function syncUsers() {
         return { id: doc.id, ...d };
     });
 
-    // 2. 화면에 로그인 버튼 생성
     const grid = document.getElementById('roleGrid');
     if (grid) {
         grid.innerHTML = USERS.map(u => `
@@ -656,7 +645,7 @@ async function tryLogin() {
     }
 }
 
-/* 🛡️ 관리자 강제 해제 (Force Unlock) */
+/* 🛡️ 관리자 강제 해제 */
 async function renderAdminMonitor() {
     if (currentUser.role !== 'admin') return;
     const monitor = document.getElementById('adminUserMonitor');
@@ -753,7 +742,6 @@ function calculate() {
     document.getElementById('totalDisplay').innerText = (p * q).toLocaleString(); 
 }
 
-/* 🛡️ P2: 데이터 5중 유효성 검증 */
 function validateOrder() {
     const errors = [];
     const client = document.getElementById('clientName').value.trim();
@@ -780,7 +768,6 @@ function validateOrder() {
     return errors.length > 0 ? errors : null;
 }
 
-/* 🛡️ P1 & P2: 중복 제출 방지 및 감사 로그 추가된 수주 전송 로직 */
 async function handleReport() {
     if (isSubmitting) return; 
     
@@ -886,7 +873,6 @@ function renderFactory() {
     }).join('') || '<p class="text-center py-20 text-slate-400 font-bold">진행 중인 공정 없음</p>';
 }
 
-/* 🛡️ P4: 생산량 입력 정규식 검증 추가 */
 async function addProgress(id) { 
     const o = orders.find(x => x.id === id); 
     const inputEl = document.getElementById('in-' + id);
@@ -970,7 +956,6 @@ function renderHistory() {
         </div>`).join('');
 }
 
-/* 🛡️ P3: 상태 전이 매트릭스 도입 */
 async function updateStatus(id, s) { 
     const o = orders.find(x => x.id === id);
     const validTransitions = {
