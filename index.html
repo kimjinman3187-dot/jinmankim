@@ -284,6 +284,16 @@
                     <button onclick="logout()" class="text-[9px] font-black text-slate-400 bg-slate-100 hover:bg-red-100 hover:text-red-500 px-2 py-1 rounded-lg transition-colors">로그아웃</button>
                 </div>
             </div>
+            <!-- 🚀 [Phase 1] 검색창 및 필터 기능 통합 -->
+            <div class="flex items-center gap-2 mt-1">
+                <div class="relative flex-1">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-xs">🔍</span>
+                    <input type="text" id="globalSearchInput" oninput="executeSearch()" placeholder="거래처명, 자재명 검색..." class="w-full pl-8 pr-4 py-2 bg-slate-100 border border-transparent rounded-xl text-xs font-bold focus:bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-inner">
+                </div>
+                <button onclick="toggleFilterDrawer()" class="bg-slate-800 text-white px-3 py-2 rounded-xl text-xs font-bold shrink-0 shadow-md active:scale-95 transition-transform">
+                    🔽 필터
+                </button>
+            </div>
         </div>
     </nav>
 
