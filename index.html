@@ -451,13 +451,14 @@ const firebaseConfig = {
     appId: "1:364016255378:web:387f6145265e0a567d814b" 
 };
 
-let db, auth; 
-let USERS = []; 
-let orders = []; 
-let currentUser = null; 
-let chosenUserId = null; 
-let pinBuffer = ''; 
-let selectedWoodStr = '목재를 선택하세요'; 
+let db, auth;
+let USERS = [];
+let orders = [];
+let filteredOrders = []; // 🚀 [Phase 1] 검색/필터가 적용된 데이터를 담을 배열
+let currentUser = null;
+let chosenUserId = null;
+let pinBuffer = '';
+let selectedWoodStr = '목재를 선택하세요';
 let notiPoller = null;
 
 /* 🛡️ NaN 방지 안전 계산기 */
@@ -720,12 +721,46 @@ function switchTab(tabId) {
         renderAdminMonitor(); 
     }
 }
+/* ════════════════════════════════════════════════════════
+   🔍 [Phase 1] 통합 검색 엔진 
+════════════════════════════════════════════════════════ */
+function executeSearch() {
+    const input = document.getElementById('globalSearchInput');
+    if (!input) return;
+    
+    const keyword = input.value.trim().toLowerCase();
+    
+    if (!keyword) {
+        filteredOrders = [...orders];
+    } else {
+        filteredOrders = orders.filter(o => {
+            const clientName = (o.client || '').toLowerCase();
+            const materialName = (o.material || '').toLowerCase();
+            const rejectReason = (o.rejectReason || '').toLowerCase();
+            const statusName = (o.status || '').toLowerCase();
+            
+            return clientName.includes(keyword) || materialName.includes(keyword) || rejectReason.includes(keyword) || statusName.includes(keyword);
+        });
+    }
+    
+    const activeRoleBtn = document.querySelector('.active-role');
+    if (activeRoleBtn) {
+        const cur = activeRoleBtn.id.replace('role-', '');
+        if(cur === 'accounting') renderAccounting();
+        else if(cur === 'factory') renderFactory();
+        else if(cur === 'receivables') renderReceivables();
+        else if(cur === 'history') renderHistory();
+    }
+}
 
+function toggleFilterDrawer() {
+    alert("Phase 2: 우측 슬라이드 필터 패널 기능이 연동될 예정입니다.");
+}
 /* 💼 비즈니스 데이터 처리 */
 async function fetchOrders() { 
     const snap = await db.collection('orders').orderBy('createdAt', 'desc').get(); 
     orders = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
-    
+    filteredOrders = [...orders]; // 🚀 [Phase 1] 데이터 로드 시 검색 배열 동기화
     const activeRoleBtn = document.querySelector('.active-role');
     if (activeRoleBtn) {
         const cur = activeRoleBtn.id.replace('role-', ''); 
@@ -838,7 +873,7 @@ async function handleReport() {
 }
 
 function renderAccounting() {
-    document.getElementById('accountingList').innerHTML = orders.filter(o => o.status === 'pending').map(o => `
+    document.getElementById('accountingList').innerHTML = filteredOrders.filter(o => o.status === 'pending').map(o => `
         <div class="bg-white p-5 rounded-3xl border border-blue-200 mb-4 shadow-sm relative overflow-hidden">
             <div class="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>
             <div class="flex justify-between mb-1">
@@ -852,22 +887,22 @@ function renderAccounting() {
                 <button onclick="updateStatus('${o.id}', 'approved')" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-100">수주 승인</button>
             </div>
         </div>`).join('') || '<p class="text-center py-20 text-slate-400">대기 중인 수주가 없습니다.</p>';
-        
-    document.getElementById('accountingFactoryList').innerHTML = orders.filter(o => o.status === 'approved').map(o => {
+
+    document.getElementById('accountingFactoryList').innerHTML = filteredOrders.filter(o => o.status === 'approved').map(o => {
     const pct = safePercent(o.completedQty, o.qty);
         return `<div class="bg-white p-3 rounded-xl border mb-2 text-xs flex justify-between shadow-sm">
             <span>${o.client}</span><span class="font-bold text-orange-600">${pct}% 진행</span>
         </div>`;
     }).join('') || '<p class="text-center text-[10px] py-2">공정 없음</p>';
 
-    document.getElementById('accountingCompletedList').innerHTML = orders.filter(o => o.status === 'completed' && o.paymentStatus === 'unpaid').map(o =>
+    document.getElementById('accountingCompletedList').innerHTML = filteredOrders.filter(o => o.status === 'completed' && o.paymentStatus === 'unpaid').map(o =>
         `<div class="bg-slate-50 p-3 rounded-xl border mb-2 text-xs flex justify-between">
             <span>${o.client}</span><span class="text-amber-600 font-bold">₩${(o.price * o.qty).toLocaleString()}</span>
         </div>`).join('') || '<p class="text-center text-[10px] text-slate-400 py-2">대기 없음</p>';
 }
 
 function renderFactory() {
-    document.getElementById('productionList').innerHTML = orders.filter(o => o.status === 'approved').map(o => {
+    document.getElementById('productionList').innerHTML = filteredOrders.filter(o => o.status === 'approved').map(o => {
         const pct = safePercent(o.completedQty, o.qty);
         return `
         <div class="bg-white p-5 rounded-3xl border shadow-sm border-l-4 border-l-orange-500 mb-5">
@@ -915,7 +950,7 @@ async function addProgress(id) {
 }
 
 function renderReceivables() {
-    const unpaid = orders.filter(o => o.status === 'completed' && o.paymentStatus === 'unpaid');
+    const unpaid = filteredOrders.filter(o => o.status === 'completed' && o.paymentStatus === 'unpaid');
     const total = unpaid.reduce((s, o) => s + (o.price * o.qty), 0);
     
     document.getElementById('receivableBannerWrap').innerHTML = `
@@ -941,7 +976,7 @@ function renderReceivables() {
 
 function renderHistory() {
     let pS=0, aS=0, uS=0, cS=0; 
-    orders.forEach(o => { 
+    filteredOrders.forEach(o => { 
         const t = (o.price||0) * (o.qty||0); 
         if(o.status==='pending') pS+=t; 
         else if(o.status==='approved') aS+=t; 
@@ -957,7 +992,7 @@ function renderHistory() {
             <div class="bg-white p-3 rounded-2xl border border-green-200 text-green-700 shadow-sm">✅ 완료: ₩${cS.toLocaleString()}</div>
         </div>`;
         
-    document.getElementById('historyList').innerHTML = orders.map(o => `
+    document.getElementById('historyList').innerHTML = filteredOrders.map(o => `
         <div class="bg-white p-4 border rounded-2xl mb-2 text-[11px] shadow-sm">
             <div class="flex justify-between items-center mb-1">
                 <span class="font-bold text-sm text-slate-800">${o.client}</span>
@@ -970,7 +1005,6 @@ function renderHistory() {
             ${o.rejectReason ? `<div class="reject-reason-box mt-2">❌ 거절 사유: ${o.rejectReason}</div>` : ''}
         </div>`).join('');
 }
-
 /* 🛡️ P3: 상태 전이 매트릭스 도입 */
 async function updateStatus(id, s) { 
     const o = orders.find(x => x.id === id);
@@ -1063,15 +1097,15 @@ function selectWood(name, imgUrl, color) {
 }
 
 function exportExcel() { 
-    const rows = orders.map(o => [o.client, o.material, o.qty, o.price, (o.price * o.qty), o.status, o.dueDate, o.payDate]); 
+    const rows = filteredOrders.map(o => [o.client, o.material, o.qty, o.price, (o.price * o.qty), o.status, o.dueDate, o.payDate]); 
     const ws = XLSX.utils.aoa_to_sheet([['업체명', '목재', '수량', '단가', '합계', '상태', '납기', '입금기한'], ...rows]); 
     const wb = XLSX.utils.book_new(); 
     XLSX.utils.book_append_sheet(wb, ws, "YONGJIN"); 
     XLSX.writeFile(wb, `용진기업_현황_${new Date().toLocaleDateString()}.xlsx`); 
 }
-
+    
 function exportReceivablesCSV() {
-    const unpaid = orders.filter(o => o.status === 'completed' && o.paymentStatus === 'unpaid');
+    const unpaid = filteredOrders.filter(o => o.status === 'completed' && o.paymentStatus === 'unpaid');
     if (!unpaid.length) return alert('미수금 데이터가 없습니다.'); 
 
     const wb = XLSX.utils.book_new();
@@ -1098,6 +1132,7 @@ async function clearAllData() {
         await db.collection('orders').doc(o.id).delete();
     }
     orders = [];
+    filteredOrders = []; // 🚀 교정: 초기화 시 검색 배열도 함께 비워주어야 잔상 데이터가 남지 않습니다.
     renderHistory();
     alert('초기화 완료');
 }
