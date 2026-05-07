@@ -1349,30 +1349,64 @@ function checkNotiBanner() {
     }
 }
 
+/* ════════════════════════════════════════════════════════
+   🔔 [작업 4] 푸시 알림 Listener 개선 및 에러 복구 고도화
+════════════════════════════════════════════════════════ */
 function startNotiPoller() {
-    if(notiPoller || !db) return;
-    notiPoller = db.collection('notifications')
+    // 중복 리스너 실행 방지 및 DB 객체 존재 여부 확인
+    if (notiPoller || !db) return;
+    
+    // 💡 1 & 2: 최신순 정렬(orderBy) 및 50개 제한(limit) 추가
+    // 주의: array-contains, ==, orderBy를 함께 쓰므로 Firestore 복합 색인이 필요합니다.
+    const query = db.collection('notifications')
+        .where('target_roles', 'array-contains', currentUser.role)
         .where('read', '==', false)
-        .onSnapshot(snap => {
+        .orderBy('created_at', 'desc')
+        .limit(50);
+        
+    notiPoller = query.onSnapshot(snap => {
             snap.docChanges().forEach(change => {
                 if(change.type === 'added') {
                     const n = { id: change.doc.id, ...change.doc.data() };
-                    if (n.target_roles.includes(currentUser.role)) {
-                        showToast('noti-sales', '🔔', '신규 알림', n.message); 
-                        sendBrowserNoti('용진기업', n.message);
-                        db.collection('notifications').doc(n.id).update({read: true});
-                    }
+                    
+                    // UI 토스트 및 모바일/브라우저 네이티브 푸시 실행
+                    showToast('noti-sales', '🔔', '업무 알림', n.message); 
+                    sendBrowserNoti('용진기업 시스템', n.message);
+                    
+                    // 💡 4: 읽음 처리 시 read_at(읽은 시간) 필드 동시 기록
+                    db.collection('notifications').doc(n.id).update({
+                        read: true,
+                        read_at: Date.now() // 감사 로그용 타임스탬프
+                    }).catch(updateErr => {
+                        console.error("알림 상태 업데이트 실패:", updateErr);
+                    });
                 }
             });
         }, error => {
-            console.warn("알림 연결 중단. 5초 후 재시도합니다.", error);
-            notiPoller = null; 
+            // 💡 3: 에러 처리 개선 및 자동 복구(Fallback) 로직
+            console.error("Noti Poll Error:", error);
+            
+            // 복합 색인(Index) 누락 에러 감지 시 명시적 경고
+            if (error.message.includes('indexes') || error.message.includes('Index')) {
+                console.warn("⚠️ [긴급] Firebase 콘솔에서 notifications 컬렉션의 복합 색인을 생성해야 합니다. 콘솔의 에러 링크를 클릭하세요.");
+            }
+            
+            notiPoller = null; // 리스너 초기화
+            // 네트워크 단절 등을 대비하여 5초 후 재연결 시도 (단순 백오프)
             setTimeout(startNotiPoller, 5000); 
         });
 }
 
+// (참고) 로그아웃 시 알림 리스너 메모리 해제를 위한 업데이트
 function logout() { 
-    if(confirm('로그아웃 하시겠습니까?')) location.reload(); 
+    if(confirm('로그아웃 하시겠습니까?')) {
+        // 활성화된 리스너 강제 종료 (가비지 컬렉션)
+        if (notiPoller) {
+            notiPoller(); 
+            notiPoller = null;
+        }
+        location.reload(); 
+    }
 }
 
 </script>
