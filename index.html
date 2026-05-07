@@ -222,15 +222,26 @@
         main {
             flex-grow: 1;
         }
+        
         /* 🚀 Phase 2 드로어 전용 스타일 */
         .status-chip, .pay-chip {
-            padding: 8px 16px; background: #f1f5f9; border-radius: 12px;
-            font-size: 11px; font-weight: 800; color: #64748b; border: 2px solid transparent; transition: all 0.2s;
+            padding: 8px 16px;
+            background: #f1f5f9;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 800;
+            color: #64748b;
+            border: 2px solid transparent;
+            transition: all 0.2s;
         }
         .status-chip.active, .pay-chip.active {
-            background: #eff6ff; border-color: #1e3a8a; color: #1e3a8a;
+            background: #eff6ff;
+            border-color: #1e3a8a;
+            color: #1e3a8a;
         }
-        #drawerContent.show { transform: translateX(0) !important; }
+        #drawerContent.show {
+            transform: translateX(0) !important;
+        }
     </style>
 </head>
 <body oncontextmenu="return false">
@@ -438,53 +449,54 @@
         </div>
     </main>
 
-<div id="filterDrawer" class="fixed inset-0 z-[100] hidden">
-    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="toggleFilterDrawer()"></div>
-    
-    <div id="drawerContent" class="absolute right-0 top-0 bottom-0 w-[85%] max-w-sm bg-white shadow-2xl p-6 translate-x-full transition-transform duration-300 ease-in-out">
-        <div class="flex justify-between items-center mb-8">
-            <h2 class="text-xl font-black italic text-slate-800">DETAILED FILTER</h2>
-            <button onclick="toggleFilterDrawer()" class="w-10 h-10 bg-slate-100 rounded-full font-black text-slate-400">✕</button>
-        </div>
-
-        <div class="space-y-8 overflow-y-auto h-[calc(100%-80px)] pr-2">
-            <div>
-                <label class="block text-[11px] font-black text-slate-400 uppercase mb-3 tracking-widest">📅 기간 선택 (출고일 기준)</label>
-                <div class="grid grid-cols-2 gap-2">
-                    <input type="date" id="filterStartDate" class="w-full p-3 bg-slate-50 border rounded-xl text-xs font-bold">
-                    <input type="date" id="filterEndDate" class="w-full p-3 bg-slate-50 border rounded-xl text-xs font-bold">
-                </div>
+    <div id="filterDrawer" class="fixed inset-0 z-[100] hidden">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="toggleFilterDrawer()"></div>
+        
+        <div id="drawerContent" class="absolute right-0 top-0 bottom-0 w-[85%] max-w-sm bg-white shadow-2xl p-6 translate-x-full transition-transform duration-300 ease-in-out">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-xl font-black italic text-slate-800">DETAILED FILTER</h2>
+                <button onclick="toggleFilterDrawer()" class="w-10 h-10 bg-slate-100 rounded-full font-black text-slate-400">✕</button>
             </div>
 
-            <div>
-                <label class="block text-[11px] font-black text-slate-400 uppercase mb-3 tracking-widest">🔄 공정 상태</label>
-                <div class="flex flex-wrap gap-2" id="filterStatusGroup">
-                    <button onclick="setFilterStatus('all')" class="status-chip active">전체</button>
-                    <button onclick="setFilterStatus('pending')" class="status-chip">승인대기</button>
-                    <button onclick="setFilterStatus('approved')" class="status-chip">생산중</button>
-                    <button onclick="setFilterStatus('completed')" class="status-chip">생산완료</button>
+            <div class="space-y-8 overflow-y-auto h-[calc(100%-80px)] pr-2">
+                <div>
+                    <label class="block text-[11px] font-black text-slate-400 uppercase mb-3 tracking-widest">📅 기간 선택 (출고일 기준)</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="date" id="filterStartDate" class="w-full p-3 bg-slate-50 border rounded-xl text-xs font-bold">
+                        <input type="date" id="filterEndDate" class="w-full p-3 bg-slate-50 border rounded-xl text-xs font-bold">
+                    </div>
                 </div>
-            </div>
 
-            <div>
-                <label class="block text-[11px] font-black text-slate-400 uppercase mb-3 tracking-widest">💵 결제 여부</label>
-                <div class="grid grid-cols-2 gap-2">
-                    <button onclick="setPaymentFilter('all')" class="pay-chip active">전체</button>
-                    <button onclick="setPaymentFilter('unpaid')" class="pay-chip text-red-600">미수금</button>
+                <div>
+                    <label class="block text-[11px] font-black text-slate-400 uppercase mb-3 tracking-widest">🔄 공정 상태</label>
+                    <div class="flex flex-wrap gap-2" id="filterStatusGroup">
+                        <button onclick="setFilterStatus('all')" class="status-chip active">전체</button>
+                        <button onclick="setFilterStatus('pending')" class="status-chip">승인대기</button>
+                        <button onclick="setFilterStatus('approved')" class="status-chip">생산중</button>
+                        <button onclick="setFilterStatus('completed')" class="status-chip">생산완료</button>
+                    </div>
                 </div>
-            </div>
 
-            <div class="pt-10">
-                <button onclick="applyComplexFilter()" class="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-lg shadow-xl active:scale-95 transition-all">
-                    필터 적용하기
-                </button>
-                <button onclick="resetFilters()" class="w-full mt-3 py-3 text-slate-400 font-bold text-xs underline">
-                    필터 초기화
-                </button>
+                <div>
+                    <label class="block text-[11px] font-black text-slate-400 uppercase mb-3 tracking-widest">💵 결제 여부</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="setPaymentFilter('all')" class="pay-chip active">전체</button>
+                        <button onclick="setPaymentFilter('unpaid')" class="pay-chip text-red-600">미수금</button>
+                    </div>
+                </div>
+
+                <div class="pt-10">
+                    <button onclick="applyComplexFilter()" class="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-lg shadow-xl active:scale-95 transition-all">
+                        필터 적용하기
+                    </button>
+                    <button onclick="resetFilters()" class="w-full mt-3 py-3 text-slate-400 font-bold text-xs underline">
+                        필터 초기화
+                    </button>
+                </div>
             </div>
         </div>
     </div>
-</div>
+    
     <div class="system-footer pb-4" style="color: #94a3b8;">
         <p>Last Updated: 26.05.06 / v1.2.0</p>
         <p style="color: #64748b;">Designed by GENE KIM</p>
@@ -1277,7 +1289,7 @@ async function clearAllData() {
         await db.collection('orders').doc(o.id).delete();
     }
     orders = [];
-    filteredOrders = []; // 🚀 교정: 초기화 시 검색 배열도 함께 비워주어야 잔상 데이터가 남지 않습니다.
+    filteredOrders = []; 
     renderHistory();
     alert('초기화 완료');
 }
