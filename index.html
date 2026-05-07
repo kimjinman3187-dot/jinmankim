@@ -223,14 +223,14 @@
             flex-grow: 1;
         }
         /* 🚀 Phase 2 드로어 전용 스타일 */
-.status-chip, .pay-chip {
-    padding: 8px 16px; background: #f1f5f9; border-radius: 12px;
-    font-size: 11px; font-weight: 800; color: #64748b; border: 2px solid transparent; transition: all 0.2s;
-}
-.status-chip.active, .pay-chip.active {
-    background: #eff6ff; border-color: #1e3a8a; color: #1e3a8a;
-}
-#drawerContent.show { transform: translateX(0) !important; }
+        .status-chip, .pay-chip {
+            padding: 8px 16px; background: #f1f5f9; border-radius: 12px;
+            font-size: 11px; font-weight: 800; color: #64748b; border: 2px solid transparent; transition: all 0.2s;
+        }
+        .status-chip.active, .pay-chip.active {
+            background: #eff6ff; border-color: #1e3a8a; color: #1e3a8a;
+        }
+        #drawerContent.show { transform: translateX(0) !important; }
     </style>
 </head>
 <body oncontextmenu="return false">
@@ -293,7 +293,6 @@
                     <button onclick="logout()" class="text-[9px] font-black text-slate-400 bg-slate-100 hover:bg-red-100 hover:text-red-500 px-2 py-1 rounded-lg transition-colors">로그아웃</button>
                 </div>
             </div>
-            <!-- 🚀 [Phase 1] 검색창 및 필터 기능 통합 -->
             <div class="flex items-center gap-2 mt-1">
                 <div class="relative flex-1">
                     <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-xs">🔍</span>
@@ -438,13 +437,16 @@
             </section>
         </div>
     </main>
+
 <div id="filterDrawer" class="fixed inset-0 z-[100] hidden">
     <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="toggleFilterDrawer()"></div>
+    
     <div id="drawerContent" class="absolute right-0 top-0 bottom-0 w-[85%] max-w-sm bg-white shadow-2xl p-6 translate-x-full transition-transform duration-300 ease-in-out">
         <div class="flex justify-between items-center mb-8">
             <h2 class="text-xl font-black italic text-slate-800">DETAILED FILTER</h2>
             <button onclick="toggleFilterDrawer()" class="w-10 h-10 bg-slate-100 rounded-full font-black text-slate-400">✕</button>
         </div>
+
         <div class="space-y-8 overflow-y-auto h-[calc(100%-80px)] pr-2">
             <div>
                 <label class="block text-[11px] font-black text-slate-400 uppercase mb-3 tracking-widest">📅 기간 선택 (출고일 기준)</label>
@@ -453,6 +455,7 @@
                     <input type="date" id="filterEndDate" class="w-full p-3 bg-slate-50 border rounded-xl text-xs font-bold">
                 </div>
             </div>
+
             <div>
                 <label class="block text-[11px] font-black text-slate-400 uppercase mb-3 tracking-widest">🔄 공정 상태</label>
                 <div class="flex flex-wrap gap-2" id="filterStatusGroup">
@@ -462,6 +465,7 @@
                     <button onclick="setFilterStatus('completed')" class="status-chip">생산완료</button>
                 </div>
             </div>
+
             <div>
                 <label class="block text-[11px] font-black text-slate-400 uppercase mb-3 tracking-widest">💵 결제 여부</label>
                 <div class="grid grid-cols-2 gap-2">
@@ -469,9 +473,14 @@
                     <button onclick="setPaymentFilter('unpaid')" class="pay-chip text-red-600">미수금</button>
                 </div>
             </div>
+
             <div class="pt-10">
-                <button onclick="applyComplexFilter()" class="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-lg shadow-xl active:scale-95 transition-all">필터 적용하기</button>
-                <button onclick="resetFilters()" class="w-full mt-3 py-3 text-slate-400 font-bold text-xs underline">필터 초기화</button>
+                <button onclick="applyComplexFilter()" class="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-lg shadow-xl active:scale-95 transition-all">
+                    필터 적용하기
+                </button>
+                <button onclick="resetFilters()" class="w-full mt-3 py-3 text-slate-400 font-bold text-xs underline">
+                    필터 초기화
+                </button>
             </div>
         </div>
     </div>
@@ -485,118 +494,6 @@
 <div id="modalContainer"></div>
 
 <script>
-/* ════════════════════════════════════════════════════════
-   🚀 Phase 2: 드로어 제어 및 복합 필터 엔진
-════════════════════════════════════════════════════════ */
-let currentFilterStatus = 'all';
-let currentPaymentFilter = 'all';
-
-function toggleFilterDrawer() {
-    const drawer = document.getElementById('filterDrawer');
-    const content = document.getElementById('drawerContent');
-    if (drawer.classList.contains('hidden')) {
-        drawer.classList.remove('hidden');
-        setTimeout(() => content.classList.add('show'), 10);
-    } else {
-        content.classList.remove('show');
-        setTimeout(() => drawer.classList.add('hidden'), 300);
-    }
-}
-
-function setFilterStatus(status) {
-    currentFilterStatus = status;
-    document.querySelectorAll('#filterStatusGroup .status-chip').forEach(btn => {
-        btn.classList.toggle('active', btn.innerText.includes(status === 'all' ? '전체' : status === 'pending' ? '승인대기' : status === 'approved' ? '생산중' : '생산완료'));
-    });
-}
-
-function setPaymentFilter(type) {
-    currentPaymentFilter = type;
-    document.querySelectorAll('.pay-chip').forEach(btn => {
-        btn.classList.toggle('active', btn.innerText.includes(type === 'all' ? '전체' : '미수금'));
-    });
-}
-
-async function applyComplexFilter() {
-    toggleFilterDrawer();
-    const start = document.getElementById('filterStartDate').value;
-    const end = document.getElementById('filterEndDate').value;
-    showToast('noti-sales', '🔍', '조회 중', '조건에 맞는 데이터를 불러옵니다.');
-
-    let query = db.collection('orders');
-
-    // [중요] 필터 조건에 따른 색인 정렬 기준 분기
-    if (currentFilterStatus !== 'all') {
-        query = query.where('status', '==', currentFilterStatus).orderBy('createdAt', 'desc');
-    } else if (currentPaymentFilter !== 'all') {
-        query = query.where('paymentStatus', '==', currentPaymentFilter).orderBy('dueDate', 'desc');
-    } else {
-        query = query.orderBy('createdAt', 'desc');
-    }
-
-    try {
-        const snap = await query.get();
-        let results = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        if (start && end) {
-            results = results.filter(o => o.dueDate >= start && o.dueDate <= end);
-        }
-        filteredOrders = results;
-        const activeTab = document.querySelector('.active-role').id.replace('role-', '');
-        switchTab(activeTab); 
-        showToast('noti-sales', '✅', '조회 완료', `${filteredOrders.length}건이 검색되었습니다.`);
-    } catch (e) {
-        console.error(e);
-        showToast('noti-sales', '❌', '인덱스 에러', 'Firebase 콘솔에서 색인 생성을 확인하세요.');
-    }
-}
-
-function resetFilters() {
-    document.getElementById('filterStartDate').value = '';
-    document.getElementById('filterEndDate').value = '';
-    setFilterStatus('all'); setPaymentFilter('all');
-    fetchOrders(); toggleFilterDrawer();
-}
- /* 🚀 [Phase 2] 서버 사이드 복합 필터 엔진 (최종 완성본) */
-async function applyComplexFilter() {
-    toggleFilterDrawer(); // 필터 창 닫기
-    const start = document.getElementById('filterStartDate').value;
-    const end = document.getElementById('filterEndDate').value;
-    
-    showToast('noti-sales', '🔍', '필터링 중', '조건에 맞는 수주를 서버에서 불러옵니다.');
-
-    let query = db.collection('orders');
-
-    // [색인 최적화 로직] 
-    // 우리가 만든 1번(status)과 3번(paymentStatus) 복합 인덱스를 사용합니다.
-    if (currentFilterStatus !== 'all') {
-        query = query.where('status', '==', currentFilterStatus).orderBy('createdAt', 'desc');
-    } else if (currentPaymentFilter !== 'all') {
-        query = query.where('paymentStatus', '==', currentPaymentFilter).orderBy('dueDate', 'desc');
-    } else {
-        query = query.orderBy('createdAt', 'desc');
-    }
-
-    try {
-        const snap = await query.get();
-        let results = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-        // 날짜 범위는 클라이언트에서 가볍게 한 번 더 정제합니다.
-        if (start && end) {
-            results = results.filter(o => o.dueDate >= start && o.dueDate <= end);
-        }
-
-        filteredOrders = results;
-        
-        // 현재 활성화된 탭(영업/공장/회계)의 리스트를 즉시 새로고침합니다.
-        const activeTab = document.querySelector('.active-role').id.replace('role-', '');
-        switchTab(activeTab); 
-        
-        showToast('noti-sales', '✅', '조회 완료', `${filteredOrders.length}건의 데이터가 검색되었습니다.`);
-    } catch (e) {
-        console.error("Query Error:", e);
-        showToast('noti-sales', '❌', '인덱스 확인 필요', 'Firebase 색인이 빌드 중이거나 설정이 다를 수 있습니다.');
-    }
-}   
 /* ════════════════════════════════════════════════════════
    🚀 파이어베이스(Firebase) 설정 및 전역 변수
 ════════════════════════════════════════════════════════ */
@@ -619,13 +516,8 @@ let pinBuffer = '';
 let selectedWoodStr = '목재를 선택하세요';
 let notiPoller = null;
 
-/* 🛡️ NaN 방지 안전 계산기 */
-function safePercent(completed, total) {
-    const c = Number(completed) || 0;
-    const t = Number(total) || 0;
-    if (t <= 0) return 0;
-    return Math.round((c / t) * 100);
-}
+let currentFilterStatus = 'all';
+let currentPaymentFilter = 'all';
 
 // 🛡️ P1: 중복 제출 방지 플래그 및 차등 잠금 정책
 let isSubmitting = false; 
@@ -670,6 +562,102 @@ const TAB_META = {
     factory: {label:'생산', emoji:'🏭'}, 
     history: {label:'현황', emoji:'📊'} 
 };
+
+/* ════════════════════════════════════════════════════════
+   🚀 Phase 2: 드로어 제어 및 복합 필터 로직
+════════════════════════════════════════════════════════ */
+function toggleFilterDrawer() {
+    const drawer = document.getElementById('filterDrawer');
+    const content = document.getElementById('drawerContent');
+    
+    if (drawer.classList.contains('hidden')) {
+        drawer.classList.remove('hidden');
+        setTimeout(() => content.classList.add('show'), 10);
+    } else {
+        content.classList.remove('show');
+        setTimeout(() => drawer.classList.add('hidden'), 300);
+    }
+}
+
+function setFilterStatus(status) {
+    currentFilterStatus = status;
+    document.querySelectorAll('#filterStatusGroup .status-chip').forEach(btn => {
+        const btnText = btn.innerText;
+        const isTarget = (status === 'all' && btnText === '전체') || 
+                         (status === 'pending' && btnText === '승인대기') ||
+                         (status === 'approved' && btnText === '생산중') ||
+                         (status === 'completed' && btnText === '생산완료');
+        btn.classList.toggle('active', isTarget);
+    });
+}
+
+function setPaymentFilter(type) {
+    currentPaymentFilter = type;
+    document.querySelectorAll('.pay-chip').forEach(btn => {
+        const btnText = btn.innerText;
+        const isTarget = (type === 'all' && btnText === '전체') || 
+                         (type === 'unpaid' && btnText === '미수금');
+        btn.classList.toggle('active', isTarget);
+    });
+}
+
+function resetFilters() {
+    document.getElementById('filterStartDate').value = '';
+    document.getElementById('filterEndDate').value = '';
+    setFilterStatus('all');
+    setPaymentFilter('all');
+    fetchOrders(); 
+    toggleFilterDrawer();
+}
+
+/* 🚀 [Phase 2] 서버 사이드 복합 필터 엔진 (최종 완성본) */
+async function applyComplexFilter() {
+    toggleFilterDrawer(); // 필터 창 닫기
+    const start = document.getElementById('filterStartDate').value;
+    const end = document.getElementById('filterEndDate').value;
+    
+    showToast('noti-sales', '🔍', '필터링 중', '조건에 맞는 수주를 서버에서 불러옵니다.');
+
+    let query = db.collection('orders');
+
+    // [색인 최적화 로직] 
+    if (currentFilterStatus !== 'all') {
+        query = query.where('status', '==', currentFilterStatus).orderBy('createdAt', 'desc');
+    } else if (currentPaymentFilter !== 'all') {
+        query = query.where('paymentStatus', '==', currentPaymentFilter).orderBy('dueDate', 'desc');
+    } else {
+        query = query.orderBy('createdAt', 'desc');
+    }
+
+    try {
+        const snap = await query.get();
+        let results = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // 날짜 범위는 클라이언트에서 가볍게 한 번 더 정제합니다.
+        if (start && end) {
+            results = results.filter(o => o.dueDate >= start && o.dueDate <= end);
+        }
+
+        filteredOrders = results;
+        
+        // 현재 활성화된 탭(영업/공장/회계)의 리스트를 즉시 새로고침합니다.
+        const activeTab = document.querySelector('.active-role').id.replace('role-', '');
+        switchTab(activeTab); 
+        
+        showToast('noti-sales', '✅', '조회 완료', `${filteredOrders.length}건의 데이터가 검색되었습니다.`);
+    } catch (e) {
+        console.error("Query Error:", e);
+        showToast('noti-sales', '❌', '인덱스 확인 필요', 'Firebase 색인이 빌드 중이거나 설정이 다를 수 있습니다.');
+    }
+}   
+
+/* 🛡️ NaN 방지 안전 계산기 */
+function safePercent(completed, total) {
+    const c = Number(completed) || 0;
+    const t = Number(total) || 0;
+    if (t <= 0) return 0;
+    return Math.round((c / t) * 100);
+}
 
 /* 🛡️ P2: 감사 로그 (Audit Logs) 고도화 함수 */
 async function logAction(action, orderId, details) {
@@ -879,6 +867,7 @@ function switchTab(tabId) {
         renderAdminMonitor(); 
     }
 }
+
 /* ════════════════════════════════════════════════════════
    🔍 [Phase 1] 통합 검색 엔진 
 ════════════════════════════════════════════════════════ */
@@ -911,7 +900,6 @@ function executeSearch() {
     }
 }
 
-}
 /* 💼 비즈니스 데이터 처리 */
 async function fetchOrders() { 
     const snap = await db.collection('orders').orderBy('createdAt', 'desc').get(); 
@@ -1024,7 +1012,7 @@ async function handleReport() {
         isSubmitting = false;
         btn.disabled = false; 
         btn.classList.remove('opacity-50', 'cursor-not-allowed');
-        btn.textContent = "✅ 수주 데이터 전송";
+        btn.textContent = "✅ 서버로 수주 전송하기";
     }
 }
 
@@ -1053,7 +1041,7 @@ function renderAccounting() {
 
     document.getElementById('accountingCompletedList').innerHTML = filteredOrders.filter(o => o.status === 'completed' && o.paymentStatus === 'unpaid').map(o =>
         `<div class="bg-slate-50 p-3 rounded-xl border mb-2 text-xs flex justify-between">
-            <span>${o.client}</span><span class="text-amber-600 font-bold">₩${(o.price * o.qty).toLocaleString()}</span>
+            <span>${o.client}</span><span class="text-amber-600 font-bold">₩${((o.price||0) * (o.qty||0)).toLocaleString()}</span>
         </div>`).join('') || '<p class="text-center text-[10px] text-slate-400 py-2">대기 없음</p>';
 }
 
@@ -1107,7 +1095,7 @@ async function addProgress(id) {
 
 function renderReceivables() {
     const unpaid = filteredOrders.filter(o => o.status === 'completed' && o.paymentStatus === 'unpaid');
-    const total = unpaid.reduce((s, o) => s + (o.price * o.qty), 0);
+    const total = unpaid.reduce((s, o) => s + ((o.price||0) * (o.qty||0)), 0);
     
     document.getElementById('receivableBannerWrap').innerHTML = `
         <div class="receivable-banner shadow-lg shadow-indigo-100">
@@ -1161,6 +1149,7 @@ function renderHistory() {
             ${o.rejectReason ? `<div class="reject-reason-box mt-2">❌ 거절 사유: ${o.rejectReason}</div>` : ''}
         </div>`).join('');
 }
+
 /* 🛡️ P3: 상태 전이 매트릭스 도입 */
 async function updateStatus(id, s) { 
     const o = orders.find(x => x.id === id);
@@ -1253,7 +1242,7 @@ function selectWood(name, imgUrl, color) {
 }
 
 function exportExcel() { 
-    const rows = filteredOrders.map(o => [o.client, o.material, o.qty, o.price, (o.price * o.qty), o.status, o.dueDate, o.payDate]); 
+    const rows = filteredOrders.map(o => [o.client, o.material, o.qty, o.price, ((o.price||0) * (o.qty||0)), o.status, o.dueDate, o.payDate]); 
     const ws = XLSX.utils.aoa_to_sheet([['업체명', '목재', '수량', '단가', '합계', '상태', '납기', '입금기한'], ...rows]); 
     const wb = XLSX.utils.book_new(); 
     XLSX.utils.book_append_sheet(wb, ws, "YONGJIN"); 
@@ -1268,9 +1257,9 @@ function exportReceivablesCSV() {
     const header = [['업체명', '목재', '가로(mm)', '세로(mm)', '두께', '수량', '단가', '합계금액', '출고일', '입금예정일']];
     const rows = unpaid.map(o => [
         o.client, o.material, Number(o.width)||0, Number(o.height)||0,
-        o.thickness||'-', o.qty, o.price, o.price * o.qty, o.dueDate||'-', o.payDate||'-'
+        o.thickness||'-', o.qty, o.price, (o.price||0) * (o.qty||0), o.dueDate||'-', o.payDate||'-'
     ]);
-    const total = unpaid.reduce((s,o) => s + o.price * o.qty, 0);
+    const total = unpaid.reduce((s,o) => s + ((o.price||0) * (o.qty||0)), 0);
     rows.push(['', '', '', '', '', '', '합계', total, '', '']);
 
     const ws = XLSX.utils.aoa_to_sheet([...header, ...rows]);
