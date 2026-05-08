@@ -1578,29 +1578,45 @@ function logout() {
         location.reload(); 
     }
 }
-/* 🛡️ P4: F5 새로고침 방어 및 세션 복구 로직 */
-window.addEventListener('DOMContentLoaded', () => {
-    const savedSession = sessionStorage.getItem('yongjin_session');
 
-   if (savedSession) {
+/* 🛡️ P4: F5 새로고침 방어 및 세션 복구 로직 (최종 안정화) */
+window.addEventListener('load', () => { // DOMContentLoaded보다 더 확실한 'load' 시점
+    const savedSession = sessionStorage.getItem('yongjin_session');
+    const savedTab = sessionStorage.getItem('active_tab');
+
+    if (savedSession) {
         currentUser = JSON.parse(savedSession);
         
-        // 1. 실제 사용 중인 ID로 화면 전환 (2번 이미지 참조)
-        document.getElementById('loginOverlay').style.display = 'none';
-        document.getElementById('mainApp').classList.remove('hidden');
-        document.getElementById('displayUser').textContent = currentUser.name;
+        // 1. 화면 즉시 전환 (로그인 오버레이 숨기기)
+        const overlay = document.getElementById('loginOverlay');
+        const app = document.getElementById('mainApp');
         
-        // 관리자인 경우 버튼 보이기 로직 복구
-        if (currentUser.role === 'admin') document.getElementById('clearBtn').style.display = '';
-        
-        // 2. 엔진 재가동 (현재 시스템 함수명에 맞춤)
-        initTabs();
-        startOrdersListener();
-        checkNotiBanner(); 
-        const savedTab = sessionStorage.getItem('active_tab'); // 금고에서 탭 이름 꺼내기
-        if (savedTab) switchTab(savedTab); // 저장된 탭이 있다면 그 화면으로 즉시 이동
-        console.log("🔄 [시스템 복구] 세션이 완벽하게 복원되었습니다.");
+        if (overlay && app) {
+            overlay.style.display = 'none';
+            app.classList.remove('hidden');
+            document.getElementById('displayUser').textContent = currentUser.name;
+            
+            // 관리자 버튼 복구
+            if (currentUser.role === 'admin') {
+                const clearBtn = document.getElementById('clearBtn');
+                if(clearBtn) clearBtn.style.display = '';
+            }
+
+            // 2. 엔진 가동 및 데이터 리스너 시작
+            initTabs();
+            startOrdersListener(); 
+            checkNotiBanner();
+            
+            // 3. ⭐️ 0.05초의 여유를 주어 데이터가 도착한 뒤 탭 이동 (백지 방지)
+            if (savedTab) {
+                setTimeout(() => {
+                    switchTab(savedTab);
+                    console.log(`🔄 [시스템 복구] ${savedTab} 탭으로 복원되었습니다.`);
+                }, 50); 
+            }
+        }
     }
+});
 });
 </script>
 </body>
