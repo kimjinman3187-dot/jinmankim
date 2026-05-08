@@ -286,7 +286,7 @@
     </div>
     
     <div class="system-footer" style="color: rgba(255,255,255,0.3);">
-        <p>Last Updated: 26.05.08 / v1.3.5</p>
+        <p>Last Updated: 26.05.08 / v1.3.6</p>
         <p>Designed by GENE KIM</p>
         <p style="margin-top:10px; letter-spacing:2px; font-weight:700;">SECURE DATA TERMINAL</p>
     </div>
@@ -498,7 +498,7 @@
     </div>
     
     <div class="system-footer pb-4" style="color: #94a3b8;">
-        <p>Last Updated: 26.05.08 / v1.3.5</p>
+        <p>Last Updated: 26.05.08 / v1.3.6</p>
         <p style="color: #64748b;">Designed by GENE KIM</p>
     </div>
 </div>
@@ -873,7 +873,7 @@ function switchTab(tabId) {
     
     const targetSec = document.getElementById('section-' + tabId);
     if(targetSec) targetSec.classList.remove('hidden');
-    
+    sessionStorage.setItem('active_tab', tabId); // 보고 있는 탭 이름을 금고에 저장
     if(tabId === 'accounting') renderAccounting(); 
     else if(tabId === 'factory') renderFactory(); 
     else if(tabId === 'receivables') renderReceivables(); 
@@ -1597,7 +1597,8 @@ window.addEventListener('DOMContentLoaded', () => {
         initTabs();
         startOrdersListener();
         checkNotiBanner(); 
-        
+        const savedTab = sessionStorage.getItem('active_tab'); // 금고에서 탭 이름 꺼내기
+        if (savedTab) switchTab(savedTab); // 저장된 탭이 있다면 그 화면으로 즉시 이동
         console.log("🔄 [시스템 복구] 세션이 완벽하게 복원되었습니다.");
     }
 });
