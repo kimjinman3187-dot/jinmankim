@@ -1067,7 +1067,7 @@ function renderAccounting() {
             <div class="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>
             <div class="flex justify-between mb-1">
                 <p class="font-black text-lg pl-2">${o.client}</p>
-                <span class="badge badge-pending">승인대기</span>
+                <span class="badge badge-pending whitespace-nowrap min-w-max text-center">승인대기</span>
             </div>
             <p class="text-[10px] text-red-500 font-bold mb-2 pl-2">납기 요청: ${o.dueDate}</p>
             <div class="text-xs text-slate-500 pl-2">자재: ${o.material} | 금액: ₩${((o.price||0)*(o.qty||0)).toLocaleString()}</div>
@@ -1099,7 +1099,10 @@ function renderFactory() {
                 <p class="font-black text-lg">${o.client}</p>
                 <span class="text-xs font-bold text-red-500">납기: ${o.dueDate}</span>
             </div>
-            <p class="text-[11px] text-slate-500 mb-3 font-bold">${o.material} / ${o.qty}장 요청</p>
+            <p class="text-[11px] text-slate-500 mb-3 font-bold flex justify-between items-center">
+    <span>${o.material} / 총 ${o.qty}장 (완료: ${o.completedQty || 0}장)</span>
+    <span class="text-red-500 text-xs">남은 수량: ${Math.max(0, o.qty - (o.completedQty || 0))}장</span>
+</p>
             <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden mb-4 border">
                 <div class="bg-orange-500 h-full rounded-full transition-all" style="width:${pct}%"></div>
             </div>
