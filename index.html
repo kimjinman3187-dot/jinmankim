@@ -527,6 +527,8 @@ let chosenUserId = null;
 let pinBuffer = '';
 let selectedWoodStr = '목재를 선택하세요';
 let notiPoller = null;
+let notiPoller = null;
+let ordersListenerUnsubscribe = null; // 🚀 성능 최적화: 수주 데이터 리스너 가비지 컬렉션용    
 
 let currentFilterStatus = 'all';
 let currentPaymentFilter = 'all';
@@ -618,7 +620,7 @@ function resetFilters() {
     document.getElementById('filterEndDate').value = '';
     setFilterStatus('all');
     setPaymentFilter('all');
-    fetchOrders(); 
+    startOrdersListener(); // 🚀 초기화 시 기본 리스너로 재시작
     toggleFilterDrawer();
 }
 
@@ -799,9 +801,8 @@ async function tryLogin() {
         if (user.role === 'admin') document.getElementById('clearBtn').style.display = '';
         
         initTabs(); 
-        fetchOrders(); 
-        checkNotiBanner(); 
-        startNotiPoller();
+        startOrdersListener(); // 🚀 fetchOrders 대신 리스너 실행
+        checkNotiBanner();
     } else {
         if (attempts >= limit) {
             const unlockTime = Date.now() + (LOCKOUT_MINUTES * 60 * 1000);
@@ -913,15 +914,46 @@ function executeSearch() {
 }
 
 /* 💼 비즈니스 데이터 처리 */
-async function fetchOrders() { 
-    const snap = await db.collection('orders').orderBy('createdAt', 'desc').get(); 
-    orders = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
-    filteredOrders = [...orders]; // 🚀 [Phase 1] 데이터 로드 시 검색 배열 동기화
-    const activeRoleBtn = document.querySelector('.active-role');
-    if (activeRoleBtn) {
-        const cur = activeRoleBtn.id.replace('role-', ''); 
-        switchTab(cur); 
+/* 🚀 [작업 3 & 5] RBAC 기반 실시간 수주 동기화 및 성능 최적화 */
+function startOrdersListener(customQuery = null) {
+    // 기존 리스너가 있다면 메모리 해제
+    if (ordersListenerUnsubscribe) {
+        ordersListenerUnsubscribe();
+        ordersListenerUnsubscribe = null;
     }
+
+    let query;
+    if (customQuery) {
+        query = customQuery;
+    } else {
+        const baseRef = db.collection('orders');
+        
+        // 🛡️ RBAC 필터 격리
+        if (currentUser.role === 'sales') {
+            // 영업팀: 본인 수주만, 최신 100건 제한
+            query = baseRef.where('reportedBy', '==', currentUser.name)
+                           .orderBy('createdAt', 'desc').limit(100);
+        } else if (currentUser.role === 'factory') {
+            // 공장팀: 승인 또는 완료된 건만, 최신 150건 제한
+            query = baseRef.where('status', 'in', ['approved', 'completed'])
+                           .orderBy('createdAt', 'desc').limit(150);
+        } else {
+            // 회계팀/관리자: 전체 열람, 최신 300건 제한
+            query = baseRef.orderBy('createdAt', 'desc').limit(300);
+        }
+    }
+
+    // .get() 대신 onSnapshot을 사용하여 실시간 차분 업데이트 및 읽기 비용 절감
+    ordersListenerUnsubscribe = query.onSnapshot(snap => {
+        orders = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // 데이터가 들어오면 즉시 현재 검색/필터 상태에 맞춰 화면 렌더링
+        executeSearch(); 
+    }, error => {
+        console.error("Orders Listener Error:", error);
+        if (error.message.includes('indexes')) {
+            console.warn("⚠️ Firebase 콘솔에서 복합 색인을 생성해야 합니다.");
+        }
+    });
 }
 
 function updatePlateSize() {
@@ -1397,13 +1429,18 @@ function startNotiPoller() {
         });
 }
 
-// (참고) 로그아웃 시 알림 리스너 메모리 해제를 위한 업데이트
+// (참고) 로그아웃 시 알림 및 수주 리스너 메모리 해제를 위한 업데이트
 function logout() { 
     if(confirm('로그아웃 하시겠습니까?')) {
-        // 활성화된 리스너 강제 종료 (가비지 컬렉션)
+        // 1. 푸시 알림 리스너 강제 종료
         if (notiPoller) {
             notiPoller(); 
             notiPoller = null;
+        }
+        // 2. 🚀 수주 데이터 리스너도 함께 강제 종료 (새로 추가된 부분)
+        if (ordersListenerUnsubscribe) {
+            ordersListenerUnsubscribe();
+            ordersListenerUnsubscribe = null;
         }
         location.reload(); 
     }
