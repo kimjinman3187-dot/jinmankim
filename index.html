@@ -1495,6 +1495,7 @@ function startNotiPoller() {
 // (참고) 로그아웃 시 알림 및 수주 리스너 메모리 해제를 위한 업데이트
 function logout() { 
     if(confirm('로그아웃 하시겠습니까?')) {
+        sessionStorage.removeItem('yongjin_session');
         // 1. 푸시 알림 리스너 강제 종료
         if (notiPoller) {
             notiPoller(); 
