@@ -1161,8 +1161,24 @@ function renderReceivables() {
                 <span class="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-1 rounded">기한: ${o.payDate}</span>
             </div>
             <p class="text-[10px] text-amber-700 opacity-80 mt-1 font-bold">${o.material}</p>
-            <p class="text-lg font-black text-red-600 mt-2">청구: ₩${((o.price||0) * (o.qty||0)).toLocaleString()}</p>
-            <button onclick="confirmPayment('${o.id}')" class="w-full mt-4 py-4 bg-amber-500 text-white rounded-2xl font-black shadow-lg shadow-amber-200 active:scale-95 transition-transform">💵 입금 확인 완료 처리</button>
+            <div class="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-200 shadow-inner">
+    <div class="flex justify-between text-xs mb-1">
+        <span class="text-slate-500 font-bold">총 청구액</span>
+        <span class="font-black text-slate-700">₩${((o.price||0)*(o.qty||0)).toLocaleString()}</span>
+    </div>
+    <div class="flex justify-between text-xs mb-2">
+        <span class="text-blue-600 font-bold">누적 입금액</span>
+        <span class="font-black text-blue-600">₩${(o.paidAmount||0).toLocaleString()}</span>
+    </div>
+    <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden mb-2">
+        <div class="bg-blue-500 h-full rounded-full transition-all" style="width: ${((o.price||0)*(o.qty||0)) > 0 ? Math.min(100, Math.round(((o.paidAmount||0)/((o.price||0)*(o.qty||0)))*100)) : 0}%"></div>
+    </div>
+    <div class="flex justify-between items-center border-t border-slate-200 pt-2">
+        <span class="text-red-500 font-bold text-sm">잔금 (미수금)</span>
+        <span class="text-lg font-black text-red-600">₩${(((o.price||0)*(o.qty||0)) - (o.paidAmount||0)).toLocaleString()}</span>
+    </div>
+</div>
+<button onclick="confirmPayment('${o.id}')" class="w-full mt-3 py-4 bg-amber-500 text-white rounded-2xl font-black shadow-lg shadow-amber-200 active:scale-95 transition-transform">💵 입금액 등록 및 결제 처리</button>
         </div>`).join('') || '<p class="text-center py-20 text-slate-400 font-bold">미수금 없음 🎉</p>';
 }
 
@@ -1231,13 +1247,49 @@ async function rejectOrder(id) {
     await logAction('ORDER_REJECTED', id, { reason: reason });
 }
 
-async function confirmPayment(id) { 
-    if(confirm('입금 완료 처리하시겠습니까?')) { 
-        await db.collection('orders').doc(id).update({ paymentStatus: 'paid' }); 
-        await logAction('PAYMENT_CONFIRMED', id, {}); 
-    } 
-}
+/* 💰 P3: 채권관리 부분 입금 및 잔금 추적 로직 */
+async function confirmPayment(id) {
+    const o = orders.find(x => x.id === id);
+    if (!o) return;
 
+    // 1. 입금액 입력받기 (쉼표나 문자가 들어와도 숫자만 추출)
+    const inputStr = prompt('입금된 금액을 입력하세요:\n(숫자만 입력)');
+    if (!inputStr) return; // 취소 누르면 중단
+    
+    const amount = parseInt(inputStr.replace(/[^0-9]/g, ''));
+    if (isNaN(amount) || amount <= 0) return alert('올바른 금액을 입력하세요.');
+
+    // 2. 누적 입금액 계산
+    const currentPaid = o.paidAmount || 0;
+    const newPaid = currentPaid + amount;
+
+    // 3. 총 청구액 계산 (단가 * 수량)
+    const totalAmount = (o.price || 0) * (o.qty || 0);
+    const remaining = totalAmount - newPaid;
+
+    // 4. 상태 결정 (잔금이 0원 이하인가?)
+    let isCompleted = false;
+    if (remaining <= 0) {
+        isCompleted = confirm(`잔금이 모두 결제되었습니다.\n[입금 완료] 상태로 전환하시겠습니까?`);
+    } else {
+        isCompleted = confirm(`총 청구액: ${totalAmount.toLocaleString()}원\n현재까지 누적 입금액: ${newPaid.toLocaleString()}원\n남은 잔금: ${remaining.toLocaleString()}원\n\n이대로 부분 입금 처리하시겠습니까?`);
+        if(!isCompleted) return; // 취소 시 중단
+    }
+
+    // 5. DB 업데이트 준비
+    const updateData = {
+        paidAmount: newPaid,
+        paymentStatus: remaining <= 0 ? 'paid' : 'partial' // 잔금이 없으면 paid, 남았으면 partial
+    };
+
+    try {
+        await db.collection('orders').doc(id).update(updateData);
+        await logAction('PAYMENT_UPDATED', id, { added_amount: amount, total_paid: newPaid });
+        // (주의: 실시간 리스너가 작동하므로 fetchOrders()는 넣지 않습니다!)
+    } catch (e) {
+        alert('입금 처리 실패: ' + e.message);
+    }
+}
 function openWoodModal() {
     const items = WOODS_DATA.map(([name, img, color]) => `
         <div class="wood-btn-wrapper" onclick="selectWood('${name}','${img}','${color}')">
