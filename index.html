@@ -18,6 +18,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-shared.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+KR:wght@300;500;700;900&display=swap');
@@ -700,16 +701,13 @@ window.onload = async function() {
         if (e.keyCode === 123 || (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74)) || (e.ctrlKey && e.keyCode === 85)) e.preventDefault();
     });
 
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-    db = firebase.firestore(); 
-    auth = firebase.auth();
-
-    try {
-        await auth.signInAnonymously();
-        await syncUsers();
-    } catch (e) { 
-        document.getElementById('roleGrid').innerHTML = "<p class='text-red-500 text-xs py-10'>서버 연결 오류</p>"; 
-    }
+  // Firebase 초기화는 firebase-shared.js에서 수행됨
+if (window.FirebaseShared) {
+    FirebaseShared.initializeFirebase();
+    FirebaseShared.signInAnonymously().then(() => {
+        FirebaseShared.syncUsers();
+    });
+}
 };
 
 /* 👑 v1.5.6: DB 기반 동적 정렬 시스템 */
@@ -1619,4 +1617,11 @@ window.addEventListener('load', () => { // DOMContentLoaded보다 더 확실한 
 });
 </script>
 </body>
+    <!-- 🖥️ 디바이스 감지 & 분기 로직 -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const isMobile = window.innerWidth <= 768;
+    console.log('📱 디바이스 판정:', isMobile ? '모바일' : 'PC');
+});
+</script>
 </html>
