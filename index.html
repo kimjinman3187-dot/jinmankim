@@ -694,7 +694,7 @@ window.onload = async function() {
 if (window.FirebaseShared) {
     FirebaseShared.initializeFirebase();
     FirebaseShared.signInAnonymously().then(() => {
-        FirebaseShared.syncUsers();
+        syncUsers();  // 
     });
 }
 };
