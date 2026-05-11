@@ -507,22 +507,13 @@
 <div id="modalContainer"></div>
 
 <script>
-/* ════════════════════════════════════════════════════════
-   🚀 파이어베이스(Firebase) 설정 및 전역 변수
-════════════════════════════════════════════════════════ */
-const firebaseConfig = { 
-    apiKey: "AIzaSyDGdi03xiK44WzrK8082VjUPsIujQmN7_A", 
-    authDomain: "yongjin-enterprise.firebaseapp.com", 
-    projectId: "yongjin-enterprise", 
-    storageBucket: "yongjin-enterprise.firebasestorage.app", 
-    messagingSenderId: "364016255378", 
-    appId: "1:364016255378:web:387f6145265e0a567d814b" 
-};
-
-let db, auth;
-let USERS = [];
+// Firebase 설정 & 전역 변수는 firebase-shared.js에서 로드됨
 let orders = [];
 let filteredOrders = []; // 🚀 [Phase 1] 검색/필터가 적용된 데이터를 담을 배열
+
+let currentUser = null;
+let chosenUserId = null;
+// ... (나머지 변수들은 그대로)
 let currentUser = null;
 let chosenUserId = null;
 let pinBuffer = '';
