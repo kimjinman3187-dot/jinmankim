@@ -6,12 +6,12 @@
 
 // 1️⃣ Firebase 설정 (변경 금지)
 const firebaseConfig = {
-    apiKey: "AIzaSyCR0Zg5g3XJGiBYuUEcZJCOWfLTuiIKJTE",
+    apiKey: "AIzaSyDGdi03xiK44WzrK8082VjUPsIujQmN7_A",
     authDomain: "yongjin-enterprise.firebaseapp.com",
     projectId: "yongjin-enterprise",
-    storageBucket: "yongjin-enterprise.appspot.com",
-    messagingSenderId: "1085373419471",
-    appId: "1:1085373419471:web:b8f6c1088b1cf05cdf12cc"
+    storageBucket: "yongjin-enterprise.firebasestorage.app",
+    messagingSenderId: "364016255378",
+    appId: "1:364016255378:web:387f6145265e0a567d814b"
 };
 
 // 2️⃣ Firebase 초기화
