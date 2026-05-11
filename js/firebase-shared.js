@@ -24,7 +24,12 @@ function initializeFirebase() {
     }
     db = firebase.firestore();
     auth = firebase.auth();
-    console.log('✅ Firebase 초기화 완료');
+    
+    // 🚀 [핵심 수정 사항]: index.html이 통신망을 사용할 수 있도록 전역 개방
+    window.db = db;
+    window.auth = auth;
+    
+    console.log('✅ Firebase 초기화 완료 (전역 공유됨)');
 }
 
 // 3️⃣ 익명 로그인
@@ -39,7 +44,7 @@ async function signInAnonymously() {
     }
 }
 
-// 4️⃣ 사용자 동기화
+// 4️⃣ 사용자 동기화 (참고용 - 실제 화면 그리기는 index.html의 syncUsers가 담당)
 let USERS = [];
 
 async function syncUsers() {
@@ -55,7 +60,11 @@ async function syncUsers() {
             return { id: doc.id, ...d };
         });
 
-        console.log('✅ 사용자 목록 로드:', USERS.length + '명');
+        console.log('✅ 사용자 목록 로드 (공용):', USERS.length + '명');
+        
+        // 🚀 [추가 조치]: 데이터를 불러온 후 전역 USERS 변수에도 할당
+        window.USERS = USERS; 
+        
         return USERS;
     } catch (e) {
         console.error('❌ 사용자 로드 실패:', e);
