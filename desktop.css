@@ -90,3 +90,119 @@
     color: var(--color-accent-cyan);
   }
 }
+/* Sidebar (좌측 메뉴 - PC 전용) */
+.sidebar {
+  display: none;
+}
+
+@media (min-width: 769px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 170px;
+    background: linear-gradient(180deg, #0f1419 0%, #1a2847 100%);
+    border-right: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    z-index: 40;
+  }
+
+  .sidebar-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .logo {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, var(--color-accent-cyan), #7c3aed);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-primary);
+    font-weight: bold;
+    font-size: 14px;
+  }
+
+  .title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+  }
+
+  .menu {
+    flex: 1;
+    padding: 8px 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 12px;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+  }
+
+  .menu-item:hover {
+    background: rgba(0, 212, 255, 0.1);
+    color: var(--color-accent-cyan);
+    border-left-color: var(--color-accent-cyan);
+  }
+
+  .menu-item.active {
+    background: rgba(0, 212, 255, 0.2);
+    color: var(--color-accent-cyan);
+    border-left-color: var(--color-accent-cyan);
+    font-weight: 600;
+  }
+
+  .menu-item.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .menu-item.disabled:hover {
+    background: transparent;
+    color: var(--color-text-secondary);
+    border-left-color: transparent;
+  }
+
+  .icon {
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .label {
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .menu-divider {
+    height: 1px;
+    background: var(--color-border);
+    margin: 8px 0;
+  }
+
+  .sidebar-footer {
+    padding: 8px 0;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .settings {
+    margin-top: 8px;
+  }
+}
