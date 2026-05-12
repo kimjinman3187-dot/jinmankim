@@ -28,11 +28,11 @@
             -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
         }
         
-      /* 날짜 입력창의 달력 아이콘을 흰색으로 반전 (다크모드용) */
-      input[type="date"]::-webkit-calendar-picker-indicator {
-      filter: invert(1);
-      cursor: pointer;
-}
+        /* 날짜 입력창의 달력 아이콘을 흰색으로 반전 (다크모드용) */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+        }
         
         /* =========================================================
            [Traffic Control] 모바일 ↔ PC 완벽 투트랙 격리 (절대 삭제 금지)
@@ -301,7 +301,6 @@
 </div>
 
 <div id="appPC" class="pc-ui hidden w-full h-screen flex-row bg-[#0b1120]">
-    
     <aside class="w-64 bg-[#111827] border-r border-[#334155] flex-shrink-0 flex flex-col z-20">
         <div class="h-16 flex items-center px-6 border-b border-[#334155]">
             <div class="text-white font-bold text-xl tracking-tighter text-blue-400">YJ <span class="text-sm text-slate-400 ml-2">YONGJIN ENT.</span></div>
@@ -366,90 +365,94 @@
                 </div>
             </div>
 
-         <!-- [영업 관리 섹션] - 오타 및 태그 구조 완벽 수정본 -->
-<div id="pc-page-sales" class="pc-page hidden h-full flex-col">
-    <div class="max-w-5xl mx-auto w-full pb-10">
-        <h2 class="text-2xl font-black text-white mb-6">📝 신규 수주 보고</h2>
-        
-        <div class="bg-[#1e293b] border border-[#334155] rounded-2xl p-8 shadow-2xl">
-            <div class="grid grid-cols-2 gap-10">
-                <!-- 왼쪽 단 -->
-                <div class="space-y-6">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">거래처 및 현장명</label>
-                        <input type="text" id="pc-clientName" autocomplete="off" placeholder="예: (주)용진건설 강남 현장" class="w-full p-4 bg-[#0f1522] border border-[#334155] rounded-xl text-white font-bold outline-none focus:border-blue-500 transition-colors">
-                    </div>
+            <div id="pc-page-sales" class="pc-page hidden h-full flex-col">
+                <div class="max-w-5xl mx-auto w-full pb-10">
+                    <h2 class="text-2xl font-black text-white mb-6">📝 신규 수주 보고</h2>
                     
-                    <div>
-                        <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">자재 선택</label>
-                        <div class="flex gap-4">
-                            <button onclick="openWoodModal()" class="flex-1 py-4 border border-[#334155] hover:border-blue-500 rounded-xl font-bold text-slate-300 bg-[#0f1522] transition-colors">🔍 목재 카탈로그 열기</button>
-                            <select id="pc-thickness" class="w-32 p-4 bg-[#0f1522] border border-[#334155] rounded-xl text-white font-bold outline-none">
-                                <option>15T</option><option selected>18T</option><option>24T</option>
-                            </select>
-                        </div>
-                        <!-- 동적 썸네일 영역 -->
-                        <div class="mt-4 p-4 bg-[#0f1522] border border-blue-500/30 rounded-xl flex items-center gap-4">
-                            <div id="pc-woodThumbContainer" class="w-14 h-14 bg-[#1e293b] rounded-xl flex items-center justify-center overflow-hidden border border-[#334155]">
-                                <img id="pc-woodThumbImg" class="hidden w-full h-full object-cover">
-                                <div id="pc-woodThumbColor" class="hidden w-full h-full"></div>
-                                <span id="pc-woodThumbText" class="text-[10px] text-slate-500 font-bold uppercase">Material</span>
+                    <div class="bg-[#1e293b] border border-[#334155] rounded-2xl p-8 shadow-2xl">
+                        <div class="grid grid-cols-2 gap-10">
+                            <div class="space-y-6">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">거래처 및 현장명</label>
+                                    <input type="text" id="pc-clientName" autocomplete="off" placeholder="예: (주)용진건설 강남 현장" class="w-full p-4 bg-[#0f1522] border border-[#334155] rounded-xl text-white font-bold outline-none focus:border-blue-500 transition-colors">
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">자재 선택</label>
+                                    <div class="flex gap-4">
+                                        <button onclick="openWoodModal()" class="flex-1 py-4 border border-[#334155] hover:border-blue-500 rounded-xl font-bold text-slate-300 bg-[#0f1522] transition-colors">🔍 목재 카탈로그 열기</button>
+                                        <select id="pc-thickness" class="w-32 p-4 bg-[#0f1522] border border-[#334155] rounded-xl text-white font-bold outline-none">
+                                            <option>15T</option><option selected>18T</option><option>24T</option>
+                                        </select>
+                                    </div>
+                                    <div class="mt-4 p-4 bg-[#0f1522] border border-blue-500/30 rounded-xl flex items-center gap-4">
+                                        <div id="pc-woodThumbContainer" class="w-14 h-14 bg-[#1e293b] rounded-xl flex items-center justify-center overflow-hidden border border-[#334155]">
+                                            <img id="pc-woodThumbImg" class="hidden w-full h-full object-cover">
+                                            <div id="pc-woodThumbColor" class="hidden w-full h-full"></div>
+                                            <span id="pc-woodThumbText" class="text-[10px] text-slate-500 font-bold uppercase">Material</span>
+                                        </div>
+                                        <div>
+                                            <p class="text-[10px] text-blue-400 font-bold mb-1 uppercase tracking-widest">Selected Material</p>
+                                            <p class="font-bold text-white text-lg" id="pc-selectedWoodName">목재를 선택하세요</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div>
-                                <p class="text-[10px] text-blue-400 font-bold mb-1 uppercase tracking-widest">Selected Material</p>
-                                <p class="font-bold text-white text-lg" id="pc-selectedWoodName">목재를 선택하세요</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- 오른쪽 단 -->
-                <div class="space-y-6">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">가로 (W)</label>
-                            <input type="number" id="pc-width" placeholder="mm" class="w-full p-4 bg-[#0f1522] border border-[#334155] rounded-xl text-white font-bold outline-none">
+                            <div class="space-y-6">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">가로 (W)</label>
+                                        <input type="number" id="pc-width" placeholder="mm" class="w-full p-4 bg-[#0f1522] border border-[#334155] rounded-xl text-white font-bold outline-none focus:border-blue-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">세로 (H)</label>
+                                        <input type="number" id="pc-height" placeholder="mm" class="w-full p-4 bg-[#0f1522] border border-[#334155] rounded-xl text-white font-bold outline-none focus:border-blue-500">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">단가 (KRW)</label>
+                                        <input type="number" id="pc-unitPrice" oninput="calculatePC()" placeholder="0" class="w-full p-4 bg-[#0f1522] border border-[#334155] rounded-xl text-blue-400 font-black outline-none focus:border-blue-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">수량 (EA)</label>
+                                        <input type="number" id="pc-qty" oninput="calculatePC()" value="100" class="w-full p-4 bg-[#0f1522] border border-[#334155] rounded-xl text-white font-bold outline-none focus:border-blue-500">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-red-400 mb-2 uppercase tracking-wider">출고일 (납기)</label>
+                                        <input type="date" id="pc-dueDate" onclick="this.showPicker()" class="w-full p-4 bg-[#0f1522] border border-red-500/30 rounded-xl text-white font-bold outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-red-400 mb-2 uppercase tracking-wider">입금 기한</label>
+                                        <input type="date" id="pc-payDate" onclick="this.showPicker()" class="w-full p-4 bg-[#0f1522] border border-red-500/30 rounded-xl text-white font-bold outline-none">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">세로 (H)</label>
-                            <input type="number" id="pc-height" placeholder="mm" class="w-full p-4 bg-[#0f1522] border border-[#334155] rounded-xl text-white font-bold outline-none">
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">단가 (KRW)</label>
-                            <input type="number" id="pc-unitPrice" oninput="calculatePC()" placeholder="0" class="w-full p-4 bg-[#0f1522] border border-[#334155] rounded-xl text-blue-400 font-black outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">수량 (EA)</label>
-                            <input type="number" id="pc-qty" oninput="calculatePC()" value="100" class="w-full p-4 bg-[#0f1522] border border-[#334155] rounded-xl text-white font-bold outline-none">
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-red-400 mb-2 uppercase tracking-wider">출고일 (납기)</label>
-                            <input type="date" id="pc-dueDate" onclick="this.showPicker()" class="w-full p-4 bg-[#0f1522] border border-red-500/30 rounded-xl text-white font-bold outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-red-400 mb-2 uppercase tracking-wider">입금 기한</label>
-                            <input type="date" id="pc-payDate" onclick="this.showPicker()" class="w-full p-4 bg-[#0f1522] border border-red-500/30 rounded-xl text-white font-bold outline-none">
+                        <div class="mt-8 pt-8 border-t border-[#334155] flex justify-between items-center">
+                            <div>
+                                <p class="text-xs font-bold text-slate-400 mb-1 uppercase tracking-widest">예상 총 합계 금액</p>
+                                <p class="text-4xl font-black text-white italic tracking-tighter">₩ <span id="pc-totalDisplay">0</span></p>
+                            </div>
+                            <button id="btnSubmitOrderPC" onclick="handleReportPC()" class="bg-blue-600 hover:bg-blue-500 text-white px-12 py-5 rounded-2xl font-black text-lg shadow-[0_0_20px_rgba(59,130,246,0.3)] transition-all">
+                                ✅ 수주 데이터 서버 전송
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="mt-8 pt-8 border-t border-[#334155] flex justify-between items-center">
-                <div>
-                    <p class="text-xs font-bold text-slate-400 mb-1 uppercase tracking-widest">예상 총 합계 금액</p>
-                    <p class="text-4xl font-black text-white italic tracking-tighter">₩ <span id="pc-totalDisplay">0</span></p>
-                </div>
-                <button id="btnSubmitOrderPC" onclick="handleReportPC()" class="bg-blue-600 hover:bg-blue-500 text-white px-12 py-5 rounded-2xl font-black text-lg shadow-[0_0_20px_rgba(59,130,246,0.3)] transition-all">
-                    ✅ 수주 데이터 서버 전송
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
             
+            <div id="pc-page-accounting" class="pc-page hidden flex h-full items-center justify-center">
+                <div class="text-center text-slate-500"><span class="text-4xl mb-4 block">💼</span><h2 class="text-xl font-bold text-white mb-2">회계 관리 모듈</h2><p>현재 모바일 버전과 데이터 연동 작업 중입니다.</p></div>
+            </div>
+
+            <div id="pc-page-receivables" class="pc-page hidden flex h-full items-center justify-center">
+                <div class="text-center text-slate-500"><span class="text-4xl mb-4 block">💰</span><h2 class="text-xl font-bold text-white mb-2">채권 관리 모듈</h2><p>현재 모바일 버전과 데이터 연동 작업 중입니다.</p></div>
+            </div>
+
             <div id="pc-page-factory" class="pc-page hidden flex h-full items-center justify-center">
                 <div class="text-center text-slate-500"><span class="text-4xl mb-4 block">🏭</span><h2 class="text-xl font-bold text-white mb-2">생산 관리 모듈</h2><p>현재 모바일 버전과 데이터 연동 작업 중입니다.</p></div>
             </div>
@@ -457,7 +460,6 @@
     </div>
 
     <aside id="rightDetailPanel" class="fixed inset-y-0 right-0 z-50 transform translate-x-full transition-transform duration-300 ease-in-out xl:relative xl:translate-x-0 xl:z-20 w-[340px] bg-[#111827] border-l border-[#334155] flex-shrink-0 flex flex-col shadow-[-20px_0_50px_rgba(0,0,0,0.7)] xl:shadow-none">
-        
         <div id="emptyDetailState" class="flex-1 flex flex-col items-center justify-center p-8 text-center">
             <span class="text-4xl opacity-20 mb-4">📄</span>
             <p class="text-sm font-bold text-slate-500">리스트에서 항목을 선택하면<br>상세 정보가 표시됩니다.</p>
@@ -890,14 +892,40 @@ function openWoodModal() {
 
 function closeWoodModal() { document.getElementById('modalContainer').innerHTML = ''; }
 
+// 자재 선택 및 PC/모바일 썸네일 동기화 함수
 function selectWood(name, imgUrl, color) { 
-    selectedWoodStr = name; document.getElementById('selectedWoodName').innerText = name;
-const pcLabel = document.getElementById('pc-selectedWoodName');
-if(pcLabel) pcLabel.innerText = name;
-    const tImg = document.getElementById('woodThumbImg'); const tColor = document.getElementById('woodThumbColor'); document.getElementById('woodThumbText').classList.add('hidden');
-    tImg.src = imgUrl; tImg.classList.remove('hidden'); tColor.classList.add('hidden');
-    tImg.onerror = function() { this.classList.add('hidden'); tColor.style.backgroundColor = color; tColor.classList.remove('hidden'); };
-    const plate = document.getElementById('woodPlate'); plate.style.backgroundImage = `url('${imgUrl}')`; plate.style.backgroundColor = color; closeWoodModal(); 
+    selectedWoodStr = name; 
+    
+    if(document.getElementById('selectedWoodName')) document.getElementById('selectedWoodName').innerText = name;
+    if(document.getElementById('pc-selectedWoodName')) document.getElementById('pc-selectedWoodName').innerText = name;
+
+    const pcImg = document.getElementById('pc-woodThumbImg');
+    const pcColor = document.getElementById('pc-woodThumbColor');
+    const pcText = document.getElementById('pc-woodThumbText');
+
+    if(pcImg && pcColor && pcText) {
+        pcText.classList.add('hidden');
+        pcImg.src = imgUrl;
+        pcImg.classList.remove('hidden');
+        pcColor.classList.add('hidden');
+        pcImg.onerror = function() { 
+            this.classList.add('hidden'); 
+            pcColor.style.backgroundColor = color; 
+            pcColor.classList.remove('hidden'); 
+        };
+    }
+    
+    const tImg = document.getElementById('woodThumbImg');
+    const tColor = document.getElementById('woodThumbColor');
+    if(tImg) {
+        tImg.src = imgUrl; tImg.classList.remove('hidden');
+        tImg.onerror = function() { this.classList.add('hidden'); tColor.style.backgroundColor = color; tColor.classList.remove('hidden'); };
+    }
+    
+    const plate = document.getElementById('woodPlate'); 
+    if(plate) { plate.style.backgroundImage = `url('${imgUrl}')`; plate.style.backgroundColor = color; }
+    
+    closeWoodModal(); 
 }
 
 function exportExcel() { const rows = filteredOrders.map(o => [o.client, o.material, o.qty, o.price, ((o.price||0) * (o.qty||0)), o.status, o.dueDate, o.payDate]); const ws = XLSX.utils.aoa_to_sheet([['업체명', '목재', '수량', '단가', '합계', '상태', '납기', '입금기한'], ...rows]); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "YONGJIN"); XLSX.writeFile(wb, `용진기업_현황_${new Date().toLocaleDateString()}.xlsx`); }
@@ -948,7 +976,6 @@ document.addEventListener('DOMContentLoaded', function() { console.log('📱 디
 
 // --- [추가된 3단 패널 & 드로워 제어 로직] ---
 function openDrawer() {
-    // 1280px 미만일 때만 오버레이 효과
     if (window.innerWidth < 1280) {
         document.getElementById('rightDetailPanel').classList.remove('translate-x-full');
         document.getElementById('drawerBackdrop').classList.remove('hidden');
@@ -963,12 +990,9 @@ function closeDrawer() {
 }
 
 function selectRow(element, orderId) {
-    // 1. 기존 선택된 행 초기화
     document.querySelectorAll('.pc-table-row').forEach(row => row.classList.remove('active'));
-    // 2. 현재 행 하이라이트
     element.classList.add('active');
     
-    // 3. 데이터 바인딩
     const o = orders.find(x => x.id === orderId);
     if(!o) return;
     
@@ -980,9 +1004,9 @@ function selectRow(element, orderId) {
     document.getElementById('detailDate').textContent = o.dueDate || '-';
     document.getElementById('detailAmount').textContent = '₩ ' + ((o.price || 0) * (o.qty || 0)).toLocaleString();
     
-    // 4. 패널 열기 (반응형 대응)
     openDrawer();
 }
+
 // PC용 실시간 합계 계산
 function calculatePC() {
     const p = parseInt(document.getElementById('pc-unitPrice').value || 0);
@@ -992,26 +1016,22 @@ function calculatePC() {
     }
 }
 
-// PC용 수주 데이터 서버 전송 (유효성 검사 및 초기화 강화)
+// PC용 수주 데이터 서버 전송
 async function handleReportPC() {
     if (isSubmitting) return;
     
-    // 필드 값 읽기
     const client = document.getElementById('pc-clientName').value.trim();
     const w = document.getElementById('pc-width').value;
     const h = document.getElementById('pc-height').value;
     const price = parseInt(document.getElementById('pc-unitPrice').value || 0);
     const qty = parseInt(document.getElementById('pc-qty').value || 0);
-    const dueDate = document.getElementById('pc-dueDate').value; // 달력 값
-    const payDate = document.getElementById('pc-payDate').value;   // 달력 값
+    const dueDate = document.getElementById('pc-dueDate').value; 
+    const payDate = document.getElementById('pc-payDate').value;   
 
-    // 유효성 검사
     if (client.length < 2) return alert('❌ 업체명을 입력하세요.');
     if (selectedWoodStr === '목재를 선택하세요' || selectedWoodStr === '목재 선택') return alert('❌ 목재를 선택하세요.');
     if (!w || !h) return alert('❌ 가로, 세로 규격을 입력하세요.');
     if (price <= 0) return alert('❌ 단가를 입력하세요.');
-    
-    // 🚨 날짜 체크 강화
     if (!dueDate) return alert('❌ 출고일(납기)을 달력에서 선택해 주세요.');
     if (!payDate) return alert('❌ 입금기한을 달력에서 선택해 주세요.');
     if (payDate < dueDate) return alert('❌ 입금기한은 출고일보다 빠를 수 없습니다.');
@@ -1044,17 +1064,16 @@ async function handleReportPC() {
             await db.collection('orders').add(newOrder);
             alert('✅ [PC] 수주 보고 전송 완료!');
             
-            // 모든 폼 초기화 (전송 후 다음 입력을 위해 깨끗이 비움)
             document.getElementById('pc-clientName').value = '';
             document.getElementById('pc-width').value = '';
             document.getElementById('pc-height').value = '';
             document.getElementById('pc-unitPrice').value = '';
-            document.getElementById('pc-qty').value = '100'; // 기본값 복구
+            document.getElementById('pc-qty').value = '100'; 
             document.getElementById('pc-dueDate').value = '';
             document.getElementById('pc-payDate').value = '';
             document.getElementById('pc-totalDisplay').innerText = '0';
             
-            switchPCTab('dashboard'); // 리스트 화면으로 이동
+            switchPCTab('dashboard'); 
         }
     } catch(e) {
         alert('전송 실패: ' + e.message);
@@ -1065,35 +1084,35 @@ async function handleReportPC() {
     }
 }
 
-// --- [PC 네비게이션 탭 전환 로직] ---
+// 탭 전환 로직 (초기화 포함)
 function switchPCTab(tabId) {
-    // 1. 모든 메뉴 버튼의 하이라이트(파란 배경) 제거
     document.querySelectorAll('.pc-tab-btn').forEach(btn => {
         btn.classList.remove('bg-[#1e293b]', 'text-blue-400');
         btn.classList.add('text-slate-400', 'hover:bg-[#1e293b]', 'hover:text-white');
     });
 
-    // 2. 클릭한 메뉴 버튼에 하이라이트 추가
     const activeBtn = document.getElementById('pc-tab-' + tabId);
     if(activeBtn) {
         activeBtn.classList.remove('text-slate-400', 'hover:bg-[#1e293b]', 'hover:text-white');
         activeBtn.classList.add('bg-[#1e293b]', 'text-blue-400');
     }
 
-    // 3. 모든 페이지 숨기기
+    if(tabId === 'sales') {
+        const clientInput = document.getElementById('pc-clientName');
+        if(clientInput) clientInput.value = ''; 
+    }
+
     document.querySelectorAll('.pc-page').forEach(page => {
         page.classList.remove('block');
         page.classList.add('hidden');
     });
 
-    // 4. 타겟 페이지만 보여주기
     const targetPage = document.getElementById('pc-page-' + tabId);
     if(targetPage) {
         targetPage.classList.remove('hidden');
         targetPage.classList.add('block');
     }
 
-    // 5. 드로워(우측 패널) 강제 닫기 및 초기화 (다른 메뉴로 넘어가면 우측 상세 정보도 리셋)
     closeDrawer();
     const emptyState = document.getElementById('emptyDetailState');
     const activeState = document.getElementById('activeDetailState');
@@ -1103,7 +1122,6 @@ function switchPCTab(tabId) {
     }
     document.querySelectorAll('.pc-table-row').forEach(row => row.classList.remove('active'));
 }
-    
 </script>
 </body>
 </html>
