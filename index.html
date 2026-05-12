@@ -246,7 +246,62 @@
     </style>
 </head>
 <body oncontextmenu="return false">
+<!-- Sidebar (좌측 메뉴 - PC 전용) -->
+<aside class="sidebar">
+  <!-- 로고 -->
+  <div class="sidebar-header">
+    <div class="logo">YJ</div>
+    <span class="title">용진기업</span>
+  </div>
 
+  <!-- 네비게이션 메뉴 -->
+  <nav class="menu">
+    <a href="#" class="menu-item active" onclick="switchTab('history'); return false;">
+      <span class="icon">📊</span>
+      <span class="label">대시보드</span>
+    </a>
+    
+    <a href="#" class="menu-item" onclick="switchTab('sales'); return false;">
+      <span class="icon">📝</span>
+      <span class="label">영업 관리</span>
+    </a>
+    
+    <a href="#" class="menu-item" onclick="switchTab('accounting'); return false;">
+      <span class="icon">💼</span>
+      <span class="label">회계 관리</span>
+    </a>
+    
+    <a href="#" class="menu-item" onclick="switchTab('receivables'); return false;">
+      <span class="icon">💰</span>
+      <span class="label">채권 관리</span>
+    </a>
+    
+    <a href="#" class="menu-item" onclick="switchTab('factory'); return false;">
+      <span class="icon">🏭</span>
+      <span class="label">생산 관리</span>
+    </a>
+
+    <!-- 향후 추가 항목 -->
+    <div class="menu-divider"></div>
+    <a href="#" class="menu-item disabled" title="개발 예정">
+      <span class="icon">📦</span>
+      <span class="label">재고 관리</span>
+    </a>
+    
+    <a href="#" class="menu-item disabled" title="개발 예정">
+      <span class="icon">👥</span>
+      <span class="label">인사 관리</span>
+    </a>
+  </nav>
+
+  <!-- 하단 설정 -->
+  <div class="sidebar-footer">
+    <a href="#" class="menu-item settings" onclick="alert('설정 메뉴 준비 중'); return false;">
+      <span class="icon">⚙️</span>
+      <span class="label">설정</span>
+    </a>
+  </div>
+</aside>
 <div id="notiBanner" onclick="requestNotificationPermission()" class="hidden bg-yellow-50 border-b border-yellow-200 p-3 text-center text-xs font-bold text-yellow-800 cursor-pointer">
     🔔 알림을 허용하면 수주·승인·생산 완료 시 자동으로 알림을 받을 수 있습니다. 탭하여 허용하기
 </div>
@@ -312,9 +367,8 @@
   </div>
 </nav>
 
-296: <div id="mainApp" class="hidden pb-10">
-<div id="mainApp" class="hidden pb-10">
-    
+<div id="mainApp" class="hidden pb-10 md:ml-[170px] md:pt-[60px]">
+
     <nav class="bg-white border-b sticky top-0 z-50 px-4 py-3 shadow-sm">
         <div class="max-w-md mx-auto space-y-3">
             <div id="roleTabsWrap" class="grid gap-1"></div>
