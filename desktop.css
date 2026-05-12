@@ -1,0 +1,13 @@
+:root {
+  --color-primary-bg: #0f1419;
+  --color-primary-card: #1a2847;
+  --color-accent-cyan: #00d4ff;
+  --color-accent-orange: #ff8c42;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #cbd5e1;
+  --color-text-tertiary: #94a3b8;
+  --color-border: #334155;
+}
