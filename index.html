@@ -27,7 +27,13 @@
             margin: 0; padding: 0; 
             -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
         }
-
+        
+      /* 날짜 입력창의 달력 아이콘을 흰색으로 반전 (다크모드용) */
+      input[type="date"]::-webkit-calendar-picker-indicator {
+      filter: invert(1);
+      cursor: pointer;
+}
+        
         /* =========================================================
            [Traffic Control] 모바일 ↔ PC 완벽 투트랙 격리 (절대 삭제 금지)
            ========================================================= */
@@ -416,11 +422,11 @@
                                 <div class="grid grid-cols-2 gap-4">
                                     <div>
                                         <label class="block text-xs font-bold text-red-400 mb-2 uppercase tracking-wider">출고일 (납기)</label>
-                                        <input type="date" id="pc-dueDate" class="w-full p-4 bg-[#0f1522] border border-red-500/30 rounded-xl text-white font-bold outline-none">
+                                        <input type="date" id="pc-dueDate" onclick="this.showPicker()" class="w-full p-4 bg-[#0f1522] border border-red-500/30 rounded-xl text-white font-bold outline-none">
                                     </div>
                                     <div>
                                         <label class="block text-xs font-bold text-red-400 mb-2 uppercase tracking-wider">입금 기한</label>
-                                        <input type="date" id="pc-payDate" class="w-full p-4 bg-[#0f1522] border border-red-500/30 rounded-xl text-white font-bold outline-none">
+                                        <input type="date" id="pc-payDate" onclick="this.showPicker()" class="w-full p-4 bg-[#0f1522] border border-red-500/30 rounded-xl text-white font-bold outline-none">
                                     </div>
                                 </div>
                             </div>
@@ -1092,6 +1098,7 @@ function switchPCTab(tabId) {
     }
     document.querySelectorAll('.pc-table-row').forEach(row => row.classList.remove('active'));
 }
+    
 </script>
 </body>
 </html>
