@@ -208,7 +208,34 @@
         
         @keyframes toastIn { from { opacity:0; transform:translateY(-14px); } to { opacity:1; transform:translateY(0); } }
         @keyframes toastOut { from { opacity:1; transform:translateY(0); } to { opacity:0; transform:translateY(-8px); } }
+/* =========================================================
+   [Traffic Control] 모바일 ↔ PC UI 완벽 격리 방화벽
+   ========================================================= */
+/* 💻 1. PC 환경 (769px 이상) : 모바일 UI 강제 종료 */
+@media (min-width: 769px) {
+    #loginOverlay { 
+        display: none !important; /* 기존 모바일 PIN 키패드 로그인창 숨김 */
+    }
+    nav.bg-white { 
+        display: none !important; /* 모바일 상단 탭 네비게이션 숨김 */
+    }
+}
 
+/* 📱 2. 모바일 환경 (768px 이하) : PC UI 강제 종료 */
+@media (max-width: 768px) {
+    .login-gateway-layer { 
+        display: none !important; /* PC 전용 프리미엄 로그인창 숨김 */
+    }
+    .sidebar { 
+        display: none !important; /* PC 전용 사이드바 숨김 */
+    }
+    .gnb { 
+        display: none !important; /* PC 전용 상단 네비게이션 숨김 */
+    }
+    .hidden.md\:flex {
+        display: none !important; /* PC 대시보드 콘텐츠 숨김 */
+    }
+}
         /* ⭐️ 하단 정보(버전/개발자) 고정 스타일 */
         .system-footer {
             width: 100%;
