@@ -292,19 +292,23 @@
         <p style="margin-top:10px; letter-spacing:2px; font-weight:700;">SECURE DATA TERMINAL</p>
     </div>
 </div>
-294: </div>  ← loginOverlay 끝
-
-<!-- GNB (PC 전용) -->
+294: </div> 
+<!-- GNB (상단 네비게이션) -->
 <nav class="gnb">
-  <div class="gnb-logo">YJ</div>
-  <div class="gnb-search">
-    <input type="text" id="gnb-search-input" placeholder="거래처, 자재명 검색...">
+  <div class="gnb-left">
+    <div class="gnb-logo">YJ</div>
+    <span class="gnb-title">용진기업</span>
   </div>
-  <div class="gnb-icons">
-    <button title="알림">🔔</button>
-    <button title="설정">⚙️</button>
-    <button title="사용자">👤</button>
-    <button title="로그아웃">🚪</button>
+  
+  <div class="gnb-search">
+    <input type="text" class="search-input" id="gnb-search-input" placeholder="주문번호 검색...">
+  </div>
+  
+  <div class="gnb-right">
+    <button class="gnb-button" title="알림" onclick="alert('알림 기능 준비 중')">🔔</button>
+    <button class="gnb-button" title="설정" onclick="alert('설정 메뉴 준비 중')">⚙️</button>
+    <button class="gnb-button" title="사용자" onclick="alert('사용자 정보 준비 중')">👤</button>
+    <button class="gnb-button" title="로그아웃" onclick="logout()">🚪</button>
   </div>
 </nav>
 
