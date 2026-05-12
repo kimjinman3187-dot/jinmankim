@@ -102,6 +102,7 @@
         #toastWrap { position: fixed; top: 84px; left: 50%; transform: translateX(-50%); z-index: 9000; display: flex; flex-direction: column; gap: 8px; width: calc(100% - 32px); max-width: 448px; pointer-events: none; }
         .toast { background: #1e293b; color: #fff; border-radius: 16px; padding: 14px 18px; display: flex; align-items: center; gap: 12px; pointer-events: auto; animation: toastIn 0.3s forwards; }
         @keyframes toastIn { from { opacity:0; transform:translateY(-14px); } to { opacity:1; transform:translateY(0); } }
+        
         /* PC 3단 구조 테이블 행 선택 효과 */
         .pc-table-row.active { background-color: rgba(59, 130, 246, 0.15) !important; border-left: 3px solid #3b82f6; }
     </style>
@@ -128,7 +129,7 @@
         <div id="pinErr" class="text-center text-[10px] text-red-600 mt-3 min-h-[15px] font-bold"></div>
     </div>
     <div class="system-footer" style="color: rgba(255,255,255,0.3);">
-        <p>Last Updated: 26.05.08 / v2.0.0</p>
+        <p>Last Updated: 26.05.12 / v2.0.0</p>
         <p>Designed by GENE KIM</p>
         <p style="margin-top:10px; letter-spacing:2px; font-weight:700;">SECURE DATA TERMINAL</p>
     </div>
@@ -288,7 +289,7 @@
         </div>
         
         <div class="system-footer pb-4" style="color: #94a3b8;">
-            <p>Last Updated: 26.05.08 / v2.0.0</p>
+            <p>Last Updated: 26.05.12 / v2.0.0</p>
             <p style="color: #64748b;">Designed by GENE KIM</p>
         </div>
     </main>
@@ -300,12 +301,12 @@
         <div class="h-16 flex items-center px-6 border-b border-[#334155]">
             <div class="text-white font-bold text-xl tracking-tighter text-blue-400">YJ <span class="text-sm text-slate-400 ml-2">YONGJIN ENT.</span></div>
         </div>
-        <nav class="flex-1 py-4 flex flex-col gap-1 px-3">
-            <a href="#" class="px-3 py-3 rounded-lg bg-[#1e293b] text-blue-400 font-medium text-sm transition-colors">📊 통합 대시보드</a>
-            <a href="#" class="px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">📝 영업 관리 (준비중)</a>
-            <a href="#" class="px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">💼 회계 관리 (준비중)</a>
-            <a href="#" class="px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">💰 채권 관리 (준비중)</a>
-            <a href="#" class="px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">🏭 생산 관리 (준비중)</a>
+        <nav class="flex-1 py-4 flex flex-col gap-1 px-3" id="pcNav">
+            <a href="#" onclick="switchPCTab('dashboard')" id="pc-tab-dashboard" class="pc-tab-btn px-3 py-3 rounded-lg bg-[#1e293b] text-blue-400 font-medium text-sm transition-colors">📊 통합 대시보드</a>
+            <a href="#" onclick="switchPCTab('sales')" id="pc-tab-sales" class="pc-tab-btn px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">📝 영업 관리 (준비중)</a>
+            <a href="#" onclick="switchPCTab('accounting')" id="pc-tab-accounting" class="pc-tab-btn px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">💼 회계 관리 (준비중)</a>
+            <a href="#" onclick="switchPCTab('receivables')" id="pc-tab-receivables" class="pc-tab-btn px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">💰 채권 관리 (준비중)</a>
+            <a href="#" onclick="switchPCTab('factory')" id="pc-tab-factory" class="pc-tab-btn px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">🏭 생산 관리 (준비중)</a>
             <a href="#" onclick="logout()" class="mt-auto px-3 py-3 rounded-lg text-red-400 hover:bg-red-500/10 font-medium text-sm transition-colors">🚪 시스템 로그아웃</a>
         </nav>
     </aside>
@@ -322,41 +323,60 @@
         <div class="flex-1 p-6 overflow-y-auto relative">
             <div id="drawerBackdrop" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden xl:hidden transition-opacity" onclick="closeDrawer()"></div>
 
-            <div class="grid grid-cols-4 gap-4 mb-6 relative z-10">
-                <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-4 shadow-lg">
-                    <p class="text-slate-400 text-xs font-medium mb-1">총 미수금 (KRW)</p>
-                    <p class="text-2xl font-bold text-white" id="pcKpiDebt">0</p>
+            <div id="pc-page-dashboard" class="pc-page block">
+                <div class="grid grid-cols-4 gap-4 mb-6 relative z-10">
+                    <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-4 shadow-lg">
+                        <p class="text-slate-400 text-xs font-medium mb-1">총 미수금 (KRW)</p>
+                        <p class="text-2xl font-bold text-white" id="pcKpiDebt">0</p>
+                    </div>
+                    <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-4 shadow-lg">
+                        <p class="text-slate-400 text-xs font-medium mb-1">이번 달 매출액</p>
+                        <p class="text-2xl font-bold text-white" id="pcKpiSales">0</p>
+                    </div>
+                    <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-4 shadow-lg">
+                        <p class="text-slate-400 text-xs font-medium mb-1">생산 진행 공정</p>
+                        <p class="text-2xl font-bold text-blue-400" id="pcKpiFactory">0건</p>
+                    </div>
+                    <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-4 shadow-lg">
+                        <p class="text-slate-400 text-xs font-medium mb-1">신규 승인 대기</p>
+                        <p class="text-2xl font-bold text-yellow-500" id="pcKpiPending">0건</p>
+                    </div>
                 </div>
-                <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-4 shadow-lg">
-                    <p class="text-slate-400 text-xs font-medium mb-1">이번 달 매출액</p>
-                    <p class="text-2xl font-bold text-white" id="pcKpiSales">0</p>
+                
+                <div class="bg-[#1e293b] border border-[#334155] rounded-xl flex flex-col flex-1 min-h-[500px] shadow-2xl relative z-10">
+                    <div class="p-4 flex justify-between items-center border-b border-[#334155]">
+                        <h2 class="font-bold text-white">최근 수주/공정 통합 리스트</h2>
+                        <input type="text" id="pcSearchInput" oninput="executeSearch()" placeholder="검색..." class="bg-[#0f1522] border border-[#334155] rounded-lg px-3 py-1.5 text-sm text-white outline-none focus:border-blue-400">
+                    </div>
+                    <div class="flex-1 overflow-x-auto p-4">
+                        <table class="w-full text-left text-sm whitespace-nowrap text-slate-300">
+                            <thead class="text-xs text-slate-500 bg-[#0f1522] border-b border-[#334155]">
+                                <tr><th class="px-6 py-4 font-medium">납기일</th><th class="px-6 py-4 font-medium">거래처명</th><th class="px-6 py-4 font-medium">자재명 / 수량</th><th class="px-6 py-4 font-medium text-right">총액 (KRW)</th><th class="px-6 py-4 font-medium text-center">공정 상태</th></tr>
+                            </thead>
+                            <tbody id="pcTableBody" class="divide-y divide-[#334155]">
+                                <tr><td colspan="5" class="p-8 text-center text-slate-500">데이터를 불러오는 중입니다...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-                <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-4 shadow-lg">
-                    <p class="text-slate-400 text-xs font-medium mb-1">생산 진행 공정</p>
-                    <p class="text-2xl font-bold text-blue-400" id="pcKpiFactory">0건</p>
-                </div>
-                <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-4 shadow-lg">
-                    <p class="text-slate-400 text-xs font-medium mb-1">신규 승인 대기</p>
-                    <p class="text-2xl font-bold text-yellow-500" id="pcKpiPending">0건</p>
-                </div>
+            </div>
+
+            <div id="pc-page-sales" class="pc-page hidden flex h-full items-center justify-center">
+                <div class="text-center text-slate-500"><span class="text-4xl mb-4 block">📝</span><h2 class="text-xl font-bold text-white mb-2">영업 관리 모듈</h2><p>현재 모바일 버전과 데이터 연동 작업 중입니다.</p></div>
+            </div>
+
+            <div id="pc-page-accounting" class="pc-page hidden flex h-full items-center justify-center">
+                <div class="text-center text-slate-500"><span class="text-4xl mb-4 block">💼</span><h2 class="text-xl font-bold text-white mb-2">회계 관리 모듈</h2><p>현재 모바일 버전과 데이터 연동 작업 중입니다.</p></div>
+            </div>
+
+            <div id="pc-page-receivables" class="pc-page hidden flex h-full items-center justify-center">
+                <div class="text-center text-slate-500"><span class="text-4xl mb-4 block">💰</span><h2 class="text-xl font-bold text-white mb-2">채권 관리 모듈</h2><p>현재 모바일 버전과 데이터 연동 작업 중입니다.</p></div>
+            </div>
+
+            <div id="pc-page-factory" class="pc-page hidden flex h-full items-center justify-center">
+                <div class="text-center text-slate-500"><span class="text-4xl mb-4 block">🏭</span><h2 class="text-xl font-bold text-white mb-2">생산 관리 모듈</h2><p>현재 모바일 버전과 데이터 연동 작업 중입니다.</p></div>
             </div>
             
-            <div class="bg-[#1e293b] border border-[#334155] rounded-xl flex flex-col flex-1 min-h-[500px] shadow-2xl relative z-10">
-                <div class="p-4 flex justify-between items-center border-b border-[#334155]">
-                    <h2 class="font-bold text-white">최근 수주/공정 통합 리스트</h2>
-                    <input type="text" id="pcSearchInput" oninput="executeSearch()" placeholder="검색..." class="bg-[#0f1522] border border-[#334155] rounded-lg px-3 py-1.5 text-sm text-white outline-none focus:border-blue-400">
-                </div>
-                <div class="flex-1 overflow-x-auto p-4">
-                    <table class="w-full text-left text-sm whitespace-nowrap text-slate-300">
-                        <thead class="text-xs text-slate-500 bg-[#0f1522] border-b border-[#334155]">
-                            <tr><th class="px-6 py-4 font-medium">납기일</th><th class="px-6 py-4 font-medium">거래처명</th><th class="px-6 py-4 font-medium">자재명 / 수량</th><th class="px-6 py-4 font-medium text-right">총액 (KRW)</th><th class="px-6 py-4 font-medium text-center">공정 상태</th></tr>
-                        </thead>
-                        <tbody id="pcTableBody" class="divide-y divide-[#334155]">
-                            <tr><td colspan="5" class="p-8 text-center text-slate-500">데이터를 불러오는 중입니다...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -444,9 +464,23 @@
 </div>
 
 <script>
-let orders = []; let filteredOrders = []; let currentUser = null; let chosenUserId = null; let pinBuffer = ''; let selectedWoodStr = '목재를 선택하세요';
-let notiPoller = null; let ordersListenerUnsubscribe = null; let notiRetryCount = 0; const MAX_NOTI_RETRY = 10; const NOTI_RETRY_DELAYS = [1000, 2000, 4000, 8000, 16000];
-let currentFilterStatus = 'all'; let currentPaymentFilter = 'all'; let isSubmitting = false; const LOCKOUT_MINUTES = 10; 
+// --- [전역 변수 설정] ---
+let orders = []; 
+let filteredOrders = []; 
+let currentUser = null; 
+let chosenUserId = null; 
+let pinBuffer = ''; 
+let selectedWoodStr = '목재를 선택하세요'; 
+let USERS = []; // 수정: 변수 누락 대응
+let notiPoller = null; 
+let ordersListenerUnsubscribe = null; 
+let notiRetryCount = 0; 
+const MAX_NOTI_RETRY = 10; 
+const NOTI_RETRY_DELAYS = [1000, 2000, 4000, 8000, 16000];
+let currentFilterStatus = 'all'; 
+let currentPaymentFilter = 'all'; 
+let isSubmitting = false; 
+const LOCKOUT_MINUTES = 10; 
 
 const WOODS_DATA = [
     ['무광PET/퍼펙트화이트', 'image_f06ce4.png', '#FDFCF8'], ['유광하이그로시/화이트', 'image_f06ca6.png', '#FFFFFF'],
@@ -465,6 +499,7 @@ const WOODS_DATA = [
 const ROLE_TABS = { sales: ['sales', 'history'], accounting: ['accounting', 'receivables', 'history'], factory: ['factory', 'history'], admin: ['sales', 'accounting', 'receivables', 'factory', 'history'] };
 const TAB_META = { sales: {label:'영업', emoji:'📝'}, accounting: {label:'회계', emoji:'💼'}, receivables: {label:'채권', emoji:'💰'}, factory: {label:'생산', emoji:'🏭'}, history: {label:'현황', emoji:'📊'} };
 
+// --- [공통 및 모바일 로직] ---
 function toggleFilterDrawer() { const drawer = document.getElementById('filterDrawer'); const content = document.getElementById('drawerContent'); if (drawer.classList.contains('hidden')) { drawer.classList.remove('hidden'); setTimeout(() => content.classList.add('show'), 10); } else { content.classList.remove('show'); setTimeout(() => drawer.classList.add('hidden'), 300); } }
 function setFilterStatus(status) { currentFilterStatus = status; document.querySelectorAll('#filterStatusGroup .status-chip').forEach(btn => { const btnText = btn.innerText; const isTarget = (status === 'all' && btnText === '전체') || (status === 'pending' && btnText === '승인대기') || (status === 'approved' && btnText === '생산중') || (status === 'completed' && btnText === '생산완료'); btn.classList.toggle('active', isTarget); }); }
 function setPaymentFilter(type) { currentPaymentFilter = type; document.querySelectorAll('.pay-chip').forEach(btn => { const btnText = btn.innerText; const isTarget = (type === 'all' && btnText === '전체') || (type === 'unpaid' && btnText === '미수금'); btn.classList.toggle('active', isTarget); }); }
@@ -589,6 +624,7 @@ function startOrdersListener(customQuery = null) {
     ordersListenerUnsubscribe = query.onSnapshot(snap => { orders = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); executeSearch(); }, error => { console.error("Orders Listener Error:", error); });
 }
 
+// --- [PC 테이블 및 상세 데이터 렌더링] ---
 function renderPCTable() {
     let pS=0, aS=0, uS=0, cS=0; let aCnt=0, pCnt=0;
     filteredOrders.forEach(o => { const t = (o.price||0) * (o.qty||0); if(o.status==='pending') { pS+=t; pCnt++; } else if(o.status==='approved') { aS+=t; aCnt++; } else if(o.status==='completed' && o.paymentStatus==='unpaid') uS+=t; else if(o.status==='completed' && o.paymentStatus==='paid') cS+=t; });
@@ -604,7 +640,6 @@ function renderPCTable() {
         else if(o.status === 'approved') statusBadge = '<span class="bg-blue-500/20 text-blue-400 border border-blue-500/20 px-2 py-1 rounded text-xs">생산중</span>'; 
         else if(o.status === 'completed') statusBadge = '<span class="bg-green-500/20 text-green-400 border border-green-500/20 px-2 py-1 rounded text-xs">생산완료</span>';
         
-        // 🚨 수정된 부분: 에러가 나지 않도록 줄바꿈 및 속성 정리 완료
         return `
         <tr class="hover:bg-[#1f2b42] transition-colors cursor-pointer border-b border-[#334155]/50 pc-table-row border-l-[3px] border-transparent" onclick="selectRow(this, '${o.id}')">
             <td class="p-3 text-slate-400">${o.dueDate || '-'}</td>
@@ -762,7 +797,6 @@ async function confirmPayment(id) {
         if(typeof db !== 'undefined') await db.collection('orders').doc(id).update({ paidAmount: newPaid, paymentStatus: remaining <= 0 ? 'paid' : 'partial' }); 
         await logAction('PAYMENT_UPDATED', id, { added_amount: amount, total_paid: newPaid }); 
     } catch (e) { 
-        // 🚨 Firebase 보안 규칙 에러 출력 구간
         alert('입금 처리 실패: ' + e.message); 
     }
 }
@@ -827,8 +861,8 @@ window.addEventListener('load', () => {
 });
 
 document.addEventListener('DOMContentLoaded', function() { console.log('📱 디바이스 판정:', window.innerWidth <= 768 ? '모바일' : 'PC'); });
-// --- [추가된 3단 패널 & 드로워 제어 로직] ---
 
+// --- [추가된 3단 패널 & 드로워 제어 로직] ---
 function openDrawer() {
     // 1280px 미만일 때만 오버레이 효과
     if (window.innerWidth < 1280) {
@@ -864,6 +898,45 @@ function selectRow(element, orderId) {
     
     // 4. 패널 열기 (반응형 대응)
     openDrawer();
+}
+
+// --- [PC 네비게이션 탭 전환 로직] ---
+function switchPCTab(tabId) {
+    // 1. 모든 메뉴 버튼의 하이라이트(파란 배경) 제거
+    document.querySelectorAll('.pc-tab-btn').forEach(btn => {
+        btn.classList.remove('bg-[#1e293b]', 'text-blue-400');
+        btn.classList.add('text-slate-400', 'hover:bg-[#1e293b]', 'hover:text-white');
+    });
+
+    // 2. 클릭한 메뉴 버튼에 하이라이트 추가
+    const activeBtn = document.getElementById('pc-tab-' + tabId);
+    if(activeBtn) {
+        activeBtn.classList.remove('text-slate-400', 'hover:bg-[#1e293b]', 'hover:text-white');
+        activeBtn.classList.add('bg-[#1e293b]', 'text-blue-400');
+    }
+
+    // 3. 모든 페이지 숨기기
+    document.querySelectorAll('.pc-page').forEach(page => {
+        page.classList.remove('block');
+        page.classList.add('hidden');
+    });
+
+    // 4. 타겟 페이지만 보여주기
+    const targetPage = document.getElementById('pc-page-' + tabId);
+    if(targetPage) {
+        targetPage.classList.remove('hidden');
+        targetPage.classList.add('block');
+    }
+
+    // 5. 드로워(우측 패널) 강제 닫기 및 초기화 (다른 메뉴로 넘어가면 우측 상세 정보도 리셋)
+    closeDrawer();
+    const emptyState = document.getElementById('emptyDetailState');
+    const activeState = document.getElementById('activeDetailState');
+    if (emptyState && activeState) {
+        emptyState.classList.remove('hidden');
+        activeState.classList.add('hidden');
+    }
+    document.querySelectorAll('.pc-table-row').forEach(row => row.classList.remove('active'));
 }
 </script>
 </body>
