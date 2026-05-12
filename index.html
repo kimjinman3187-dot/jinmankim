@@ -30,23 +30,23 @@
         }
 
         /* =========================================================
-           [Traffic Control] 모바일 ↔ PC 완벽 투트랙 격리
+           [Traffic Control] 모바일 ↔ PC 완벽 투트랙 격리 방화벽
            ========================================================= */
         @media (min-width: 769px) {
-            .mobile-ui { display: none !important; }
+            .mobile-only { display: none !important; }
             body { background-color: #0b1120; overflow: hidden; } 
         }
         @media (max-width: 768px) {
-            .pc-ui { display: none !important; }
+            .pc-only { display: none !important; }
         }
 
         /* =========================================================
-           [1] 모바일 오리지널 CSS 복원
+           [1] 모바일 오리지널 전용 CSS 
            ========================================================= */
-        #loginOverlay {
+        .login-gateway-layer {
             position: fixed; inset: 0; z-index: 9999;
-            background: linear-gradient(160deg, #0f2554 0%, #1e3a8a 100%);
             display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px;
+            background: linear-gradient(160deg, #0f2554 0%, #1e3a8a 100%);
         }
         .login-card { width: 100%; max-width: 340px; background: #fff; border-radius: 28px; padding: 28px 24px 24px; box-shadow: 0 24px 60px rgba(0,0,0,0.35); }
         .role-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; max-height: 240px; overflow-y: auto; padding: 4px; }
@@ -60,31 +60,13 @@
         .kp-btn { padding: 14px; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; font-size: 18px; font-weight: 700; cursor: pointer; }
         .kp-btn:active { transform: scale(0.92); background: #dbeafe; }
         .kp-btn.del { font-size: 13px; background: #fee2e2; border-color: #fecaca; color: #dc2626; }
-        
-        .active-role { background-color: #1e3a8a !important; color: white !important; transform: scale(1.02); }
-        .gradient-bg { background: linear-gradient(135deg, #1e3a8a 0%, #000000 100%); }
-        .wood-plate { width: 120px; height: 80px; transform: rotateX(45deg) rotateZ(-15deg); transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 20px 20px 30px rgba(0,0,0,0.15), -2px -2px 5px rgba(255,255,255,0.8); border-bottom: 6px solid rgba(0,0,0,0.2); border-right: 4px solid rgba(0,0,0,0.1); background-size: cover; border-radius: 4px; }
-        .wood-btn-wrapper { display: flex; flex-direction: column; align-items: center; padding: 0.5rem; background: white; border: 1px solid #e2e8f0; border-radius: 1rem; cursor: pointer; transition: all 0.2s; }
-        .wood-btn-wrapper:active { transform: scale(0.95); border-color: #1e3a8a; }
-        .badge { display: inline-block; font-size: 9px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
-        .badge-pending { background: #fef3c7; color: #92400e; }
-        .badge-approved { background: #dbeafe; color: #1d4ed8; }
-        .badge-completed { background: #dcfce7; color: #166534; }
-        .badge-rejected { background: #fee2e2; color: #991b1b; }
-        .receivable-banner { background: linear-gradient(135deg, #7c3aed, #4338ca); border-radius: 20px; padding: 18px 20px; color: #fff; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
-        
-        /* 🚨 푸터 폰트 속성 복원 */
         .system-footer { width: 100%; text-align: center; padding: 20px 0; margin-top: auto; pointer-events: none; }
         .system-footer p { margin: 2px 0; font-size: 10px; font-family: 'Inter', sans-serif; letter-spacing: 1px; font-weight: 600; }
-        
-        .status-chip, .pay-chip { padding: 8px 16px; background: #f1f5f9; border-radius: 12px; font-size: 11px; font-weight: 800; color: #64748b; border: 2px solid transparent; transition: all 0.2s; }
-        .status-chip.active, .pay-chip.active { background: #eff6ff; border-color: #1e3a8a; color: #1e3a8a; }
-        #drawerContent.show { transform: translateX(0) !important; }
 
         /* =========================================================
            [2] PC 프리미엄 로그인 전용 CSS 
            ========================================================= */
-        #pcLoginLayer {
+        #loginPC {
             position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center;
             background: radial-gradient(circle at top left, rgba(59,130,246,0.14), transparent 32%),
                         radial-gradient(circle at bottom right, rgba(0,180,255,0.08), transparent 28%),
@@ -98,10 +80,26 @@
             box-shadow: 0 30px 80px rgba(0,0,0,0.45);
         }
 
-        /* 공통 유틸리티 */
+        /* =========================================================
+           [공통 모듈 CSS] 
+           ========================================================= */
+        .active-role { background-color: #1e3a8a !important; color: white !important; transform: scale(1.02); }
+        .gradient-bg { background: linear-gradient(135deg, #1e3a8a 0%, #000000 100%); }
+        .preview-container { perspective: 800px; display: flex; justify-content: center; align-items: center; padding: 30px; }
+        .wood-plate { width: 120px; height: 80px; transform: rotateX(45deg) rotateZ(-15deg); transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 20px 20px 30px rgba(0,0,0,0.15), -2px -2px 5px rgba(255,255,255,0.8); border-bottom: 6px solid rgba(0,0,0,0.2); border-right: 4px solid rgba(0,0,0,0.1); background-size: cover; border-radius: 4px; }
+        .wood-btn-wrapper { display: flex; flex-direction: column; align-items: center; padding: 0.5rem; background: white; border: 1px solid #e2e8f0; border-radius: 1rem; cursor: pointer; transition: all 0.2s; }
+        .wood-btn-wrapper:active { transform: scale(0.95); border-color: #1e3a8a; }
+        .badge { display: inline-block; font-size: 9px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+        .badge-pending { background: #fef3c7; color: #92400e; }
+        .badge-approved { background: #dbeafe; color: #1d4ed8; }
+        .badge-completed { background: #dcfce7; color: #166534; }
+        .badge-rejected { background: #fee2e2; color: #991b1b; }
+        .receivable-banner { background: linear-gradient(135deg, #7c3aed, #4338ca); border-radius: 20px; padding: 18px 20px; color: #fff; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+        .status-chip, .pay-chip { padding: 8px 16px; background: #f1f5f9; border-radius: 12px; font-size: 11px; font-weight: 800; color: #64748b; border: 2px solid transparent; transition: all 0.2s; }
+        .status-chip.active, .pay-chip.active { background: #eff6ff; border-color: #1e3a8a; color: #1e3a8a; }
+        #drawerContent.show { transform: translateX(0) !important; }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        input, textarea, select { -webkit-user-select: text; user-select: text; outline: none; }
         #toastWrap { position: fixed; top: 84px; left: 50%; transform: translateX(-50%); z-index: 9000; display: flex; flex-direction: column; gap: 8px; width: calc(100% - 32px); max-width: 448px; pointer-events: none; }
         .toast { background: #1e293b; color: #fff; border-radius: 16px; padding: 14px 18px; display: flex; align-items: center; gap: 12px; pointer-events: auto; animation: toastIn 0.3s forwards; }
         @keyframes toastIn { from { opacity:0; transform:translateY(-14px); } to { opacity:1; transform:translateY(0); } }
@@ -109,14 +107,12 @@
 </head>
 <body oncontextmenu="return false">
 
-<div id="loginOverlay" class="mobile-ui">
+<div id="loginMobile" class="mobile-only login-gateway-layer">
     <div class="login-card">
         <div class="text-center font-black text-blue-900 text-lg mb-1 italic uppercase tracking-tighter">Yongjin ENT.</div>
         <div id="securityStatus" class="text-center text-[9px] text-slate-400 font-bold mb-5 uppercase tracking-[0.2em]">Authority Required</div>
         
-        <div class="role-grid" id="roleGrid">
-            <p class="col-span-2 text-center text-xs text-slate-300 py-10">데이터 연결 중...</p>
-        </div>
+        <div class="role-grid" id="roleGrid"><p class="col-span-2 text-center text-xs text-slate-300 py-10">데이터 연결 중...</p></div>
 
         <div class="pin-dots">
             <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div><div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
@@ -130,15 +126,14 @@
         </div>
         <div id="pinErr" class="text-center text-[10px] text-red-600 mt-3 min-h-[15px] font-bold"></div>
     </div>
-    
     <div class="system-footer" style="color: rgba(255,255,255,0.3);">
-        <p>Last Updated: 26.05.12 / v2.0.0</p>
+        <p>Last Updated: 26.05.08 / v2.0.0</p>
         <p>Designed by GENE KIM</p>
         <p style="margin-top:10px; letter-spacing:2px; font-weight:700;">SECURE DATA TERMINAL</p>
     </div>
 </div>
 
-<div id="pcLoginLayer" class="pc-ui">
+<div id="loginPC" class="pc-only">
     <div class="pc-login-wrapper relative">
         <div class="w-[46%] p-[70px] flex flex-col justify-between bg-gradient-to-b from-[#0a1428] to-[#08101e] border-r border-white/5">
             <div>
@@ -167,238 +162,218 @@
     </div>
 </div>
 
-<div id="mainApp" class="hidden h-screen w-full relative">
-
-    <div id="mobileApp" class="mobile-ui w-full h-full flex flex-col overflow-y-auto">
-        <nav class="bg-white border-b sticky top-0 z-50 px-4 py-3 shadow-sm">
-            <div class="max-w-md mx-auto space-y-3">
-                <div id="roleTabsWrap" class="grid gap-1"></div>
-                <div class="flex items-center justify-between bg-blue-50 px-4 py-2 rounded-xl border border-blue-100">
-                    <h1 class="text-sm font-black text-slate-900 italic">YONGJIN ENT.</h1>
-                    <div class="flex items-center gap-2">
-                        <span id="displayUser" class="text-xs font-black text-blue-700 underline"></span>
-                        <button onclick="logout()" class="text-[9px] font-black text-slate-400 bg-slate-100 hover:bg-red-100 hover:text-red-500 px-2 py-1 rounded-lg">로그아웃</button>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2 mt-1">
-                    <div class="relative flex-1">
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-xs">🔍</span>
-                        <input type="text" id="globalSearchInput" oninput="executeSearch()" placeholder="검색..." class="w-full pl-8 pr-4 py-2 bg-slate-100 border border-transparent rounded-xl text-xs font-bold outline-none">
-                    </div>
-                    <button onclick="toggleFilterDrawer()" class="bg-slate-800 text-white px-3 py-2 rounded-xl text-xs font-bold shrink-0 shadow-md">🔽 필터</button>
+<div id="appMobile" class="mobile-only hidden flex-col w-full min-h-screen bg-[#f1f5f9]">
+    <nav class="bg-white border-b sticky top-0 z-50 px-4 py-3 shadow-sm">
+        <div class="max-w-md mx-auto space-y-3">
+            <div id="roleTabsWrap" class="grid gap-1"></div>
+            <div class="flex items-center justify-between bg-blue-50 px-4 py-2 rounded-xl border border-blue-100">
+                <h1 class="text-sm font-black text-slate-900 italic">YONGJIN ENT.</h1>
+                <div class="flex items-center gap-2">
+                    <span id="displayUser" class="text-xs font-black text-blue-700 underline"></span>
+                    <button onclick="logout()" class="text-[9px] font-black text-slate-400 bg-slate-100 hover:bg-red-100 hover:text-red-500 px-2 py-1 rounded-lg">로그아웃</button>
                 </div>
             </div>
-        </nav>
+            <div class="flex items-center gap-2 mt-1">
+                <div class="relative flex-1">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-xs">🔍</span>
+                    <input type="text" id="globalSearchInput" oninput="executeSearch()" placeholder="검색..." class="w-full pl-8 pr-4 py-2 bg-slate-100 border border-transparent rounded-xl text-xs font-bold outline-none">
+                </div>
+                <button onclick="toggleFilterDrawer()" class="bg-slate-800 text-white px-3 py-2 rounded-xl text-xs font-bold shrink-0 shadow-md">🔽 필터</button>
+            </div>
+        </div>
+    </nav>
 
-        <main class="max-w-md mx-auto w-full p-4 space-y-6 flex-grow">
-            <div id="section-sales" class="hidden space-y-6">
-                <section class="bg-white p-6 rounded-[2.5rem] shadow-sm border space-y-4">
-                    <h3 class="font-bold text-lg text-slate-800">📝 신규 수주 보고</h3>
-                    <input type="text" id="clientName" placeholder="업체명 및 현장명" class="w-full p-4 bg-slate-50 rounded-2xl font-bold border-none outline-none">
-                    <button onclick="openWoodModal()" class="w-full py-4 border-2 border-slate-800 rounded-2xl font-bold bg-slate-50 active:scale-95 transition-transform">목재 종류 선택 (22종)</button>
-                    <div id="selectedWoodCard" class="bg-white p-4 rounded-2xl border border-blue-200 flex items-center gap-4 relative overflow-hidden shadow-sm">
-                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>
-                        <div id="woodThumbContainer" class="w-14 h-14 bg-slate-100 rounded-xl flex items-center justify-center overflow-hidden border border-slate-200">
-                            <img id="woodThumbImg" class="hidden w-full h-full object-cover">
-                            <div id="woodThumbColor" class="hidden w-full h-full"></div>
-                            <span id="woodThumbText" class="text-[10px] text-slate-400 font-bold">IMG</span>
-                        </div>
-                        <div class="flex-1">
-                            <p class="font-bold text-sm text-slate-800" id="selectedWoodName">목재를 선택하세요</p>
-                            <select id="thickness" class="mt-2 text-xs font-bold border rounded p-1 bg-white"><option>15T</option><option selected>18T</option><option>24T</option></select>
-                        </div>
+    <main class="max-w-md mx-auto w-full p-4 space-y-6 flex-grow pb-10">
+        <div id="section-sales" class="hidden space-y-6">
+            <section class="bg-white p-6 rounded-[2.5rem] shadow-sm border space-y-4">
+                <h3 class="font-bold text-lg text-slate-800">📝 신규 수주 보고</h3>
+                <input type="text" id="clientName" placeholder="업체명 및 현장명" class="w-full p-4 bg-slate-50 rounded-2xl font-bold border-none outline-none">
+                <button onclick="openWoodModal()" class="w-full py-4 border-2 border-slate-800 rounded-2xl font-bold bg-slate-50 active:scale-95 transition-transform">목재 종류 선택 (22종)</button>
+                <div id="selectedWoodCard" class="bg-white p-4 rounded-2xl border border-blue-200 flex items-center gap-4 relative overflow-hidden shadow-sm">
+                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>
+                    <div id="woodThumbContainer" class="w-14 h-14 bg-slate-100 rounded-xl flex items-center justify-center overflow-hidden border border-slate-200">
+                        <img id="woodThumbImg" class="hidden w-full h-full object-cover">
+                        <div id="woodThumbColor" class="hidden w-full h-full"></div>
+                        <span id="woodThumbText" class="text-[10px] text-slate-400 font-bold">IMG</span>
                     </div>
-                    <div class="preview-container bg-slate-50 rounded-3xl border border-dashed border-slate-200 shadow-inner">
-                        <div class="relative">
-                            <div id="woodPlate" class="wood-plate bg-slate-300"></div>
-                            <div class="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] font-black text-blue-600 bg-white px-2 py-0.5 rounded-full border shadow-sm" id="labelWidth">0 mm</div>
-                            <div class="absolute -right-12 top-1/2 -translate-y-1/2 text-[9px] font-black text-blue-600 bg-white px-2 py-0.5 rounded-full border shadow-sm rotate-90" id="labelLength">0 mm</div>
-                        </div>
+                    <div class="flex-1">
+                        <p class="font-bold text-sm text-slate-800" id="selectedWoodName">목재를 선택하세요</p>
+                        <select id="thickness" class="mt-2 text-xs font-bold border rounded p-1 bg-white">
+                            <option>15T</option><option selected>18T</option><option>24T</option>
+                        </select>
                     </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <input type="number" id="width" oninput="updatePlateSize()" placeholder="가로 폭(100~3000)" class="w-full p-4 border rounded-2xl font-bold bg-white">
-                        <input type="number" id="height" oninput="updatePlateSize()" placeholder="세로 길이(100~3000)" class="w-full p-4 border rounded-2xl font-bold bg-white">
+                </div>
+                <div class="preview-container bg-slate-50 rounded-3xl border border-dashed border-slate-200 shadow-inner">
+                    <div class="relative">
+                        <div id="woodPlate" class="wood-plate bg-slate-300"></div>
+                        <div class="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] font-black text-blue-600 bg-white px-2 py-0.5 rounded-full border shadow-sm" id="labelWidth">0 mm</div>
+                        <div class="absolute -right-12 top-1/2 -translate-y-1/2 text-[9px] font-black text-blue-600 bg-white px-2 py-0.5 rounded-full border shadow-sm rotate-90" id="labelLength">0 mm</div>
                     </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <input type="number" id="unitPrice" oninput="calculate()" placeholder="단가" class="w-full p-4 border border-blue-100 bg-blue-50 text-blue-700 rounded-2xl font-black">
-                        <input type="number" id="qty" oninput="calculate()" value="100" class="w-full p-4 border rounded-2xl font-bold">
-                    </div>
-                    <div class="grid grid-cols-2 gap-3 text-xs border border-red-200 p-3 rounded-2xl bg-red-50 mt-2 shadow-sm">
-                        <div><label class="font-bold text-red-600 ml-1">출고일(납기)*</label><input type="date" id="dueDate" class="w-full p-3 bg-white rounded-xl font-bold mt-1"></div>
-                        <div><label class="font-bold text-red-600 ml-1">입금기한*</label><input type="date" id="payDate" class="w-full p-3 bg-white rounded-xl font-bold mt-1"></div>
-                    </div>
-                    <div class="gradient-bg p-6 rounded-[2rem] text-white text-center shadow-xl mt-4">
-                        <div class="text-[10px] opacity-80 mb-1 font-bold">예상 총 합계 금액</div>
-                        <div class="text-3xl font-black italic tracking-tighter">₩ <span id="totalDisplay">0</span></div>
-                    </div>
-                    <button id="btnSubmitOrder" onclick="handleReport()" class="w-full bg-blue-600 text-white py-5 rounded-3xl font-black text-lg active:scale-95 transition-all shadow-lg shadow-blue-200 mt-4">✅ 서버로 수주 전송하기</button>
-                </section>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <input type="number" id="width" oninput="updatePlateSize()" placeholder="가로 폭" class="w-full p-4 border rounded-2xl font-bold bg-white">
+                    <input type="number" id="height" oninput="updatePlateSize()" placeholder="세로 길이" class="w-full p-4 border rounded-2xl font-bold bg-white">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <input type="number" id="unitPrice" oninput="calculate()" placeholder="단가" class="w-full p-4 border border-blue-100 bg-blue-50 text-blue-700 rounded-2xl font-black">
+                    <input type="number" id="qty" oninput="calculate()" value="100" class="w-full p-4 border rounded-2xl font-bold">
+                </div>
+                <div class="grid grid-cols-2 gap-3 text-xs border border-red-200 p-3 rounded-2xl bg-red-50 mt-2 shadow-sm">
+                    <div><label class="font-bold text-red-600 ml-1">출고일(납기)*</label><input type="date" id="dueDate" class="w-full p-3 bg-white rounded-xl font-bold mt-1"></div>
+                    <div><label class="font-bold text-red-600 ml-1">입금기한*</label><input type="date" id="payDate" class="w-full p-3 bg-white rounded-xl font-bold mt-1"></div>
+                </div>
+                <div class="gradient-bg p-6 rounded-[2rem] text-white text-center shadow-xl mt-4">
+                    <div class="text-[10px] opacity-80 mb-1 font-bold">예상 총 합계 금액</div>
+                    <div class="text-3xl font-black italic tracking-tighter">₩ <span id="totalDisplay">0</span></div>
+                </div>
+                <button id="btnSubmitOrder" onclick="handleReport()" class="w-full bg-blue-600 text-white py-5 rounded-3xl font-black text-lg active:scale-95 transition-all shadow-lg mt-4">✅ 서버 전송</button>
+            </section>
+        </div>
+        
+        <div id="section-accounting" class="hidden space-y-6">
+            <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-blue-100">
+                <h3 class="font-bold text-blue-800 mb-4 flex items-center gap-2"><span class="bg-blue-100 p-1.5 rounded-lg">💼</span> 신규 승인 대기</h3>
+                <div id="accountingList" class="space-y-4 mb-6"></div>
+                <div class="border-t border-dashed border-gray-200 pt-6 mb-6">
+                    <h3 class="font-bold text-orange-600 mb-4 text-sm flex items-center gap-2"><span class="bg-orange-100 p-1.5 rounded-lg">🏭</span> 공장 생산 현황</h3>
+                    <div id="accountingFactoryList" class="space-y-3"></div>
+                </div>
+                <div class="border-t border-dashed border-gray-200 pt-6">
+                    <h3 class="font-bold text-slate-600 mb-4 text-sm flex items-center gap-2"><span class="bg-slate-100 p-1.5 rounded-lg">🧾</span> 청구 대기 (계산서)</h3>
+                    <div id="accountingCompletedList" class="space-y-3"></div>
+                </div>
+            </section>
+        </div>
+
+        <div id="section-factory" class="hidden space-y-6">
+            <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-orange-100">
+                <h3 class="font-bold text-orange-800 mb-6 italic text-lg">🏭 생산 공정 제어판</h3>
+                <div id="productionList" class="space-y-6"></div>
+            </section>
+        </div>
+
+        <div id="section-receivables" class="hidden space-y-6">
+            <div id="receivableBannerWrap"></div>
+            <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-amber-200">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-amber-700">💰 채권관리 (미수금)</h3>
+                    <button onclick="exportReceivablesCSV()" class="text-[10px] bg-green-600 text-white px-3 py-2 rounded-lg font-bold shadow-sm">📊 엑셀 저장</button>
+                </div>
+                <div id="receivablesList" class="space-y-4"></div>
+            </section>
+        </div>
+
+        <div id="section-history" class="hidden space-y-6">
+            <div class="px-2 flex justify-between items-center mb-2">
+                <h3 class="font-bold text-slate-800 italic">📊 마스터 제어판 (ADMIN)</h3>
+                <button onclick="exportExcel()" class="text-[10px] bg-green-600 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm">EXCEL 저장</button>
+            </div>
+            <div id="adminUserMonitor" class="hidden bg-white p-4 rounded-[2rem] border-2 border-red-100 mb-4 space-y-2 shadow-sm"></div>
+            <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-200">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-slate-800">통합 대시보드</h3>
+                    <button onclick="clearAllData()" class="text-[10px] bg-red-100 text-red-600 px-3 py-2 rounded-lg font-bold" id="clearBtn" style="display:none;">🗑 초기화</button>
+                </div>
+                <div id="dashBoard"></div>
+                <div id="historyList" class="space-y-3 mt-4 text-xs"></div>
+            </section>
+        </div>
+        
+        <div class="system-footer" style="color: #94a3b8;">
+            <p>Last Updated: 26.05.08 / v2.0.0</p>
+            <p style="color: #64748b;">Designed by GENE KIM</p>
+        </div>
+    </main>
+</div>
+
+<div id="appPC" class="pc-only hidden w-full h-screen flex-row bg-[#0b1120]">
+    <aside class="w-64 bg-[#111827] border-r border-[#334155] flex-shrink-0 flex flex-col">
+        <div class="h-16 flex items-center px-6 border-b border-[#334155]">
+            <div class="text-white font-bold text-xl tracking-tighter text-blue-400">YJ <span class="text-sm text-slate-400 ml-2">YONGJIN ENT.</span></div>
+        </div>
+        <nav class="flex-1 py-4 flex flex-col gap-1 px-3">
+            <a href="#" class="px-3 py-3 rounded-lg bg-[#1e293b] text-blue-400 font-medium text-sm">📊 통합 대시보드</a>
+            <a href="#" class="px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">📝 영업 관리 (준비중)</a>
+            <a href="#" class="px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">💼 회계 관리 (준비중)</a>
+            <a href="#" class="px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">💰 채권 관리 (준비중)</a>
+            <a href="#" class="px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">🏭 생산 관리 (준비중)</a>
+            <a href="#" onclick="logout()" class="mt-auto px-3 py-3 rounded-lg text-red-400 hover:bg-red-500/10 font-medium text-sm transition-colors">🚪 시스템 로그아웃</a>
+        </nav>
+    </aside>
+
+    <div class="flex-1 flex flex-col bg-[#0b1120] overflow-hidden">
+        <header class="h-16 flex items-center justify-between px-6 border-b border-[#334155] bg-[#111827] flex-shrink-0">
+            <h1 class="text-lg font-bold text-white">회계 관제탑 대시보드</h1>
+            <div class="flex items-center gap-4 text-white">
+                <button onclick="requestNotificationPermission()" class="hover:text-blue-400 transition-colors">🔔</button>
+                <span id="pcDisplayUser" class="text-sm font-medium text-blue-400">관리자</span>
+            </div>
+        </header>
+
+        <div class="flex-1 p-6 overflow-y-auto">
+            <div class="grid grid-cols-4 gap-4 mb-6">
+                <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-4 shadow-lg">
+                    <p class="text-slate-400 text-xs font-medium mb-1">총 미수금 (KRW)</p>
+                    <p class="text-2xl font-bold text-white" id="pcKpiDebt">0</p>
+                </div>
+                <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-4 shadow-lg">
+                    <p class="text-slate-400 text-xs font-medium mb-1">이번 달 매출액</p>
+                    <p class="text-2xl font-bold text-white" id="pcKpiSales">0</p>
+                </div>
+                <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-4 shadow-lg">
+                    <p class="text-slate-400 text-xs font-medium mb-1">생산 진행 공정</p>
+                    <p class="text-2xl font-bold text-blue-400" id="pcKpiFactory">0건</p>
+                </div>
+                <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-4 shadow-lg">
+                    <p class="text-slate-400 text-xs font-medium mb-1">신규 승인 대기</p>
+                    <p class="text-2xl font-bold text-yellow-500" id="pcKpiPending">0건</p>
+                </div>
             </div>
             
-            <div id="section-accounting" class="hidden space-y-6">
-                <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-blue-100">
-                    <h3 class="font-bold text-blue-800 mb-4 flex items-center gap-2"><span class="bg-blue-100 p-1.5 rounded-lg">💼</span> 신규 승인 대기</h3>
-                    <div id="accountingList" class="space-y-4 mb-6"></div>
-                    <div class="border-t border-dashed border-gray-200 pt-6 mb-6">
-                        <h3 class="font-bold text-orange-600 mb-4 text-sm flex items-center gap-2"><span class="bg-orange-100 p-1.5 rounded-lg">🏭</span> 공장 생산 현황</h3>
-                        <div id="accountingFactoryList" class="space-y-3"></div>
-                    </div>
-                    <div class="border-t border-dashed border-gray-200 pt-6">
-                        <h3 class="font-bold text-slate-600 mb-4 text-sm flex items-center gap-2"><span class="bg-slate-100 p-1.5 rounded-lg">🧾</span> 청구 대기 (계산서)</h3>
-                        <div id="accountingCompletedList" class="space-y-3"></div>
-                    </div>
-                </section>
-            </div>
-
-            <div id="section-factory" class="hidden space-y-6">
-                <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-orange-100">
-                    <h3 class="font-bold text-orange-800 mb-6 italic text-lg">🏭 생산 공정 제어판</h3>
-                    <div id="productionList" class="space-y-6"></div>
-                </section>
-            </div>
-
-            <div id="section-receivables" class="hidden space-y-6">
-                <div id="receivableBannerWrap"></div>
-                <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-amber-200">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="font-bold text-amber-700">💰 채권관리 (미수금)</h3>
-                        <button onclick="exportReceivablesCSV()" class="text-[10px] bg-green-600 text-white px-3 py-2 rounded-lg font-bold shadow-sm">📊 엑셀 저장</button>
-                    </div>
-                    <div id="receivablesList" class="space-y-4"></div>
-                </section>
-            </div>
-
-            <div id="section-history" class="hidden space-y-6">
-                <div class="px-2 flex justify-between items-center mb-2">
-                    <h3 class="font-bold text-slate-800 italic">📊 마스터 제어판 (ADMIN)</h3>
-                    <button onclick="exportExcel()" class="text-[10px] bg-green-600 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm">EXCEL 저장</button>
+            <div class="bg-[#1e293b] border border-[#334155] rounded-xl flex flex-col flex-1 min-h-[500px] shadow-2xl">
+                <div class="p-4 flex justify-between items-center border-b border-[#334155]">
+                    <h2 class="font-bold text-white">최근 수주/공정 통합 리스트</h2>
+                    <input type="text" id="pcSearchInput" oninput="executeSearch()" placeholder="검색..." class="bg-[#0f1522] border border-[#334155] rounded-lg px-3 py-1.5 text-sm text-white outline-none focus:border-blue-400">
                 </div>
-                <div id="adminUserMonitor" class="hidden bg-white p-4 rounded-[2rem] border-2 border-red-100 mb-4 space-y-2 shadow-sm"></div>
-                <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-200">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="font-bold text-slate-800">통합 대시보드</h3>
-                        <button onclick="clearAllData()" class="text-[10px] bg-red-100 text-red-600 px-3 py-2 rounded-lg font-bold" id="clearBtn" style="display:none;">🗑 초기화</button>
-                    </div>
-                    <div id="dashBoard"></div>
-                    <div id="historyList" class="space-y-3 mt-4 text-xs"></div>
-                </section>
-            </div>
-
-            <div class="system-footer pb-4" style="color: #94a3b8;">
-                <p>Last Updated: 26.05.12 / v2.0.0</p>
-                <p style="color: #64748b;">Designed by GENE KIM</p>
-            </div>
-        </main>
-    </div>
-
-    <div id="pcApp" class="pc-ui w-full h-full flex flex-row">
-        
-        <aside class="sidebar w-64 bg-[#111827] border-r border-[#334155] flex-shrink-0 flex flex-col">
-            <div class="h-16 flex items-center px-6 border-b border-[#334155]">
-                <div class="text-white font-bold text-xl tracking-tighter text-blue-400">YJ <span class="text-sm text-slate-400 ml-2">YONGJIN ENT.</span></div>
-            </div>
-            <nav class="flex-1 py-4 flex flex-col gap-1 px-3">
-                <a href="#" class="px-3 py-3 rounded-lg bg-[#1e293b] text-blue-400 font-medium text-sm transition-colors">📊 통합 대시보드</a>
-                <a href="#" class="px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">📝 영업 관리 (준비중)</a>
-                <a href="#" class="px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">💼 회계 관리 (준비중)</a>
-                <a href="#" class="px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">💰 채권 관리 (준비중)</a>
-                <a href="#" class="px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">🏭 생산 관리 (준비중)</a>
-                <a href="#" onclick="logout()" class="mt-auto px-3 py-3 rounded-lg text-red-400 hover:bg-red-500/10 font-medium text-sm transition-colors">🚪 시스템 로그아웃</a>
-            </nav>
-        </aside>
-
-        <div class="flex-1 flex flex-col bg-[#0b1120] overflow-hidden">
-            <header class="h-16 flex items-center justify-between px-6 border-b border-[#334155] bg-[#111827] flex-shrink-0">
-                <h1 class="text-lg font-bold text-white">회계 관제탑 대시보드</h1>
-                <div class="flex items-center gap-4 text-white">
-                    <button onclick="requestNotificationPermission()" class="hover:text-blue-400 transition-colors">🔔</button>
-                    <span id="pcDisplayUser" class="text-sm font-medium text-blue-400">관리자</span>
-                </div>
-            </header>
-
-            <div class="flex-1 p-6 overflow-y-auto">
-                <div class="grid grid-cols-4 gap-4 mb-6">
-                    <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-4">
-                        <p class="text-slate-400 text-xs font-medium mb-1">총 미수금 (KRW)</p>
-                        <p class="text-2xl font-bold text-white" id="pcKpiDebt">0</p>
-                    </div>
-                    <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-4">
-                        <p class="text-slate-400 text-xs font-medium mb-1">이번 달 매출액</p>
-                        <p class="text-2xl font-bold text-white" id="pcKpiSales">0</p>
-                    </div>
-                    <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-4">
-                        <p class="text-slate-400 text-xs font-medium mb-1">생산 진행 공정</p>
-                        <p class="text-2xl font-bold text-blue-400" id="pcKpiFactory">0건</p>
-                    </div>
-                    <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-4">
-                        <p class="text-slate-400 text-xs font-medium mb-1">신규 승인 대기</p>
-                        <p class="text-2xl font-bold text-yellow-500" id="pcKpiPending">0건</p>
-                    </div>
-                </div>
-                
-                <div class="bg-[#1e293b] border border-[#334155] rounded-xl flex flex-col flex-1 min-h-[500px] shadow-2xl">
-                    <div class="p-4 flex justify-between items-center border-b border-[#334155]">
-                        <h2 class="font-bold text-white">최근 수주/공정 통합 리스트</h2>
-                        <input type="text" id="pcSearchInput" oninput="executeSearch()" placeholder="검색..." class="bg-[#0f1522] border border-[#334155] rounded-lg px-3 py-1.5 text-sm text-white outline-none focus:border-blue-400">
-                    </div>
-                    <div class="flex-1 overflow-x-auto p-4">
-                        <table class="w-full text-left text-sm whitespace-nowrap text-slate-300">
-                            <thead class="text-xs text-slate-500 bg-[#0f1522] border-b border-[#334155]">
-                                <tr><th class="px-6 py-4 font-medium">납기일</th><th class="px-6 py-4 font-medium">거래처명</th><th class="px-6 py-4 font-medium">자재명 / 수량</th><th class="px-6 py-4 font-medium">총액 (KRW)</th><th class="px-6 py-4 font-medium text-center">공정 상태</th></tr>
-                            </thead>
-                            <tbody id="pcTableBody" class="divide-y divide-[#334155]">
-                                <tr><td colspan="5" class="p-8 text-center text-slate-500">데이터를 불러오는 중입니다...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="flex-1 overflow-x-auto p-4">
+                    <table class="w-full text-left text-sm whitespace-nowrap text-slate-300">
+                        <thead class="text-xs text-slate-500 bg-[#0f1522] border-b border-[#334155]">
+                            <tr><th class="px-6 py-4 font-medium">납기일</th><th class="px-6 py-4 font-medium">거래처명</th><th class="px-6 py-4 font-medium">자재명 / 수량</th><th class="px-6 py-4 font-medium">총액 (KRW)</th><th class="px-6 py-4 font-medium text-center">공정 상태</th></tr>
+                        </thead>
+                        <tbody id="pcTableBody" class="divide-y divide-[#334155]">
+                            <tr><td colspan="5" class="p-8 text-center text-slate-500">데이터를 불러오는 중입니다...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<div id="notiBanner" onclick="requestNotificationPermission()" class="hidden bg-yellow-50 border-b border-yellow-200 p-3 text-center text-xs font-bold text-yellow-800 cursor-pointer">
-    🔔 알림을 허용하면 수주·승인·생산 완료 시 자동으로 알림을 받을 수 있습니다. 탭하여 허용하기
-</div>
-
+<div id="notiBanner" onclick="requestNotificationPermission()" class="hidden bg-yellow-50 border-b border-yellow-200 p-3 text-center text-xs font-bold text-yellow-800 cursor-pointer">🔔 알림 허용하기</div>
 <div id="toastWrap"></div>
 <div id="modalContainer"></div>
 
 <div id="filterDrawer" class="fixed inset-0 z-[100] hidden">
     <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="toggleFilterDrawer()"></div>
     <div id="drawerContent" class="absolute right-0 top-0 bottom-0 w-[85%] max-w-sm bg-white shadow-2xl p-6 translate-x-full transition-transform duration-300 ease-in-out">
-        <div class="flex justify-between items-center mb-8">
-            <h2 class="text-xl font-black italic text-slate-800">DETAILED FILTER</h2>
-            <button onclick="toggleFilterDrawer()" class="w-10 h-10 bg-slate-100 rounded-full font-black text-slate-400">✕</button>
-        </div>
+        <div class="flex justify-between items-center mb-8"><h2 class="text-xl font-black italic text-slate-800">DETAILED FILTER</h2><button onclick="toggleFilterDrawer()" class="w-10 h-10 bg-slate-100 rounded-full font-black text-slate-400">✕</button></div>
         <div class="space-y-8 overflow-y-auto h-[calc(100%-80px)] pr-2">
             <div>
-                <label class="block text-[11px] font-black text-slate-400 uppercase mb-3 tracking-widest">📅 기간 선택 (출고일 기준)</label>
-                <div class="grid grid-cols-2 gap-2">
-                    <input type="date" id="filterStartDate" class="w-full p-3 bg-slate-50 border rounded-xl text-xs font-bold">
-                    <input type="date" id="filterEndDate" class="w-full p-3 bg-slate-50 border rounded-xl text-xs font-bold">
-                </div>
+                <label class="block text-[11px] font-black text-slate-400 uppercase mb-3">📅 기간 선택</label>
+                <div class="grid grid-cols-2 gap-2"><input type="date" id="filterStartDate" class="w-full p-3 bg-slate-50 border rounded-xl text-xs font-bold"><input type="date" id="filterEndDate" class="w-full p-3 bg-slate-50 border rounded-xl text-xs font-bold"></div>
             </div>
             <div>
-                <label class="block text-[11px] font-black text-slate-400 uppercase mb-3 tracking-widest">🔄 공정 상태</label>
+                <label class="block text-[11px] font-black text-slate-400 uppercase mb-3">🔄 공정 상태</label>
                 <div class="flex flex-wrap gap-2" id="filterStatusGroup">
-                    <button onclick="setFilterStatus('all')" class="status-chip active">전체</button>
-                    <button onclick="setFilterStatus('pending')" class="status-chip">승인대기</button>
-                    <button onclick="setFilterStatus('approved')" class="status-chip">생산중</button>
-                    <button onclick="setFilterStatus('completed')" class="status-chip">생산완료</button>
+                    <button onclick="setFilterStatus('all')" class="status-chip active">전체</button><button onclick="setFilterStatus('pending')" class="status-chip">승인대기</button><button onclick="setFilterStatus('approved')" class="status-chip">생산중</button><button onclick="setFilterStatus('completed')" class="status-chip">생산완료</button>
                 </div>
             </div>
             <div>
-                <label class="block text-[11px] font-black text-slate-400 uppercase mb-3 tracking-widest">💵 결제 여부</label>
-                <div class="grid grid-cols-2 gap-2">
-                    <button onclick="setPaymentFilter('all')" class="pay-chip active">전체</button>
-                    <button onclick="setPaymentFilter('unpaid')" class="pay-chip text-red-600">미수금</button>
-                </div>
+                <label class="block text-[11px] font-black text-slate-400 uppercase mb-3">💵 결제 여부</label>
+                <div class="grid grid-cols-2 gap-2"><button onclick="setPaymentFilter('all')" class="pay-chip active">전체</button><button onclick="setPaymentFilter('unpaid')" class="pay-chip text-red-600">미수금</button></div>
             </div>
-            <div class="pt-10">
-                <button onclick="applyComplexFilter()" class="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-lg shadow-xl active:scale-95 transition-all">필터 적용하기</button>
-                <button onclick="resetFilters()" class="w-full mt-3 py-3 text-slate-400 font-bold text-xs underline">필터 초기화</button>
-            </div>
+            <div class="pt-10"><button onclick="applyComplexFilter()" class="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-lg shadow-xl active:scale-95 transition-all">필터 적용하기</button><button onclick="resetFilters()" class="w-full mt-3 py-3 text-slate-400 font-bold text-xs underline">필터 초기화</button></div>
         </div>
     </div>
 </div>
@@ -425,29 +400,27 @@ const WOODS_DATA = [
 const ROLE_TABS = { sales: ['sales', 'history'], accounting: ['accounting', 'receivables', 'history'], factory: ['factory', 'history'], admin: ['sales', 'accounting', 'receivables', 'factory', 'history'] };
 const TAB_META = { sales: {label:'영업', emoji:'📝'}, accounting: {label:'회계', emoji:'💼'}, receivables: {label:'채권', emoji:'💰'}, factory: {label:'생산', emoji:'🏭'}, history: {label:'현황', emoji:'📊'} };
 
-function toggleFilterDrawer() { const drawer = document.getElementById('filterDrawer'); const content = document.getElementById('drawerContent'); if (drawer.classList.contains('hidden')) { drawer.classList.remove('hidden'); setTimeout(() => content.classList.add('show'), 10); } else { content.classList.remove('show'); setTimeout(() => drawer.classList.add('hidden'), 300); } }
-function setFilterStatus(status) { currentFilterStatus = status; document.querySelectorAll('#filterStatusGroup .status-chip').forEach(btn => { const btnText = btn.innerText; const isTarget = (status === 'all' && btnText === '전체') || (status === 'pending' && btnText === '승인대기') || (status === 'approved' && btnText === '생산중') || (status === 'completed' && btnText === '생산완료'); btn.classList.toggle('active', isTarget); }); }
-function setPaymentFilter(type) { currentPaymentFilter = type; document.querySelectorAll('.pay-chip').forEach(btn => { const btnText = btn.innerText; const isTarget = (type === 'all' && btnText === '전체') || (type === 'unpaid' && btnText === '미수금'); btn.classList.toggle('active', isTarget); }); }
-function resetFilters() { document.getElementById('filterStartDate').value = ''; document.getElementById('filterEndDate').value = ''; setFilterStatus('all'); setPaymentFilter('all'); startOrdersListener(); toggleFilterDrawer(); }
-async function applyComplexFilter() { toggleFilterDrawer(); const start = document.getElementById('filterStartDate').value; const end = document.getElementById('filterEndDate').value; showToast('noti-sales', '🔍', '필터링 중', '조건에 맞는 수주를 서버에서 불러옵니다.'); let query = typeof db !== 'undefined' ? db.collection('orders') : null; if(!query) return; if (currentFilterStatus !== 'all') { query = query.where('status', '==', currentFilterStatus).orderBy('createdAt', 'desc'); } else if (currentPaymentFilter !== 'all') { query = query.where('paymentStatus', '==', currentPaymentFilter).orderBy('dueDate', 'desc'); } else { query = query.orderBy('createdAt', 'desc'); } try { const snap = await query.get(); let results = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); if (start && end) { results = results.filter(o => o.dueDate >= start && o.dueDate <= end); } filteredOrders = results; const activeTab = document.querySelector('.active-role')?.id.replace('role-', '') || 'history'; switchTab(activeTab); showToast('noti-sales', '✅', '조회 완료', `${filteredOrders.length}건 검색됨`); } catch (e) { console.error(e); } }   
-function safePercent(completed, total) { const c = Number(completed) || 0; const t = Number(total) || 0; if (t <= 0) return 0; return Math.round((c / t) * 100); }
-async function logAction(action, orderId, details) { try { if(typeof db !== 'undefined') { await db.collection('audit_logs').add({ action: action, user: currentUser.name, role: currentUser.role, order_id: orderId, details: details, timestamp: Date.now() }); } } catch(e) {} }
-
 window.onload = async function() {
     document.addEventListener('contextmenu', e => e.preventDefault());
-    if (window.FirebaseShared) { FirebaseShared.initializeFirebase(); FirebaseShared.signInAnonymously().then(() => { syncUsers(); }); } else { syncUsers(); }
+    if (window.FirebaseShared) { FirebaseShared.initializeFirebase(); FirebaseShared.signInAnonymously().then(() => syncUsers()); }
+    else { syncUsers(); }
 };
 
 let fallbackUsers = [{id: 'u1', name: '대표이사', role: 'admin', pin: '0000', status: 'active', sort_index: 1}, {id: 'u2', name: '영업팀장', role: 'sales', pin: '1111', status: 'active', sort_index: 2}];
 
 async function syncUsers() {
-    try { if(typeof db !== 'undefined') { const snapshot = await db.collection('users').where('status', '==', 'active').orderBy('sort_index', 'asc').get(); USERS = snapshot.docs.map(doc => { const d = doc.data(); if(d.role === 'ccounting') d.role = 'accounting'; return { id: doc.id, ...d }; }); } else { USERS = fallbackUsers; } } catch(e) { USERS = fallbackUsers; }
+    try {
+        if(typeof db !== 'undefined') {
+            const snapshot = await db.collection('users').where('status', '==', 'active').orderBy('sort_index', 'asc').get();
+            USERS = snapshot.docs.map(doc => { const d = doc.data(); if(d.role === 'ccounting') d.role = 'accounting'; return { id: doc.id, ...d }; });
+        } else { USERS = fallbackUsers; }
+    } catch(e) { USERS = fallbackUsers; }
     const grid = document.getElementById('roleGrid');
     if (grid && typeof USERS !== 'undefined') { grid.innerHTML = USERS.map(u => `<button class="role-sel-btn" id="rsb-${u.id}" onclick="chooseUser('${u.id}')">${u.name}</button>`).join(''); }
     if (chosenUserId) checkLockoutStatus();
 }
 
-function checkLockoutStatus() { const user = USERS.find(u => u.id === chosenUserId); if (!user) return false; const now = Date.now(); const lockoutUntil = user.lockoutUntil || 0; if (lockoutUntil > now) { document.getElementById('pinErr').textContent = `⚠️ 보안 잠금: ${Math.ceil((lockoutUntil - now) / 60000)}분 후 시도`; document.getElementById('keypadArea').style.opacity = '0.2'; document.getElementById('keypadArea').style.pointerEvents = 'none'; return true; } document.getElementById('keypadArea').style.opacity = '1'; document.getElementById('keypadArea').style.pointerEvents = 'auto'; return false; }
+function checkLockoutStatus() { const user = USERS.find(u => u.id === chosenUserId); if (!user) return false; const now = Date.now(); const lockoutUntil = user.lockoutUntil || 0; if (lockoutUntil > now) { document.getElementById('pinErr').textContent = `⚠️ 보안 잠금: ${Math.ceil((lockoutUntil - now) / 60000)}분 후 재시도 가능`; document.getElementById('keypadArea').style.opacity = '0.2'; document.getElementById('keypadArea').style.pointerEvents = 'none'; return true; } document.getElementById('keypadArea').style.opacity = '1'; document.getElementById('keypadArea').style.pointerEvents = 'auto'; return false; }
 function chooseUser(uid) { chosenUserId = uid; pinBuffer = ''; updateDots(); document.getElementById('pinErr').textContent = ''; document.querySelectorAll('.role-sel-btn').forEach(b => b.classList.remove('chosen')); document.getElementById('rsb-' + uid).classList.add('chosen'); checkLockoutStatus(); }
 function kp(digit) { if (!chosenUserId || pinBuffer.length >= 4 || checkLockoutStatus()) return; pinBuffer += digit; updateDots(); if (pinBuffer.length === 4) setTimeout(tryLogin, 150); }
 function kpDel() { pinBuffer = pinBuffer.slice(0, -1); updateDots(); }
@@ -457,7 +430,8 @@ async function tryLogin() {
     const user = USERS.find(u => u.id === chosenUserId); const attempts = (user.attempts || 0) + 1; const limit = user.role === 'admin' ? 5 : 3;
     if (pinBuffer === user.pin) {
         if(typeof db !== 'undefined') await db.collection('users').doc(user.id).update({ attempts: 0, lockoutUntil: 0 });
-        currentUser = user; sessionStorage.setItem('yongjin_session', JSON.stringify(currentUser)); await logAction('LOGIN_SUCCESS', 'SYSTEM', { method: 'PIN' });
+        currentUser = user; sessionStorage.setItem('yongjin_session', JSON.stringify(currentUser));
+        if(typeof db !== 'undefined') await logAction('LOGIN_SUCCESS', 'SYSTEM', { method: 'PIN' });
         processLoginSuccess();
     } else {
         if (attempts >= limit) { if(typeof db !== 'undefined') await db.collection('users').doc(user.id).update({ attempts: attempts, lockoutUntil: Date.now() + (LOCKOUT_MINUTES * 60 * 1000) }); await syncUsers(); } 
@@ -466,16 +440,19 @@ async function tryLogin() {
 }
 
 function pcAdminBypassLogin() {
-    const user = USERS.find(u => u.role === 'admin') || USERS[0]; currentUser = user; sessionStorage.setItem('yongjin_session', JSON.stringify(currentUser)); logAction('LOGIN_SUCCESS', 'SYSTEM', { method: 'SSO_BYPASS' }); processLoginSuccess();
+    const user = USERS.find(u => u.role === 'admin') || USERS[0]; currentUser = user; sessionStorage.setItem('yongjin_session', JSON.stringify(currentUser));
+    if(typeof db !== 'undefined') logAction('LOGIN_SUCCESS', 'SYSTEM', { method: 'SSO_BYPASS' }); processLoginSuccess();
 }
 
 function processLoginSuccess() {
-    const mobLogin = document.getElementById('loginOverlay'); if (mobLogin) mobLogin.style.display = 'none';
-    const pcLogin = document.getElementById('pcLoginLayer'); if (pcLogin) pcLogin.style.display = 'none';
-    document.getElementById('loginGatewayLayer').style.display = 'none';
+    const mobLogin = document.getElementById('loginMobile'); if (mobLogin) mobLogin.style.display = 'none';
+    const pcLogin = document.getElementById('loginPC'); if (pcLogin) pcLogin.style.display = 'none';
     
-    if (window.innerWidth > 768) { const appPC = document.getElementById('mainAppPC'); if (appPC) { appPC.classList.remove('hidden'); appPC.style.display = 'flex'; } } 
-    else { const appMob = document.getElementById('mainApp'); if (appMob) { appMob.classList.remove('hidden'); appMob.style.display = 'flex'; } }
+    if (window.innerWidth > 768) {
+        const appPC = document.getElementById('appPC'); if (appPC) { appPC.classList.remove('hidden'); appPC.style.display = 'flex'; }
+    } else {
+        const appMob = document.getElementById('appMobile'); if (appMob) { appMob.classList.remove('hidden'); appMob.style.display = 'flex'; }
+    }
     
     document.getElementById('displayUser').textContent = currentUser.name; 
     const pcDisplay = document.getElementById('pcDisplayUser'); if(pcDisplay) pcDisplay.textContent = currentUser.name + ' (' + currentUser.role + ')';
@@ -484,46 +461,65 @@ function processLoginSuccess() {
     initTabs(); startOrdersListener(); checkNotiBanner();
 }
 
-// 🚨 [보안점 2] 뒤로가기(Back Button) 방어 로직이 결합된 탭 이동 함수
+function initTabs() {
+    const tabs = ROLE_TABS[currentUser.role] || ROLE_TABS['sales']; 
+    const wrap = document.getElementById('roleTabsWrap');
+    if(wrap) {
+        wrap.style.gridTemplateColumns = `repeat(${tabs.length}, 1fr)`;
+        wrap.innerHTML = tabs.map(t => `<button onclick="switchTab('${t}')" id="role-${t}" class="py-2 text-[10px] font-black bg-slate-100 rounded-lg active:scale-95 transition-all">${TAB_META[t].emoji} ${TAB_META[t].label}</button>`).join('');
+    }
+    switchTab(tabs[0]);
+}
+
 function switchTab(tabId, pushHistory = true) {
     document.querySelectorAll('#roleTabsWrap button').forEach(b => b.classList.remove('active-role'));
     const btn = document.getElementById('role-' + tabId); if(btn) btn.classList.add('active-role');
     
     ['sales', 'accounting', 'factory', 'receivables', 'history'].forEach(s => { const el = document.getElementById('section-' + s); if(el) el.classList.add('hidden'); });
     const targetSec = document.getElementById('section-' + tabId); if(targetSec) targetSec.classList.remove('hidden');
-    
     sessionStorage.setItem('active_tab', tabId); 
     
-    // SPA 뒤로가기 처리를 위한 브라우저 히스토리 스택 추가
+    // 🚨 뒤로가기 방어 로직 (에러 발생 시 무시하도록 try-catch 강화)
     if (pushHistory) {
-        history.pushState({ tab: tabId }, '', '#' + tabId);
+        try { history.pushState({ tab: tabId }, '', '#' + tabId); } catch(e) { console.warn('History API not supported locally.'); }
     }
     
     if(tabId === 'accounting') renderAccounting(); else if(tabId === 'factory') renderFactory(); else if(tabId === 'receivables') renderReceivables(); else if(tabId === 'history') { renderHistory(); renderAdminMonitor(); }
 }
 
-// 🚨 [보안점 2] 뒤로가기 클릭 시 이벤트 가로채기
+// 🚨 스마트폰 뒤로가기 인터셉트
 window.addEventListener('popstate', function(event) {
-    if (event.state && event.state.tab) {
-        switchTab(event.state.tab, false); // 이전 탭으로 이동
-    } else {
-        // 뒤로 갈 곳이 없다면 앱 이탈을 방지하고 현재 상태 유지
-        if (currentUser) {
-            const savedTab = sessionStorage.getItem('active_tab') || 'history';
-            history.pushState({ tab: savedTab }, '', '#' + savedTab);
-        }
-    }
+    if (event.state && event.state.tab) { switchTab(event.state.tab, false); } 
+    else if (currentUser) { const savedTab = sessionStorage.getItem('active_tab') || 'history'; try { history.pushState({ tab: savedTab }, '', '#' + savedTab); } catch(e){} }
 });
 
-async function renderAdminMonitor() { if (currentUser.role !== 'admin' || typeof db === 'undefined') return; const monitor = document.getElementById('adminUserMonitor'); if(monitor) { monitor.classList.remove('hidden'); const snap = await db.collection('users').get(); const allUsers = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); monitor.innerHTML = `<p class='text-[11px] font-black text-red-600 mb-2'>🛡️ 실시간 직원 보안 모니터링</p>` + allUsers.map(u => { const isLocked = u.lockoutUntil > Date.now(); return `<div class="flex justify-between items-center text-[10px] bg-slate-50 p-2 rounded-lg border mb-1"><span class="font-bold">${u.name} (${u.attempts || 0}회 실패)</span>${isLocked ? `<button onclick="forceUnlock('${u.id}')" class="bg-red-500 text-white px-3 py-1 rounded-full font-bold">강제 해제</button>` : `<span class='text-green-600 font-bold'>정상</span>`}</div>`; }).join(''); } }
-async function forceUnlock(uid) { if(confirm('잠금을 해제하시겠습니까?')) { await db.collection('users').doc(uid).update({ attempts: 0, lockoutUntil: 0 }); await logAction('ADMIN_FORCE_UNLOCK', 'SYSTEM', { target_uid: uid }); alert('잠금 해제 완료'); renderAdminMonitor(); } }
+function executeSearch() {
+    const keyword = (document.getElementById('globalSearchInput')?.value || document.getElementById('pcSearchInput')?.value || '').trim().toLowerCase();
+    filteredOrders = !keyword ? [...orders] : orders.filter(o => (o.client||'').toLowerCase().includes(keyword) || (o.material||'').toLowerCase().includes(keyword) || (o.status||'').toLowerCase().includes(keyword));
+    const activeRoleBtn = document.querySelector('.active-role');
+    if (activeRoleBtn) { const cur = activeRoleBtn.id.replace('role-', ''); if(cur === 'accounting') renderAccounting(); else if(cur === 'factory') renderFactory(); else if(cur === 'receivables') renderReceivables(); else if(cur === 'history') renderHistory(); }
+    renderPCTable();
+}
 
-function initTabs() { const tabs = ROLE_TABS[currentUser.role] || ROLE_TABS['sales']; const wrap = document.getElementById('roleTabsWrap'); if(wrap) { wrap.style.gridTemplateColumns = `repeat(${tabs.length}, 1fr)`; wrap.innerHTML = tabs.map(t => `<button onclick="switchTab('${t}')" id="role-${t}" class="py-2 text-[10px] font-black bg-slate-100 rounded-lg active:scale-95 transition-all">${TAB_META[t].emoji} ${TAB_META[t].label}</button>`).join(''); } switchTab(tabs[0]); }
-function executeSearch() { const input = document.getElementById('globalSearchInput'); const pcInput = document.getElementById('pcSearchInput'); const keyword = ((input && input.value) || (pcInput && pcInput.value) || '').trim().toLowerCase(); if (!keyword) { filteredOrders = [...orders]; } else { filteredOrders = orders.filter(o => { const clientName = (o.client || '').toLowerCase(); const materialName = (o.material || '').toLowerCase(); const rejectReason = (o.rejectReason || '').toLowerCase(); const statusName = (o.status || '').toLowerCase(); return clientName.includes(keyword) || materialName.includes(keyword) || rejectReason.includes(keyword) || statusName.includes(keyword); }); } const activeRoleBtn = document.querySelector('.active-role'); if (activeRoleBtn) { const cur = activeRoleBtn.id.replace('role-', ''); if(cur === 'accounting') renderAccounting(); else if(cur === 'factory') renderFactory(); else if(cur === 'receivables') renderReceivables(); else if(cur === 'history') renderHistory(); } renderPCTable(); }
-function startOrdersListener(customQuery = null) { if (ordersListenerUnsubscribe) { ordersListenerUnsubscribe(); ordersListenerUnsubscribe = null; } if(typeof db === 'undefined') return; let query; if (customQuery) { query = customQuery; } else { const baseRef = db.collection('orders'); if (currentUser.role === 'sales') { query = baseRef.where('reportedBy', '==', currentUser.name).orderBy('createdAt', 'desc').limit(100); } else if (currentUser.role === 'factory') { query = baseRef.where('status', 'in', ['approved', 'completed']).orderBy('createdAt', 'desc').limit(150); } else { query = baseRef.orderBy('createdAt', 'desc').limit(300); } } ordersListenerUnsubscribe = query.onSnapshot(snap => { orders = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); executeSearch(); }, error => { console.error(error); }); }
+function toggleFilterDrawer() { const drawer = document.getElementById('filterDrawer'); const content = document.getElementById('drawerContent'); if (drawer.classList.contains('hidden')) { drawer.classList.remove('hidden'); setTimeout(() => content.classList.add('show'), 10); } else { content.classList.remove('show'); setTimeout(() => drawer.classList.add('hidden'), 300); } }
+function setFilterStatus(status) { currentFilterStatus = status; document.querySelectorAll('#filterStatusGroup .status-chip').forEach(btn => { const btnText = btn.innerText; const isTarget = (status === 'all' && btnText === '전체') || (status === 'pending' && btnText === '승인대기') || (status === 'approved' && btnText === '생산중') || (status === 'completed' && btnText === '생산완료'); btn.classList.toggle('active', isTarget); }); }
+function setPaymentFilter(type) { currentPaymentFilter = type; document.querySelectorAll('.pay-chip').forEach(btn => { const btnText = btn.innerText; const isTarget = (type === 'all' && btnText === '전체') || (type === 'unpaid' && btnText === '미수금'); btn.classList.toggle('active', isTarget); }); }
+function resetFilters() { document.getElementById('filterStartDate').value = ''; document.getElementById('filterEndDate').value = ''; setFilterStatus('all'); setPaymentFilter('all'); startOrdersListener(); toggleFilterDrawer(); }
+async function applyComplexFilter() { toggleFilterDrawer(); const start = document.getElementById('filterStartDate').value; const end = document.getElementById('filterEndDate').value; showToast('noti-sales', '🔍', '필터링 중', '조건에 맞는 수주를 서버에서 불러옵니다.'); let query = typeof db !== 'undefined' ? db.collection('orders') : null; if(!query) return; if (currentFilterStatus !== 'all') { query = query.where('status', '==', currentFilterStatus).orderBy('createdAt', 'desc'); } else if (currentPaymentFilter !== 'all') { query = query.where('paymentStatus', '==', currentPaymentFilter).orderBy('dueDate', 'desc'); } else { query = query.orderBy('createdAt', 'desc'); } try { const snap = await query.get(); let results = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); if (start && end) { results = results.filter(o => o.dueDate >= start && o.dueDate <= end); } filteredOrders = results; const activeTab = document.querySelector('.active-role')?.id.replace('role-', '') || 'history'; switchTab(activeTab); showToast('noti-sales', '✅', '조회 완료', `${filteredOrders.length}건 검색완료`); } catch (e) { showToast('noti-sales', '❌', '인덱스 오류', '색인 생성중입니다.'); } }
+
+function startOrdersListener(customQuery = null) {
+    if (ordersListenerUnsubscribe) { ordersListenerUnsubscribe(); ordersListenerUnsubscribe = null; }
+    if(typeof db === 'undefined') return;
+    let query = db.collection('orders');
+    if (currentUser.role === 'sales') { query = query.where('reportedBy', '==', currentUser.name).orderBy('createdAt', 'desc').limit(100); } 
+    else if (currentUser.role === 'factory') { query = query.where('status', 'in', ['approved', 'completed']).orderBy('createdAt', 'desc').limit(150); } 
+    else { query = query.orderBy('createdAt', 'desc').limit(300); }
+    ordersListenerUnsubscribe = query.onSnapshot(snap => { orders = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); executeSearch(); }, error => { console.error("Orders Listener Error:", error); });
+}
 
 function renderPCTable() {
-    let pS=0, aS=0, uS=0, cS=0; let aCnt=0, pCnt=0; filteredOrders.forEach(o => { const t = (o.price||0) * (o.qty||0); if(o.status==='pending') { pS+=t; pCnt++; } else if(o.status==='approved') { aS+=t; aCnt++; } else if(o.status==='completed' && o.paymentStatus==='unpaid') uS+=t; else if(o.status==='completed' && o.paymentStatus==='paid') cS+=t; });
+    let pS=0, aS=0, uS=0, cS=0; let aCnt=0, pCnt=0;
+    filteredOrders.forEach(o => { const t = (o.price||0) * (o.qty||0); if(o.status==='pending') { pS+=t; pCnt++; } else if(o.status==='approved') { aS+=t; aCnt++; } else if(o.status==='completed' && o.paymentStatus==='unpaid') uS+=t; else if(o.status==='completed' && o.paymentStatus==='paid') cS+=t; });
     const pcKpiDebt = document.getElementById('pcKpiDebt'); if(pcKpiDebt) pcKpiDebt.innerText = (uS / 100000000).toFixed(1) + '억';
     const pcKpiSales = document.getElementById('pcKpiSales'); if(pcKpiSales) pcKpiSales.innerText = (cS / 100000000).toFixed(1) + '억';
     const pcKpiFactory = document.getElementById('pcKpiFactory'); if(pcKpiFactory) pcKpiFactory.innerText = aCnt + '건';
@@ -534,7 +530,10 @@ function renderPCTable() {
 
 function updatePlateSize() { const w = document.getElementById('width').value || 0; const h = document.getElementById('height').value || 0; const plate = document.getElementById('woodPlate'); if (w > 0 && h > 0 && plate) { plate.style.width = Math.min(180, 50 + (w / 20)) + 'px'; plate.style.height = Math.min(130, 30 + (h / 20)) + 'px'; } if(document.getElementById('labelWidth')) document.getElementById('labelWidth').innerText = w + ' mm'; if(document.getElementById('labelLength')) document.getElementById('labelLength').innerText = h + ' mm'; calculate(); }
 function calculate() { const p = parseInt(document.getElementById('unitPrice').value || 0); const q = parseInt(document.getElementById('qty').value || 0); if(document.getElementById('totalDisplay')) document.getElementById('totalDisplay').innerText = (p * q).toLocaleString(); }
+function safePercent(completed, total) { const c = Number(completed) || 0; const t = Number(total) || 0; if (t <= 0) return 0; return Math.round((c / t) * 100); }
+async function logAction(action, orderId, details) { try { if(typeof db !== 'undefined') { await db.collection('audit_logs').add({ action: action, user: currentUser.name, role: currentUser.role, order_id: orderId, details: details, timestamp: Date.now() }); } } catch(e) {} }
 function validateOrder() { const errors = []; const client = document.getElementById('clientName').value.trim(); if (client.length < 2) errors.push('업체명은 2자 이상 입력해야 합니다.'); if (selectedWoodStr === '목재를 선택하세요') errors.push('목재 종류를 선택해 주세요.'); const w = parseInt(document.getElementById('width').value || 0); const h = parseInt(document.getElementById('height').value || 0); if (w < 100 || w > 3000) errors.push('가로 폭은 100~3000mm 범위여야 합니다.'); if (h < 100 || h > 3000) errors.push('세로 길이는 100~3000mm 범위여야 합니다.'); const q = parseInt(document.getElementById('qty').value || 0); if (q < 1 || q > 10000) errors.push('수량은 1~10,000 범위여야 합니다.'); const dD = document.getElementById('dueDate').value; const pD = document.getElementById('payDate').value; if (!dD || !pD) { errors.push('출고일과 입금기한을 모두 지정해 주세요.'); } else { const todayStr = new Date().toISOString().split('T')[0]; if (dD < todayStr) errors.push('출고일(납기)은 오늘 또는 그 이후여야 합니다.'); if (pD < dD) errors.push('입금기한은 출고일 이후여야 합니다.'); } return errors.length > 0 ? errors : null; }
+
 async function handleReport() { if (isSubmitting) return; const errors = validateOrder(); if (errors) { return alert('❌ 입력 오류:\n\n' + errors.join('\n')); } if (!confirm('서버로 수주를 전송하시겠습니까?')) return; isSubmitting = true; const btn = document.getElementById('btnSubmitOrder'); if(btn) { btn.disabled = true; btn.classList.add('opacity-50', 'cursor-not-allowed'); btn.textContent = "서버 전송 중..."; } const newOrder = { client: document.getElementById('clientName').value.trim(), material: selectedWoodStr, thickness: document.getElementById('thickness').value, price: parseInt(document.getElementById('unitPrice').value || 0), qty: parseInt(document.getElementById('qty').value || 0), width: document.getElementById('width').value, height: document.getElementById('height').value, dueDate: document.getElementById('dueDate').value, payDate: document.getElementById('payDate').value, status: 'pending', paymentStatus: 'unpaid', rejectReason: '', reportedBy: currentUser.name, createdAt: Date.now() }; try { if(typeof db !== 'undefined') { const docRef = await db.collection('orders').add(newOrder); await logAction('ORDER_CREATED', docRef.id, { client: newOrder.client, material: newOrder.material, qty: newOrder.qty, price: newOrder.price }); } alert('✅ 수주 보고 전송 완료!'); document.getElementById('clientName').value = ''; } catch(e) { alert('전송 실패: ' + e.message); } finally { isSubmitting = false; if(btn) { btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed'); btn.textContent = "✅ 서버로 수주 전송하기"; } } }
 function renderAccounting() { const list = document.getElementById('accountingList'); if(list) list.innerHTML = filteredOrders.filter(o => o.status === 'pending').map(o => ` <div class="bg-white p-5 rounded-3xl border border-blue-200 mb-4 shadow-sm relative overflow-hidden"> <div class="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div> <div class="flex justify-between mb-1"> <p class="font-black text-lg pl-2">${o.client}</p> <span class="badge badge-pending whitespace-nowrap min-w-max text-center">승인대기</span> </div> <p class="text-[10px] text-red-500 font-bold mb-2 pl-2">납기 요청: ${o.dueDate}</p> <div class="text-xs text-slate-500 pl-2">자재: ${o.material} | 금액: ₩${((o.price||0)*(o.qty||0)).toLocaleString()}</div> <div class="flex gap-2 mt-4 ml-2"> <button onclick="rejectOrder('${o.id}')" class="flex-1 py-3 bg-red-50 text-red-600 rounded-xl font-bold border border-red-100">거절</button> <button onclick="updateStatus('${o.id}', 'approved')" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-100">수주 승인</button> </div> </div>`).join('') || '<p class="text-center py-20 text-slate-400">대기 중인 수주가 없습니다.</p>'; const factoryList = document.getElementById('accountingFactoryList'); if(factoryList) factoryList.innerHTML = filteredOrders.filter(o => o.status === 'approved').map(o => { const pct = safePercent(o.completedQty, o.qty); return `<div class="bg-white p-3 rounded-xl border mb-2 text-xs flex justify-between shadow-sm"><span>${o.client}</span><span class="font-bold text-orange-600">${pct}% 진행</span></div>`; }).join('') || '<p class="text-center text-[10px] py-2">공정 없음</p>'; const accountingItems = filteredOrders.filter(o => o.status === 'completed' && o.paymentStatus !== 'paid'); const compList = document.getElementById('accountingCompletedList'); if(compList) compList.innerHTML = accountingItems.map(o => { const total = (o.price || 0) * (o.qty || 0); const paid = o.paidAmount || 0; const remaining = total - paid; const pct = total > 0 ? Math.min(100, Math.round((paid / total) * 100)) : 0; return ` <div class="bg-white p-4 rounded-2xl border border-slate-200 mb-4 shadow-sm"> <div class="flex justify-between items-center mb-2"> <span class="font-black text-slate-800 text-sm">${o.client}</span> <span class="badge ${o.paymentStatus === 'partial' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'} text-[10px] px-2 py-0.5 rounded-full font-bold">${o.paymentStatus === 'partial' ? '부분입금' : '미수'}</span> </div> <div class="text-[11px] text-slate-500 mb-3">${o.material} / ${o.qty}장 요청</div> <div class="bg-slate-50 p-3 rounded-xl border border-slate-100"> <div class="flex justify-between text-[10px] mb-1"><span class="text-slate-400 font-bold">총 청구액</span><span class="font-bold text-slate-600 text-xs">₩${total.toLocaleString()}</span></div> <div class="flex justify-between text-[10px] mb-2"><span class="text-blue-500 font-bold">누적 입금액</span><span class="font-bold text-blue-600 text-xs">₩${paid.toLocaleString()}</span></div> <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden mb-2"><div class="bg-blue-500 h-full transition-all" style="width: ${pct}%"></div></div> <div class="flex justify-between items-center pt-2 border-t border-dashed border-slate-200"><span class="text-red-500 font-bold text-[11px]">남은 잔금</span><span class="text-base font-black text-red-600">₩${remaining.toLocaleString()}</span></div> </div> <button onclick="confirmPayment('${o.id}')" class="w-full mt-3 py-3 bg-amber-500 text-white rounded-xl font-bold text-xs shadow-md active:scale-95 transition-all">💵 입금액 등록 및 결제 처리</button> </div>`; }).join('') || '<p class="text-center text-slate-400 py-10 text-xs font-bold font-black">수금 대기 항목이 없습니다. ✨</p>'; }
 function renderFactory() { const list = document.getElementById('productionList'); if(list) list.innerHTML = filteredOrders.filter(o => o.status === 'approved').map(o => { const pct = safePercent(o.completedQty, o.qty); return ` <div class="bg-white p-5 rounded-3xl border shadow-sm border-l-4 border-l-orange-500 mb-5"> <div class="flex justify-between mb-1"><p class="font-black text-lg">${o.client}</p><span class="text-xs font-bold text-red-500">납기: ${o.dueDate}</span></div> <p class="text-[11px] text-slate-500 mb-3 font-bold flex justify-between items-center"> <span>${o.material} / 총 ${o.qty}장 (완료: ${o.completedQty || 0}장)</span><span class="text-red-500 text-xs">남은 수량: ${Math.max(0, o.qty - (o.completedQty || 0))}장</span> </p> <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden mb-4 border"><div class="bg-orange-500 h-full rounded-full transition-all" style="width:${pct}%"></div></div> <div class="flex gap-2"> <input type="text" id="in-${o.id}" class="flex-1 p-3 bg-slate-50 rounded-xl border font-bold" placeholder="생산 수량"> <button onclick="addProgress('${o.id}')" class="px-6 py-3 bg-orange-600 text-white rounded-xl font-bold shadow-md shadow-orange-200">보고</button> </div> </div>`; }).join('') || '<p class="text-center py-20 text-slate-400 font-bold">진행 중인 공정 없음</p>'; }
@@ -550,12 +549,32 @@ function selectWood(name, imgUrl, color) { selectedWoodStr = name; document.getE
 function exportExcel() { const rows = filteredOrders.map(o => [o.client, o.material, o.qty, o.price, ((o.price||0) * (o.qty||0)), o.status, o.dueDate, o.payDate]); const ws = XLSX.utils.aoa_to_sheet([['업체명', '목재', '수량', '단가', '합계', '상태', '납기', '입금기한'], ...rows]); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "YONGJIN"); XLSX.writeFile(wb, `용진기업_현황_${new Date().toLocaleDateString()}.xlsx`); }
 function exportReceivablesCSV() { const unpaid = filteredOrders.filter(o => o.status === 'completed' && o.paymentStatus === 'unpaid'); if (!unpaid.length) return alert('미수금 데이터가 없습니다.'); const wb = XLSX.utils.book_new(); const header = [['업체명', '목재', '가로(mm)', '세로(mm)', '두께', '수량', '단가', '합계금액', '출고일', '입금예정일']]; const rows = unpaid.map(o => [ o.client, o.material, Number(o.width)||0, Number(o.height)||0, o.thickness||'-', o.qty, o.price, (o.price||0) * (o.qty||0), o.dueDate||'-', o.payDate||'-' ]); const total = unpaid.reduce((s,o) => s + ((o.price||0) * (o.qty||0)), 0); rows.push(['', '', '', '', '', '', '합계', total, '', '']); const ws = XLSX.utils.aoa_to_sheet([...header, ...rows]); ws['!cols'] = [{wch:18},{wch:22},{wch:10},{wch:10},{wch:8},{wch:8},{wch:12},{wch:14},{wch:12},{wch:12}]; XLSX.utils.book_append_sheet(wb, ws, '미수금현황'); XLSX.writeFile(wb, `용진기업_미수금_${new Date().toISOString().slice(0,7).replace('-','년') + '월'}.xlsx`); }
 async function clearAllData() { if (currentUser.role !== 'admin') return alert('관리자만 초기화할 수 있습니다.'); if (!confirm('⚠️ 모든 데이터를 초기화합니까?\n되돌릴 수 없습니다.')) return; if (prompt('확인을 위해 "초기화" 를 입력하세요:') !== '초기화') return alert('취소됐습니다.'); for (const o of orders) { if(typeof db !== 'undefined') await db.collection('orders').doc(o.id).delete(); } orders = []; filteredOrders = []; renderHistory(); alert('초기화 완료'); }
+
 function showToast(type, icon, title, msg) { const id = 'toast-' + Date.now(); const el = document.createElement('div'); el.className = `toast ${type}`; el.id = id; el.innerHTML = `<div class="toast-icon">${icon}</div><div class="toast-body"><div class="toast-title">${title}</div><div class="toast-msg">${msg}</div></div><button class="toast-close" onclick="dismissToast('${id}')">✕</button>`; document.getElementById('toastWrap').appendChild(el); setTimeout(() => dismissToast(id), 5000); }
 function dismissToast(id) { const el = document.getElementById(id); if(el) { el.classList.add('out'); setTimeout(() => el.remove(), 300); } }
-function requestNotificationPermission() { if ('Notification' in window) { Notification.requestPermission().then(r => { if(r==='granted') { document.getElementById('notiBanner').style.display='none'; localStorage.setItem('yj_noti_granted', '1'); showToast('noti-sales', '✅', '알림 허용', '스마트폰 알림 설정 완료.'); } }); } }
+function requestNotificationPermission() { if ('Notification' in window) { Notification.requestPermission().then(r => { if(r==='granted') { const banner = document.getElementById('notiBanner'); if(banner) banner.style.display='none'; localStorage.setItem('yj_noti_granted', '1'); showToast('noti-sales', '✅', '알림 허용', '스마트폰 알림 설정 완료.'); } }); } }
 function sendBrowserNoti(title, body) { if (Notification.permission === 'granted') { new Notification(title, { body, icon: 'favicon.png' }); } }
 function checkNotiBanner() { if ('Notification' in window && Notification.permission !== 'granted' && !localStorage.getItem('yj_noti_granted')) { const banner = document.getElementById('notiBanner'); if(banner) banner.style.display = 'block'; } }
-function startNotiPoller() { if (notiPoller || typeof db === 'undefined') return; const query = db.collection('notifications').where('target_roles', 'array-contains', currentUser.role).where('read', '==', false).orderBy('created_at', 'desc').limit(50); notiPoller = query.onSnapshot(snap => { notiRetryCount = 0; snap.docChanges().forEach(change => { if(change.type === 'added') { const n = { id: change.doc.id, ...change.doc.data() }; showToast('noti-sales', '🔔', '업무 알림', n.message); sendBrowserNoti('용진기업 시스템', n.message); db.collection('notifications').doc(n.id).update({ read: true, read_at: Date.now() }).catch(e => console.error("알림 업데이트 실패:", e)); } }); }, error => { console.error("Noti Poll Error:", error); notiPoller = null; if (error.code === 'permission-denied') { showToast('noti-error', '🚫', '보안 권한 에러', '알림 접근 권한이 없습니다. 관리자에게 문의하세요.'); return; } if (notiRetryCount < MAX_NOTI_RETRY) { const delay = NOTI_RETRY_DELAYS[notiRetryCount] || NOTI_RETRY_DELAYS[NOTI_RETRY_DELAYS.length - 1]; notiRetryCount++; setTimeout(startNotiPoller, delay); } }); }
+
+function startNotiPoller() {
+    if (notiPoller || typeof db === 'undefined') return;
+    const query = db.collection('notifications').where('target_roles', 'array-contains', currentUser.role).where('read', '==', false).orderBy('created_at', 'desc').limit(50);
+    notiPoller = query.onSnapshot(snap => {
+        notiRetryCount = 0; 
+        snap.docChanges().forEach(change => {
+            if(change.type === 'added') {
+                const n = { id: change.doc.id, ...change.doc.data() };
+                showToast('noti-sales', '🔔', '업무 알림', n.message); sendBrowserNoti('용진기업 시스템', n.message);
+                db.collection('notifications').doc(n.id).update({ read: true, read_at: Date.now() }).catch(e => console.error("알림 업데이트 실패:", e));
+            }
+        });
+    }, error => {
+        console.error("Noti Poll Error:", error); notiPoller = null; 
+        if (error.code === 'permission-denied') return; // 에러 메시지 침묵 처리
+        if (notiRetryCount < MAX_NOTI_RETRY) { const delay = NOTI_RETRY_DELAYS[notiRetryCount] || NOTI_RETRY_DELAYS[NOTI_RETRY_DELAYS.length - 1]; notiRetryCount++; setTimeout(startNotiPoller, delay); }
+    });
+}
+
 function logout() { if(confirm('로그아웃 하시겠습니까?')) { sessionStorage.removeItem('yongjin_session'); if (notiPoller) { notiPoller(); notiPoller = null; } if (ordersListenerUnsubscribe) { ordersListenerUnsubscribe(); ordersListenerUnsubscribe = null; } location.reload(); } }
 
 window.addEventListener('load', () => { 
@@ -564,27 +583,7 @@ window.addEventListener('load', () => {
 
     if (savedSession) {
         currentUser = JSON.parse(savedSession);
-        
-        const mobLogin = document.getElementById('loginOverlay');
-        if (mobLogin) mobLogin.style.display = 'none';
-        const pcLogin = document.getElementById('pcLoginLayer');
-        if (pcLogin) pcLogin.style.display = 'none';
-        document.getElementById('loginGatewayLayer').style.display = 'none';
-
-        if (window.innerWidth > 768) {
-            const appPC = document.getElementById('mainAppPC');
-            if (appPC) { appPC.classList.remove('hidden'); appPC.style.display = 'flex'; }
-        } else {
-            const appMob = document.getElementById('mainApp');
-            if (appMob) { appMob.classList.remove('hidden'); appMob.style.display = 'flex'; }
-        }
-            
-        document.getElementById('displayUser').textContent = currentUser.name;
-        const pcDisplay = document.getElementById('pcDisplayUser');
-        if(pcDisplay) pcDisplay.textContent = currentUser.name + ' (' + currentUser.role + ')';
-        if (currentUser.role === 'admin') { const clearBtn = document.getElementById('clearBtn'); if(clearBtn) clearBtn.style.display = ''; }
-        
-        initTabs(); startOrdersListener(); checkNotiBanner();
+        processLoginSuccess();
         if (savedTab) { setTimeout(() => { switchTab(savedTab, false); }, 50); }
     }
 });
