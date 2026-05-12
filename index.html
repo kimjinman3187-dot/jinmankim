@@ -386,12 +386,17 @@
                                             <option>15T</option><option selected>18T</option><option>24T</option>
                                         </select>
                                     </div>
-                                    <div class="mt-4 p-4 bg-[#0f1522] border border-blue-500/30 rounded-xl flex items-center gap-4">
-                                        <div class="w-12 h-12 bg-[#1e293b] rounded-lg flex items-center justify-center text-xl">🪵</div>
-                                        <div>
-                                            <p class="text-[10px] text-blue-400 font-bold mb-1">선택된 자재</p>
-                                            <p class="font-bold text-white" id="pc-selectedWoodName">목재를 선택하세요</p>
-                                        </div>
+                                   <div class="mt-4 p-4 bg-[#0f1522] border border-blue-500/30 rounded-xl flex items-center gap-4">
+        <div id="pc-woodThumbContainer" class="w-14 h-14 bg-[#1e293b] rounded-xl flex items-center justify-center overflow-hidden border border-[#334155]">
+        <img id="pc-woodThumbImg" class="hidden w-full h-full object-cover">
+        <div id="pc-woodThumbColor" class="hidden w-full h-full"></div>
+        <span id="pc-woodThumbText" class="text-[10px] text-slate-500 font-bold uppercase">Material</span>
+    </div>
+     <div>
+        <p class="text-[10px] text-blue-400 font-bold mb-1 uppercase tracking-widest">Selected Material</p>
+        <p class="font-bold text-white text-lg" id="pc-selectedWoodName">목재를 선택하세요</p>
+    </div>
+</div>
                                     </div>
                                 </div>
                             </div>
