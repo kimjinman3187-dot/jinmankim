@@ -10,6 +10,12 @@
   --color-text-secondary: #cbd5e1;
   --color-text-tertiary: #94a3b8;
   --color-border: #334155;
+  --yj-bg: #0B1120;
+  --yj-sidebar: #111827;
+  --yj-panel: #1E293B;
+  --yj-border: #334155;
+  --yj-hover: #2A3A54;
+  --yj-primary: #3B82F6;
 }
 /* GNB (상단 네비게이션) */
 .gnb {
