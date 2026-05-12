@@ -298,7 +298,6 @@
 
 <!-- ✅ [로그인 게이트웨이 레이어] CSS 격리를 위한 최상단 컨테이너 -->
 <div id="loginGatewayLayer" class="login-gateway-layer">
-    <!-- 기존 #loginOverlay는 이 안에 배치됨 -->
     <div id="loginOverlay">
         <div class="login-card">
             <div class="text-center font-black text-blue-900 text-lg mb-1 italic uppercase tracking-tighter">Yongjin ENT.</div>
@@ -337,8 +336,33 @@
             <p>Designed by GENE KIM</p>
             <p style="margin-top:10px; letter-spacing:2px; font-weight:700;">SECURE DATA TERMINAL</p>
         </div>
+    </div> <div id="pcLoginGateway" class="pc-login-wrapper relative">
+        <div class="w-[46%] p-[70px] flex flex-col justify-between bg-gradient-to-b from-[#0a1428] to-[#08101e] border-r border-white/5">
+            <div>
+                <div class="flex items-center gap-5">
+                    <div class="w-[92px] h-[92px] rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center shadow-2xl">
+                        <span class="text-[42px] font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white to-blue-400">YJ</span>
+                    </div>
+                    <div>
+                        <div class="text-white text-[28px] font-bold tracking-wider">YONGJIN ENT.</div>
+                        <div class="text-white/50 text-[13px] mt-1">Smart Accounting Operating System</div>
+                    </div>
+                </div>
+                <div class="mt-[60px]">
+                    <h1 class="text-white text-[46px] font-extrabold leading-tight tracking-tight">기업 운영을 위한<br>통합 전산 플랫폼</h1>
+                </div>
+            </div>
+        </div>
+        <div class="w-[54%] flex items-center justify-center">
+            <div class="w-[430px] p-[52px] rounded-[28px] bg-white/5 border border-white/10 backdrop-blur-xl shadow-2xl">
+                <h2 class="text-white text-[34px] font-extrabold mb-8">로그인</h2>
+                <button onclick="pcAdminBypassLogin()" class="w-full h-[62px] bg-white rounded-2xl font-bold text-slate-800 flex items-center justify-center gap-3 hover:-translate-y-0.5 transition-transform shadow-lg">
+                    PC 권한으로 접속 (마스터)
+                </button>
+            </div>
+        </div>
     </div>
-</div>
+</div> 
 
 <!-- Sidebar (좌측 메뉴 - PC 전용) -->
 <aside class="sidebar">
