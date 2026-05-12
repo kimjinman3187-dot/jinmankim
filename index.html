@@ -370,6 +370,157 @@
 <div id="mainApp" class="hidden pb-10 md:ml-[170px] md:pt-[60px]">
 
     <nav class="bg-white border-b sticky top-0 z-50 px-4 py-3 shadow-sm">
+<div class="hidden md:flex flex-1 overflow-hidden bg-[#131b2c]">
+  <main class="flex-1 flex flex-col overflow-hidden">
+    
+    <!-- 헤더 -->
+    <header class="h-16 flex items-center justify-between px-6 border-b border-[#334155] flex-shrink-0 bg-[#1a2438]">
+      <h1 class="text-lg font-bold text-white">대시보드</h1>
+      <div class="flex items-center gap-5">
+        <button class="relative text-white hover:text-blue-400 transition-colors">🔔</button>
+        <div class="flex items-center gap-2 cursor-pointer group">
+          <span class="text-sm font-medium text-slate-300 group-hover:text-white">팀원</span>
+          <span class="text-xs text-slate-400">▼</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- 콘텐츠 영역 -->
+    <div class="flex-1 overflow-y-auto p-6 flex flex-col gap-6 bg-[#131b2c]">
+      
+      <!-- KPI 카드 4개 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- 카드 1: 총 미수금 -->
+        <div class="bg-[#1a2438] border border-[#334155] rounded-xl p-4 flex items-center justify-between">
+          <div>
+            <p class="text-slate-400 text-xs font-medium mb-1">총 미수금 (KRW)</p>
+            <p class="text-2xl font-bold text-white">1.1억</p>
+          </div>
+          <div class="w-10 h-10 rounded-lg flex items-center justify-center text-lg">💰</div>
+        </div>
+        
+        <!-- 카드 2: 이번 달 매입 -->
+        <div class="bg-[#1a2438] border border-[#334155] rounded-xl p-4 flex items-center justify-between">
+          <div>
+            <p class="text-slate-400 text-xs font-medium mb-1">이번 달 매입</p>
+            <p class="text-2xl font-bold text-white">4.2천</p>
+          </div>
+          <div class="w-10 h-10 rounded-lg flex items-center justify-center text-lg">💼</div>
+        </div>
+        
+        <!-- 카드 3: 편차 금액 -->
+        <div class="bg-[#1a2438] border border-[#334155] rounded-xl p-4 flex items-center justify-between">
+          <div>
+            <p class="text-slate-400 text-xs font-medium mb-1">편차 금액</p>
+            <p class="text-2xl font-bold text-white">1.5천</p>
+          </div>
+          <div class="w-10 h-10 rounded-lg flex items-center justify-center text-lg">⚠️</div>
+        </div>
+        
+        <!-- 카드 4: 대기 건수 -->
+        <div class="bg-[#1a2438] border border-[#334155] rounded-xl p-4 flex items-center justify-between">
+          <div>
+            <p class="text-slate-400 text-xs font-medium mb-1">대기 건수</p>
+            <p class="text-2xl font-bold text-white">8<span class="text-sm text-slate-400 ml-1">건</span></p>
+          </div>
+          <div class="w-10 h-10 rounded-lg flex items-center justify-center text-lg">⏰</div>
+        </div>
+      </div>
+
+      <!-- 테이블 섹션 -->
+      <div class="bg-[#1a2438] border border-[#334155] rounded-xl flex flex-col flex-1 min-h-[500px]">
+        <!-- 테이블 헤더 -->
+        <div class="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#334155]">
+          <h2 class="text-base font-bold text-white">미수금 현황 리스트 <span class="text-xs font-normal text-slate-500 ml-2">(행을 클릭하여 상세 보기)</span></h2>
+          <div class="flex gap-2 w-full sm:w-auto">
+            <div class="relative flex-1 sm:w-64">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">🔍</span>
+              <input type="text" placeholder="거래처, 프로젝트 검색" class="w-full bg-[#0f1522] border border-[#334155] rounded-lg py-1.5 pl-9 pr-3 text-sm text-white focus:outline-none focus:border-blue-400">
+            </div>
+            <button class="bg-[#0f1522] border border-[#334155] text-white px-3 py-1.5 rounded-lg text-sm hover:bg-[#1c273e] transition-colors">🔽 필터</button>
+          </div>
+        </div>
+
+        <!-- 테이블 -->
+        <div class="flex-1 overflow-x-auto">
+          <table class="w-full text-left text-sm whitespace-nowrap">
+            <thead class="text-xs text-slate-500 border-b border-[#334155] bg-[#0f1522]">
+              <tr>
+                <th class="px-6 py-4 font-medium">날짜</th>
+                <th class="px-6 py-4 font-medium">거래처</th>
+                <th class="px-6 py-4 font-medium">프로젝트명</th>
+                <th class="px-6 py-4 font-medium text-right">금액 (KRW)</th>
+                <th class="px-6 py-4 font-medium text-center">상태</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[#334155]">
+              <tr onclick="openSlidePanel()" class="hover:bg-[#1f2b42] transition-colors cursor-pointer bg-[#161f30]">
+                <td class="px-6 py-4 text-slate-500">2024-11-26</td>
+                <td class="px-6 py-4 font-medium text-white">(주)미래건설</td>
+                <td class="px-6 py-4 text-slate-500">강남 오피스 신축</td>
+                <td class="px-6 py-4 text-right font-medium text-white">25,300,000</td>
+                <td class="px-6 py-4 text-center">
+                  <span class="inline-flex items-center justify-center px-2.5 py-1 rounded text-[11px] font-bold bg-yellow-500 text-yellow-950">대기</span>
+                </td>
+              </tr>
+              <tr onclick="openSlidePanel()" class="hover:bg-[#1f2b42] transition-colors cursor-pointer">
+                <td class="px-6 py-4 text-slate-500">2024-11-24</td>
+                <td class="px-6 py-4 font-medium text-white">(주)삼성테크</td>
+                <td class="px-6 py-4 text-slate-500">스마트팩토리 구축</td>
+                <td class="px-6 py-4 text-right font-medium text-white">12,800,000</td>
+                <td class="px-6 py-4 text-center">
+                  <span class="inline-flex items-center justify-center px-2.5 py-1 rounded text-[11px] font-bold bg-yellow-500 text-yellow-950">대기</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- 우측 슬라이드 드로어 -->
+  <aside id="detailSlidePanel" class="hidden md:flex fixed top-0 right-0 h-full w-80 bg-[#1a2438] border-l border-[#334155] z-50 flex-col transform translate-x-full transition-transform duration-300 ease-in-out shadow-2xl">
+    <!-- 드로어 헤더 -->
+    <div class="h-16 px-6 border-b border-[#334155] flex justify-between items-center bg-[#0f1522]">
+      <h2 class="font-bold text-white text-base">상세 정보</h2>
+      <button onclick="closeSlidePanel()" class="text-slate-500 hover:text-white transition-colors p-2 hover:bg-[#1c273e] rounded-lg">✕</button>
+    </div>
+    
+    <!-- 드로어 콘텐츠 -->
+    <div class="p-6 flex flex-col overflow-y-auto flex-1">
+      <div class="mb-8">
+        <h3 class="text-xl font-bold text-white mb-1">(주)미래건설</h3>
+        <p class="text-sm text-slate-500 mb-6">강남 오피스 신축</p>
+        
+        <div class="bg-[#0f1522] rounded-xl p-5 border border-[#334155] space-y-4 text-sm">
+          <div class="flex justify-between items-center">
+            <span class="text-slate-500">거래일자</span>
+            <span class="text-white font-medium">2024-11-26</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-slate-500">금액 (KRW)</span>
+            <span class="text-blue-400 font-bold text-base">25,300,000</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-slate-500">상태</span>
+            <span class="inline-flex items-center justify-center px-2.5 py-1 rounded text-[11px] font-bold bg-yellow-500 text-yellow-950">대기</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 드로어 푸터 -->
+    <div class="p-4 border-t border-[#334155] bg-[#0f1522] flex gap-3">
+      <button class="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium transition-colors">저장하기</button>
+      <button class="px-4 bg-[#1c273e] border border-[#334155] hover:bg-[#2a3a54] text-white py-2.5 rounded-lg text-sm font-medium transition-colors">공유</button>
+    </div>
+  </aside>
+</div>
+
+<!-- 우측 드로어 백드롭 -->
+<div id="slideBackdrop" class="hidden md:block fixed inset-0 bg-black/30 backdrop-blur-sm z-40" onclick="closeSlidePanel()"></div>
         <div class="max-w-md mx-auto space-y-3">
             <div id="roleTabsWrap" class="grid gap-1"></div>
             <div class="flex items-center justify-between bg-blue-50 px-4 py-2 rounded-xl border border-blue-100">
@@ -1678,6 +1829,24 @@ window.addEventListener('load', () => { // DOMContentLoaded보다 더 확실한 
         }
     }
 });
+    /* 🚀 [PC 대시보드] 우측 드로어 제어 함수 */
+function openSlidePanel() {
+    const panel = document.getElementById('detailSlidePanel');
+    const backdrop = document.getElementById('slideBackdrop');
+    panel.classList.add('translate-x-0');
+    panel.classList.remove('translate-x-full');
+    backdrop.classList.remove('hidden');
+}
+
+function closeSlidePanel() {
+    const panel = document.getElementById('detailSlidePanel');
+    const backdrop = document.getElementById('slideBackdrop');
+    panel.classList.add('translate-x-full');
+    panel.classList.remove('translate-x-0');
+    setTimeout(() => {
+        backdrop.classList.add('hidden');
+    }, 300);
+}
 </script>
 </body>
     <!-- 🖥️ 디바이스 감지 & 분기 로직 -->
