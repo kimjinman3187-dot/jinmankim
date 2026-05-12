@@ -102,7 +102,6 @@
         #toastWrap { position: fixed; top: 84px; left: 50%; transform: translateX(-50%); z-index: 9000; display: flex; flex-direction: column; gap: 8px; width: calc(100% - 32px); max-width: 448px; pointer-events: none; }
         .toast { background: #1e293b; color: #fff; border-radius: 16px; padding: 14px 18px; display: flex; align-items: center; gap: 12px; pointer-events: auto; animation: toastIn 0.3s forwards; }
         @keyframes toastIn { from { opacity:0; transform:translateY(-14px); } to { opacity:1; transform:translateY(0); } }
-        
         /* PC 3단 구조 테이블 행 선택 효과 */
         .pc-table-row.active { background-color: rgba(59, 130, 246, 0.15) !important; border-left: 3px solid #3b82f6; }
     </style>
@@ -376,7 +375,6 @@
             <div id="pc-page-factory" class="pc-page hidden flex h-full items-center justify-center">
                 <div class="text-center text-slate-500"><span class="text-4xl mb-4 block">🏭</span><h2 class="text-xl font-bold text-white mb-2">생산 관리 모듈</h2><p>현재 모바일 버전과 데이터 연동 작업 중입니다.</p></div>
             </div>
-            
         </div>
     </div>
 
@@ -464,14 +462,15 @@
 </div>
 
 <script>
-// --- [전역 변수 설정] ---
+// --- [전역 변수 설정: 안전하게 선언] ---
 let orders = []; 
 let filteredOrders = []; 
 let currentUser = null; 
 let chosenUserId = null; 
 let pinBuffer = ''; 
-let selectedWoodStr = '목재를 선택하세요'; 
-let USERS = []; // 수정: 변수 누락 대응
+let selectedWoodStr = '목재를 선택하세요';
+let USERS = []; // 🚨 명시적으로 최상단에 단 한 번만 선언하여 충돌 방지
+
 let notiPoller = null; 
 let ordersListenerUnsubscribe = null; 
 let notiRetryCount = 0; 
@@ -499,7 +498,6 @@ const WOODS_DATA = [
 const ROLE_TABS = { sales: ['sales', 'history'], accounting: ['accounting', 'receivables', 'history'], factory: ['factory', 'history'], admin: ['sales', 'accounting', 'receivables', 'factory', 'history'] };
 const TAB_META = { sales: {label:'영업', emoji:'📝'}, accounting: {label:'회계', emoji:'💼'}, receivables: {label:'채권', emoji:'💰'}, factory: {label:'생산', emoji:'🏭'}, history: {label:'현황', emoji:'📊'} };
 
-// --- [공통 및 모바일 로직] ---
 function toggleFilterDrawer() { const drawer = document.getElementById('filterDrawer'); const content = document.getElementById('drawerContent'); if (drawer.classList.contains('hidden')) { drawer.classList.remove('hidden'); setTimeout(() => content.classList.add('show'), 10); } else { content.classList.remove('show'); setTimeout(() => drawer.classList.add('hidden'), 300); } }
 function setFilterStatus(status) { currentFilterStatus = status; document.querySelectorAll('#filterStatusGroup .status-chip').forEach(btn => { const btnText = btn.innerText; const isTarget = (status === 'all' && btnText === '전체') || (status === 'pending' && btnText === '승인대기') || (status === 'approved' && btnText === '생산중') || (status === 'completed' && btnText === '생산완료'); btn.classList.toggle('active', isTarget); }); }
 function setPaymentFilter(type) { currentPaymentFilter = type; document.querySelectorAll('.pay-chip').forEach(btn => { const btnText = btn.innerText; const isTarget = (type === 'all' && btnText === '전체') || (type === 'unpaid' && btnText === '미수금'); btn.classList.toggle('active', isTarget); }); }
@@ -524,8 +522,17 @@ window.onload = async function() {
 };
 
 async function syncUsers() {
-    try { if(typeof db !== 'undefined') { const snapshot = await db.collection('users').where('status', '==', 'active').orderBy('sort_index', 'asc').get(); USERS = snapshot.docs.map(doc => { const d = doc.data(); if(d.role === 'ccounting') d.role = 'accounting'; return { id: doc.id, ...d }; }); } } catch(e) { console.warn(e); }
-    const grid = document.getElementById('roleGrid'); if (grid && typeof USERS !== 'undefined') { grid.innerHTML = USERS.map(u => `<button class="role-sel-btn" id="rsb-${u.id}" onclick="chooseUser('${u.id}')">${u.name}</button>`).join(''); }
+    try { 
+        if(typeof db !== 'undefined') { 
+            const snapshot = await db.collection('users').where('status', '==', 'active').orderBy('sort_index', 'asc').get(); 
+            USERS = snapshot.docs.map(doc => { const d = doc.data(); if(d.role === 'ccounting') d.role = 'accounting'; return { id: doc.id, ...d }; }); 
+        } 
+    } catch(e) { console.warn(e); }
+    
+    const grid = document.getElementById('roleGrid'); 
+    if (grid && typeof USERS !== 'undefined') { 
+        grid.innerHTML = USERS.map(u => `<button class="role-sel-btn" id="rsb-${u.id}" onclick="chooseUser('${u.id}')">${u.name}</button>`).join(''); 
+    }
     if (chosenUserId) checkLockoutStatus();
 }
 
@@ -624,7 +631,6 @@ function startOrdersListener(customQuery = null) {
     ordersListenerUnsubscribe = query.onSnapshot(snap => { orders = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); executeSearch(); }, error => { console.error("Orders Listener Error:", error); });
 }
 
-// --- [PC 테이블 및 상세 데이터 렌더링] ---
 function renderPCTable() {
     let pS=0, aS=0, uS=0, cS=0; let aCnt=0, pCnt=0;
     filteredOrders.forEach(o => { const t = (o.price||0) * (o.qty||0); if(o.status==='pending') { pS+=t; pCnt++; } else if(o.status==='approved') { aS+=t; aCnt++; } else if(o.status==='completed' && o.paymentStatus==='unpaid') uS+=t; else if(o.status==='completed' && o.paymentStatus==='paid') cS+=t; });
