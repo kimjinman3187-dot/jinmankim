@@ -280,6 +280,18 @@
         #drawerContent.show {
             transform: translateX(0) !important;
         }
+        /* PC 프리미엄 로그인 폼 */
+        .pc-login-wrapper {
+            width: 1380px; max-width: 95vw; height: 820px; max-height: 95vh;
+            border-radius: 30px; overflow: hidden; display: flex;
+            background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+            border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(24px);
+            box-shadow: 0 30px 80px rgba(0,0,0,0.45);
+        }
+        /* 모바일 화면에서는 PC 로그인창 숨김 */
+        @media (max-width: 768px) {
+            #pcLoginGateway { display: none !important; }
+        }
     </style>
 </head>
 <body oncontextmenu="return false">
@@ -430,6 +442,34 @@
     </div>
 </div>
 </div> 
+    <!-- 💻 PC 전용 프리미엄 로그인 폼 추가 -->
+    <div id="pcLoginGateway" class="pc-login-wrapper relative">
+        <div class="w-[46%] p-[70px] flex flex-col justify-between bg-gradient-to-b from-[#0a1428] to-[#08101e] border-r border-white/5">
+            <div>
+                <div class="flex items-center gap-5">
+                    <div class="w-[92px] h-[92px] rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center shadow-2xl">
+                        <span class="text-[42px] font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white to-blue-400">YJ</span>
+                    </div>
+                    <div>
+                        <div class="text-white text-[28px] font-bold tracking-wider">YONGJIN ENT.</div>
+                        <div class="text-white/50 text-[13px] mt-1">Smart Accounting Operating System</div>
+                    </div>
+                </div>
+                <div class="mt-[60px]">
+                    <h1 class="text-white text-[46px] font-extrabold leading-tight tracking-tight">기업 운영을 위한<br>통합 전산 플랫폼</h1>
+                </div>
+            </div>
+        </div>
+        <div class="w-[54%] flex items-center justify-center">
+            <div class="w-[430px] p-[52px] rounded-[28px] bg-white/5 border border-white/10 backdrop-blur-xl shadow-2xl">
+                <h2 class="text-white text-[34px] font-extrabold mb-8">로그인</h2>
+                <button onclick="pcAdminBypassLogin()" class="w-full h-[62px] bg-white rounded-2xl font-bold text-slate-800 flex items-center justify-center gap-3 hover:-translate-y-0.5 transition-transform shadow-lg">
+                    PC 권한으로 접속 (마스터)
+                </button>
+            </div>
+        </div>
+    </div>
+    
 <!-- GNB (상단 네비게이션) -->
 <nav class="gnb">
   <div class="gnb-left">
@@ -1951,6 +1991,33 @@ function closeSlidePanel() {
         backdrop.classList.add('hidden');
     }, 300);
 }
+  // 💻 PC 우회/마스터 로그인 접속 함수
+function pcAdminBypassLogin() {
+    // 관리자(admin) 권한으로 강제 세션 세팅
+    const user = USERS.find(u => u.role === 'admin') || USERS[0];
+    currentUser = user;
+    sessionStorage.setItem('yongjin_session', JSON.stringify(currentUser));
+    
+    // 1. 로그인 껍데기 숨기기
+    const loginLayer = document.getElementById('loginGatewayLayer');
+    if (loginLayer) loginLayer.classList.add('hidden');
+    
+    // 2. 메인 앱 레이아웃 켜기 (flex 구조 복원)
+    const app = document.getElementById('mainApp');
+    app.classList.remove('hidden');
+    app.classList.add('flex'); 
+    
+    // 3. UI 동기화
+    document.getElementById('displayUser').textContent = user.name; 
+    if (user.role === 'admin') {
+        const clearBtn = document.getElementById('clearBtn');
+        if(clearBtn) clearBtn.style.display = '';
+    }
+    
+    initTabs(); 
+    startOrdersListener(); 
+    checkNotiBanner();
+}  
 </script>
 </body>
     <!-- 🖥️ 디바이스 감지 & 분기 로직 -->
