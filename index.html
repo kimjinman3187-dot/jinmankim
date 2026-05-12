@@ -23,11 +23,29 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+KR:wght@300;500;700;900&display=swap');
         
-        body { 
+    body { 
             font-family: 'Inter', 'Noto Sans KR', sans-serif; 
             background-color: #f1f5f9; 
             margin: 0; padding: 0; 
             -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+            /* ✅ 더 이상 flex 사용 안 함 (로그인 레이어가 별도로 처리) */
+        }
+
+        /* ✅ [로그인 게이트웨이 레이어] CSS 격리 컨테이너 */
+        .login-gateway-layer {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: linear-gradient(160deg, #0f2554 0%, #1e3a8a 100%);
+        }
+
+        .login-gateway-layer.hidden {
+            display: none !important;
         }
 
         input, textarea, select { 
@@ -110,14 +128,6 @@
         }
         .modal-animate { 
             animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; 
-        }
-
-        /* 🔒 보안 로그인 레이어 */
-        #loginOverlay {
-            position: fixed; inset: 0; z-index: 9999;
-            background: linear-gradient(160deg, #0f2554 0%, #1e3a8a 100%);
-            display: flex; flex-direction: column; 
-            align-items: center; justify-content: center; padding: 20px;
         }
 
         .login-card {
@@ -246,6 +256,51 @@
     </style>
 </head>
 <body oncontextmenu="return false">
+
+<!-- ✅ [로그인 게이트웨이 레이어] CSS 격리를 위한 최상단 컨테이너 -->
+<div id="loginGatewayLayer" class="login-gateway-layer">
+    <!-- 기존 #loginOverlay는 이 안에 배치됨 -->
+    <div id="loginOverlay">
+        <div class="login-card">
+            <div class="text-center font-black text-blue-900 text-lg mb-1 italic uppercase tracking-tighter">Yongjin ENT.</div>
+            <div id="securityStatus" class="text-center text-[9px] text-slate-400 font-bold mb-5 uppercase tracking-[0.2em]">Authority Required</div>
+            
+            <div class="role-grid" id="roleGrid">
+                <p class="col-span-2 text-center text-xs text-slate-300 py-10">데이터 연결 중...</p>
+            </div>
+
+            <div class="pin-dots">
+                <div class="pin-dot" id="pd0"></div>
+                <div class="pin-dot" id="pd1"></div>
+                <div class="pin-dot" id="pd2"></div>
+                <div class="pin-dot" id="pd3"></div>
+            </div>
+
+            <div id="keypadArea" class="keypad">
+                <button class="kp-btn" onclick="kp('1')">1</button>
+                <button class="kp-btn" onclick="kp('2')">2</button>
+                <button class="kp-btn" onclick="kp('3')">3</button>
+                <button class="kp-btn" onclick="kp('4')">4</button>
+                <button class="kp-btn" onclick="kp('5')">5</button>
+                <button class="kp-btn" onclick="kp('6')">6</button>
+                <button class="kp-btn" onclick="kp('7')">7</button>
+                <button class="kp-btn" onclick="kp('8')">8</button>
+                <button class="kp-btn" onclick="kp('9')">9</button>
+                <div class="kp-btn invisible"></div>
+                <button class="kp-btn" onclick="kp('0')">0</button>
+                <button class="kp-btn del" onclick="kpDel()">⌫</button>
+            </div>
+            <div id="pinErr" class="text-center text-[10px] text-red-600 mt-3 min-h-[15px] font-bold"></div>
+        </div>
+        
+        <div class="system-footer" style="color: rgba(255,255,255,0.3);">
+            <p>Last Updated: 26.05.08 / v1.3.6</p>
+            <p>Designed by GENE KIM</p>
+            <p style="margin-top:10px; letter-spacing:2px; font-weight:700;">SECURE DATA TERMINAL</p>
+        </div>
+    </div>
+</div>
+
 <!-- Sidebar (좌측 메뉴 - PC 전용) -->
 <aside class="sidebar">
   <!-- 로고 -->
@@ -347,7 +402,7 @@
         <p style="margin-top:10px; letter-spacing:2px; font-weight:700;">SECURE DATA TERMINAL</p>
     </div>
 </div>
-294: </div> 
+</div> 
 <!-- GNB (상단 네비게이션) -->
 <nav class="gnb">
   <div class="gnb-left">
@@ -1003,13 +1058,18 @@ async function tryLogin() {
     const attempts = (user.attempts || 0) + 1;
     const limit = user.role === 'admin' ? 5 : 3;
   
-    if (pinBuffer === user.pin) {
+   if (pinBuffer === user.pin) {
         await db.collection('users').doc(user.id).update({ attempts: 0, lockoutUntil: 0 });
         currentUser = user; 
         sessionStorage.setItem('yongjin_session', JSON.stringify(currentUser));
         await logAction('LOGIN_SUCCESS', 'SYSTEM', { method: 'PIN' });
         
-        document.getElementById('loginOverlay').style.display = 'none'; 
+        // ✅ [로그인 게이트웨이 레이어] hidden 클래스 추가로 숨기기
+        const loginLayer = document.getElementById('loginGatewayLayer');
+        if (loginLayer) {
+            loginLayer.classList.add('hidden');
+        }
+        
         document.getElementById('mainApp').classList.remove('hidden');
         document.getElementById('displayUser').textContent = user.name; 
         if (user.role === 'admin') document.getElementById('clearBtn').style.display = '';
@@ -1796,15 +1856,15 @@ window.addEventListener('load', () => { // DOMContentLoaded보다 더 확실한 
     const savedSession = sessionStorage.getItem('yongjin_session');
     const savedTab = sessionStorage.getItem('active_tab');
 
-    if (savedSession) {
+  if (savedSession) {
         currentUser = JSON.parse(savedSession);
         
-        // 1. 화면 즉시 전환 (로그인 오버레이 숨기기)
-        const overlay = document.getElementById('loginOverlay');
+        // ✅ 1. 화면 즉시 전환 (로그인 게이트웨이 레이어 숨기기)
+        const loginLayer = document.getElementById('loginGatewayLayer');
         const app = document.getElementById('mainApp');
         
-        if (overlay && app) {
-            overlay.style.display = 'none';
+        if (loginLayer && app) {
+            loginLayer.classList.add('hidden');
             app.classList.remove('hidden');
             document.getElementById('displayUser').textContent = currentUser.name;
             
