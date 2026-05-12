@@ -469,7 +469,7 @@ let currentUser = null;
 let chosenUserId = null; 
 let pinBuffer = ''; 
 let selectedWoodStr = '목재를 선택하세요';
-let USERS = []; // 🚨 명시적으로 최상단에 단 한 번만 선언하여 충돌 방지
+var USERS = []; // 🚨 명시적으로 최상단에 단 한 번만 선언하여 충돌 방지
 
 let notiPoller = null; 
 let ordersListenerUnsubscribe = null; 
