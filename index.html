@@ -312,7 +312,7 @@
             <a href="#" onclick="switchPCTab('accounting')" id="pc-tab-accounting" class="pc-tab-btn px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">💼 회계 관리 (준비중)</a>
             <a href="#" onclick="switchPCTab('receivables')" id="pc-tab-receivables" class="pc-tab-btn px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">💰 채권 관리 (준비중)</a>
             <a href="#" onclick="switchPCTab('factory')" id="pc-tab-factory" class="pc-tab-btn px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">🏭 생산 관리 (준비중)</a>
-            <button onclick="clearAllData()" id="clearBtn" style="display:none;" class="mt-auto px-3 py-3 text-left rounded-lg text-red-500 hover:bg-red-500/10 font-bold text-sm transition-colors border border-transparent hover:border-red-500/30">
+            <button onclick="clearAllData()" id="pcClearBtn" style="display:none;" class="mt-auto px-3 py-3 text-left rounded-lg text-red-500 hover:bg-red-500/10 font-bold text-sm transition-colors border border-transparent hover:border-red-500/30">
                 🗑️ 테스트 데이터 초기화
             </button>
         </nav>
@@ -673,8 +673,10 @@ function processLoginSuccess() {
     
     document.getElementById('displayUser').textContent = currentUser.name; 
     const pcDisplay = document.getElementById('pcDisplayUser'); if(pcDisplay) pcDisplay.textContent = currentUser.name + ' (' + currentUser.role + ')';
-    if (currentUser.role === 'admin') { const clearBtn = document.getElementById('clearBtn'); if(clearBtn) clearBtn.style.display = ''; }
-    
+    if (currentUser.role === 'admin') { 
+    const clearBtn = document.getElementById('clearBtn'); if(clearBtn) clearBtn.style.display = ''; 
+    const pcClearBtn = document.getElementById('pcClearBtn'); if(pcClearBtn) pcClearBtn.style.display = ''; 
+}
     initTabs(); startOrdersListener(); checkNotiBanner();
 }
 
