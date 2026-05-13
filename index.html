@@ -312,25 +312,28 @@
             <a href="#" onclick="switchPCTab('accounting')" id="pc-tab-accounting" class="pc-tab-btn px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">💼 회계 관리 (준비중)</a>
             <a href="#" onclick="switchPCTab('receivables')" id="pc-tab-receivables" class="pc-tab-btn px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">💰 채권 관리 (준비중)</a>
             <a href="#" onclick="switchPCTab('factory')" id="pc-tab-factory" class="pc-tab-btn px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">🏭 생산 관리 (준비중)</a>
-            <a href="#" onclick="logout()" class="mt-auto px-3 py-3 rounded-lg text-red-400 hover:bg-red-500/10 font-medium text-sm transition-colors">🚪 시스템 로그아웃</a>
         </nav>
     </aside>
 
     <div class="flex-1 flex flex-col bg-[#0b1120] overflow-hidden min-w-0">
     <header class="h-16 flex items-center justify-between px-6 border-b border-[#334155] bg-[#111827] flex-shrink-0">
             <h1 class="text-lg font-bold text-white">회계 관제탑 대시보드</h1>
-            <div class="flex items-center gap-4 text-white">
-                <button onclick="clearAllData()" class="text-xs bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-lg hover:bg-red-500/40 font-bold transition-colors">🗑️ 데이터 초기화</button>
+            
+            <div class="flex items-center gap-6 text-white">
+                <button onclick="clearAllData()" class="text-xs bg-red-500/10 text-red-400 border border-red-500/20 px-3 py-1.5 rounded-lg hover:bg-red-500/30 font-bold transition-colors">🗑️ 데이터 초기화</button>
                 
-                <button onclick="requestNotificationPermission()" class="hover:text-blue-400 transition-colors text-lg">🔔</button>
-      <div class="flex items-center gap-2">
-      <span id="pcDisplayUser" class="text-sm font-medium text-blue-400 bg-[#1e293b] px-3 py-1.5 rounded-lg border border-[#334155]">관리자</span>
-<button onclick="logout()" class="p-1.5 bg-[#1e293b] hover:bg-red-500/20 border border-[#334155] hover:border-red-500/50 rounded-lg text-slate-400 hover:text-red-400 transition-all shadow-sm" title="시스템 로그아웃">
-    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-    </svg>
-</button>     
-</div>
+                <div class="flex items-center gap-4 border-l border-[#334155] pl-6">
+                    <button onclick="requestNotificationPermission()" class="hover:text-blue-400 transition-colors text-xl">🔔</button>
+                    
+                    <div class="flex items-center gap-2 ml-2">
+                        <span id="pcDisplayUser" class="text-sm font-medium text-blue-400 bg-[#1e293b] px-3 py-1.5 rounded-lg border border-[#334155]">관리자</span>
+                        <button onclick="logout()" class="p-1.5 bg-[#1e293b] hover:bg-red-500/20 border border-[#334155] hover:border-red-500/50 rounded-lg text-slate-400 hover:text-red-400 transition-all shadow-sm" title="시스템 로그아웃">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
             </div>
         </header>
         
