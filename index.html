@@ -17,7 +17,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
     <script src="js/firebase-shared.js"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+   
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+KR:wght@300;500;700;900&display=swap');
         
@@ -346,7 +347,20 @@
                         <p class="text-2xl font-bold text-yellow-500" id="pcKpiPending">0건</p>
                     </div>
                 </div>
-                
+                <div class="grid grid-cols-3 gap-4 mb-6 relative z-10">
+    <div class="col-span-2 bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
+        <h3 class="text-sm font-bold text-slate-400 mb-4 uppercase tracking-widest">📈 최근 수주 트렌드 (금액)</h3>
+        <div class="relative h-[240px] w-full">
+            <canvas id="trendChart"></canvas>
+        </div>
+    </div>
+    <div class="col-span-1 bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
+        <h3 class="text-sm font-bold text-slate-400 mb-4 uppercase tracking-widest">🔄 공정 상태 비율</h3>
+        <div class="relative h-[240px] w-full flex justify-center">
+            <canvas id="statusChart"></canvas>
+        </div>
+    </div>
+</div>
                 <div class="bg-[#1e293b] border border-[#334155] rounded-xl flex flex-col flex-1 min-h-[500px] shadow-2xl relative z-10">
                     <div class="p-4 flex justify-between items-center border-b border-[#334155]">
                         <h2 class="font-bold text-white">최근 수주/공정 통합 리스트</h2>
@@ -708,7 +722,104 @@ function startOrdersListener(customQuery = null) {
     else { const baseRef = db.collection('orders'); if (currentUser.role === 'sales') { query = baseRef.where('reportedBy', '==', currentUser.name).orderBy('createdAt', 'desc').limit(100); } else if (currentUser.role === 'factory') { query = baseRef.where('status', 'in', ['approved', 'completed']).orderBy('createdAt', 'desc').limit(150); } else { query = baseRef.orderBy('createdAt', 'desc').limit(300); } }
     ordersListenerUnsubscribe = query.onSnapshot(snap => { orders = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); executeSearch(); }, error => { console.error("Orders Listener Error:", error); });
 }
+// --- [차트 전역 변수 및 렌더링 함수] ---
+let myTrendChart = null;
+let myStatusChart = null;
 
+function updateCharts() {
+    // 1. 공정 상태 도넛 차트 데이터 연산
+    let pending = 0, approved = 0, completed = 0;
+    filteredOrders.forEach(o => {
+        if(o.status === 'pending') pending++;
+        else if(o.status === 'approved') approved++;
+        else if(o.status === 'completed') completed++;
+    });
+
+    const ctxStatus = document.getElementById('statusChart');
+    if(ctxStatus) {
+        if(myStatusChart) myStatusChart.destroy(); // 기존 차트 파괴
+        myStatusChart = new Chart(ctxStatus, {
+            type: 'doughnut',
+            data: {
+                labels: ['승인대기', '생산중', '생산완료'],
+                datasets: [{
+                    data: [pending, approved, completed],
+                    backgroundColor: ['#eab308', '#3b82f6', '#22c55e'], 
+                    borderWidth: 0,
+                    hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { family: 'Inter' } } }
+                },
+                cutout: '75%' 
+            }
+        });
+    }
+
+    // 2. 수주 트렌드 라인 차트 데이터 연산 (납기일 기준)
+    const dateMap = {};
+    filteredOrders.forEach(o => {
+        if(!o.dueDate) return;
+        if(!dateMap[o.dueDate]) dateMap[o.dueDate] = 0;
+        dateMap[o.dueDate] += ((o.price || 0) * (o.qty || 0));
+    });
+
+    // 날짜 오름차순 정렬 후 최근 7일치 추출
+    const sortedDates = Object.keys(dateMap).sort().slice(-7);
+    const trendData = sortedDates.map(d => dateMap[d]);
+
+    const ctxTrend = document.getElementById('trendChart');
+    if(ctxTrend) {
+        if(myTrendChart) myTrendChart.destroy();
+        myTrendChart = new Chart(ctxTrend, {
+            type: 'line',
+            data: {
+                labels: sortedDates,
+                datasets: [{
+                    label: '총 수주액 (KRW)',
+                    data: trendData,
+                    borderColor: '#00d4ff', 
+                    backgroundColor: 'rgba(0, 212, 255, 0.15)', 
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4, 
+                    pointBackgroundColor: '#1e293b',
+                    pointBorderColor: '#00d4ff',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { 
+                        beginAtZero: true, 
+                        grid: { color: 'rgba(51, 65, 85, 0.4)' }, 
+                        ticks: { color: '#94a3b8', callback: value => '₩' + (value/10000).toLocaleString() + '만' } 
+                    },
+                    x: { 
+                        grid: { display: false }, 
+                        ticks: { color: '#94a3b8' } 
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) { return '₩ ' + context.raw.toLocaleString(); }
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
 function renderPCTable() {
     let pS=0, aS=0, uS=0, cS=0; let aCnt=0, pCnt=0;
     filteredOrders.forEach(o => { const t = (o.price||0) * (o.qty||0); if(o.status==='pending') { pS+=t; pCnt++; } else if(o.status==='approved') { aS+=t; aCnt++; } else if(o.status==='completed' && o.paymentStatus==='unpaid') uS+=t; else if(o.status==='completed' && o.paymentStatus==='paid') cS+=t; });
@@ -733,6 +844,8 @@ function renderPCTable() {
             <td class="p-3 text-center">${statusBadge}</td>
         </tr>`;
     }).join('') || '<tr><td colspan="5" class="p-8 text-center text-slate-500">조회된 내역이 없습니다.</td></tr>';
+    updateCharts(); 
+} // renderPCTable 함수 종료 괄호
 }
 
 function updatePlateSize() {
