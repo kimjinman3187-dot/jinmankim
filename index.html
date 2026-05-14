@@ -558,7 +558,7 @@
             </div>
             </div>
 
-          <div id="pc-page-factory" class="pc-page hidden h-full flex-col">
+          <div id="pc-page-factory" class="pc-page hidden flex-col">
                 <div class="max-w-6xl mx-auto w-full p-6 pb-10">
                     <h2 class="text-2xl font-black text-white mb-6">🏭 생산 공정 관제탑</h2>
 
@@ -1247,6 +1247,47 @@ function startNotiPoller() {
 
 function logout() { if(confirm('로그아웃 하시겠습니까?')) { sessionStorage.removeItem('yongjin_session'); if (notiPoller) { notiPoller(); notiPoller = null; } if (ordersListenerUnsubscribe) { ordersListenerUnsubscribe(); ordersListenerUnsubscribe = null; } location.reload(); } }
 
+// 생산 관리 품목별 Bar Chart 초기화 함수
+function initProductionChart() {
+    const ctx = document.getElementById('productionBarChart');
+    if (!ctx) return;
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['목재(Wood)', '합판(Plywood)', 'MDF'],
+            datasets: [
+                {
+                    label: '생산 진행중',
+                    data: [45, 30, 20],
+                    backgroundColor: 'rgba(59, 130, 246, 0.6)', // Blue
+                    borderRadius: 5
+                },
+                {
+                    label: '생산 완료',
+                    data: [80, 55, 40],
+                    backgroundColor: 'rgba(34, 197, 94, 0.6)', // Green
+                    borderRadius: 5
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#94a3b8' } },
+                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+            },
+            plugins: {
+                legend: { labels: { color: '#f1f5f9', font: { weight: 'bold' } } }
+            }
+        }
+    });
+}
+
+// 탭 전환 시 차트 로드 로직 추가
+// switchPCTab 함수 마지막 줄에 아래 코드를 한 줄 추가해 주세요.
+// if(tabId === 'factory') setTimeout(initProductionChart, 100);
 window.addEventListener('load', () => { 
     const savedSession = sessionStorage.getItem('yongjin_session');
     const savedTab = sessionStorage.getItem('active_tab');
