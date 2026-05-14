@@ -1247,12 +1247,20 @@ function startNotiPoller() {
 
 function logout() { if(confirm('로그아웃 하시겠습니까?')) { sessionStorage.removeItem('yongjin_session'); if (notiPoller) { notiPoller(); notiPoller = null; } if (ordersListenerUnsubscribe) { ordersListenerUnsubscribe(); ordersListenerUnsubscribe = null; } location.reload(); } }
 
+// 생산 관리 품목별 Bar Chart 전역 변수
+let productionBarChartInstance = null;
+
 // 생산 관리 품목별 Bar Chart 초기화 함수
 function initProductionChart() {
     const ctx = document.getElementById('productionBarChart');
     if (!ctx) return;
     
-    new Chart(ctx, {
+    // 기존에 그려진 차트가 있다면 파괴 (중복 생성 및 메모리 누수 방지)
+    if (productionBarChartInstance) {
+        productionBarChartInstance.destroy();
+    }
+    
+    productionBarChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: ['목재(Wood)', '합판(Plywood)', 'MDF'],
@@ -1285,9 +1293,6 @@ function initProductionChart() {
     });
 }
 
-// 탭 전환 시 차트 로드 로직 추가
-// switchPCTab 함수 마지막 줄에 아래 코드를 한 줄 추가해 주세요.
-// if(tabId === 'factory') setTimeout(initProductionChart, 100);
 window.addEventListener('load', () => { 
     const savedSession = sessionStorage.getItem('yongjin_session');
     const savedTab = sessionStorage.getItem('active_tab');
@@ -1430,14 +1435,19 @@ function switchPCTab(tabId) {
     }
 
     document.querySelectorAll('.pc-page').forEach(page => {
-        page.classList.remove('block');
+        page.classList.remove('block', 'flex'); 
         page.classList.add('hidden');
     });
 
     const targetPage = document.getElementById('pc-page-' + tabId);
     if(targetPage) {
         targetPage.classList.remove('hidden');
-        targetPage.classList.add('block');
+        // 대시보드는 block, 나머지는 flex 구조로 렌더링 보장
+        if (tabId === 'dashboard') {
+            targetPage.classList.add('block');
+        } else {
+            targetPage.classList.add('flex'); 
+        }
     }
 
     closeDrawer();
@@ -1448,7 +1458,13 @@ function switchPCTab(tabId) {
         activeState.classList.add('hidden');
     }
     document.querySelectorAll('.pc-table-row').forEach(row => row.classList.remove('active'));
+
+    // [TO-BE 추가] 생산 관리 탭 전환 시 차트 렌더링 강제 실행
+    if (tabId === 'factory') {
+        setTimeout(initProductionChart, 100);
+    }
 }
+    
 </script>
 </body>
 </html>
