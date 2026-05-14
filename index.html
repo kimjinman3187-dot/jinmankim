@@ -111,6 +111,10 @@
         @keyframes toastIn { from { opacity:0; transform:translateY(-14px); } to { opacity:1; transform:translateY(0); } }
         /* PC 3단 구조 테이블 행 선택 효과 */
         .pc-table-row.active { background-color: rgba(59, 130, 246, 0.15) !important; border-left: 3px solid #3b82f6; }
+    /* [작업 10] PC 대시보드 공통 스타일 (호버, 테이블 간격 통일) */
+        .pc-page .shadow-lg { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: default; }
+        .pc-page .shadow-lg:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.2); border-color: rgba(59, 130, 246, 0.4); }
+        .pc-page table tbody tr td { padding-top: 1rem; padding-bottom: 1rem; }
     </style>
 </head>
 <body oncontextmenu="return false">
@@ -306,12 +310,12 @@
         <div class="h-16 flex items-center px-6 border-b border-[#334155]">
             <div class="text-white font-bold text-xl tracking-tighter text-blue-400">YJ <span class="text-sm text-slate-400 ml-2">YONGJIN ENT.</span></div>
         </div>
-        <nav class="flex-1 py-4 flex flex-col gap-1 px-3" id="pcNav">
+      <nav class="flex-1 py-4 flex flex-col gap-1 px-3" id="pcNav">
             <a href="#" onclick="switchPCTab('dashboard')" id="pc-tab-dashboard" class="pc-tab-btn px-3 py-3 rounded-lg bg-[#1e293b] text-blue-400 font-medium text-sm transition-colors">📊 통합 대시보드</a>
-            <a href="#" onclick="switchPCTab('sales')" id="pc-tab-sales" class="pc-tab-btn px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">📝 영업 관리 (준비중)</a>
-            <a href="#" onclick="switchPCTab('accounting')" id="pc-tab-accounting" class="pc-tab-btn px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">💼 회계 관리 (준비중)</a>
-            <a href="#" onclick="switchPCTab('receivables')" id="pc-tab-receivables" class="pc-tab-btn px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">💰 채권 관리 (준비중)</a>
-            <a href="#" onclick="switchPCTab('factory')" id="pc-tab-factory" class="pc-tab-btn px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">🏭 생산 관리 (준비중)</a>
+            <a href="#" onclick="switchPCTab('sales')" id="pc-tab-sales" class="pc-tab-btn px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">📝 영업 관리</a>
+            <a href="#" onclick="switchPCTab('accounting')" id="pc-tab-accounting" class="pc-tab-btn px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">💼 회계 관리</a>
+            <a href="#" onclick="switchPCTab('receivables')" id="pc-tab-receivables" class="pc-tab-btn px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">💰 채권 관리</a>
+            <a href="#" onclick="switchPCTab('factory')" id="pc-tab-factory" class="pc-tab-btn px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">🏭 생산 관리</a>
             <button onclick="clearAllData()" id="pcClearBtn" style="display:none;" class="mt-auto px-3 py-3 text-left rounded-lg text-red-500 hover:bg-red-500/10 font-bold text-sm transition-colors border border-transparent hover:border-red-500/30">
                 🗑️ 테스트 데이터 초기화
             </button>
@@ -1248,234 +1252,66 @@ function startNotiPoller() {
 
 function logout() { if(confirm('로그아웃 하시겠습니까?')) { sessionStorage.removeItem('yongjin_session'); if (notiPoller) { notiPoller(); notiPoller = null; } if (ordersListenerUnsubscribe) { ordersListenerUnsubscribe(); ordersListenerUnsubscribe = null; } location.reload(); } }
 
-// 생산 관리 품목별 Bar Chart 전역 변수
+// --- [차트 3종 세트 전역 변수 및 초기화] ---
 let productionBarChartInstance = null;
 let monthlyComparisonChartInstance = null;
+let receivableStatusChartInstance = null;
 
-// 작업 9: 월별 비교 차트 초기화 함수
-function initMonthlyComparisonChart() {
-    const ctx = document.getElementById('monthlyComparisonChart');
-    if (!ctx) return;
-
-    if (monthlyComparisonChartInstance) {
-        monthlyComparisonChartInstance.destroy();
-    }
-
-    monthlyComparisonChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: ['1월', '2월', '3월', '4월', '5월', '6월'],
-            datasets: [
-                {
-                    label: '수주 금액',
-                    data: [12000, 15000, 11000, 18000, 14250, 16000], // 단위: 만원
-                    backgroundColor: 'rgba(34, 211, 238, 0.7)', // Cyan
-                    borderColor: '#22d3ee',
-                    borderWidth: 1,
-                    borderRadius: 4
-                },
-                {
-                    label: '실결제 금액',
-                    data: [10000, 13000, 11000, 15000, 7540, 12000], // 단위: 만원
-                    backgroundColor: 'rgba(34, 197, 94, 0.7)', // Green
-                    borderColor: '#22c55e',
-                    borderWidth: 1,
-                    borderRadius: 4
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: { 
-                    beginAtZero: true, 
-                    grid: { color: 'rgba(255,255,255,0.05)' }, 
-                    ticks: { 
-                        color: '#94a3b8',
-                        callback: value => '₩' + value.toLocaleString() + '만'
-                    } 
-                },
-                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
-            },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: context => context.dataset.label + ': ₩' + context.raw.toLocaleString() + '만원'
-                    }
-                }
-            }
-        }
-    });
-}
-// 생산 관리 품목별 Bar Chart 초기화 함수
+// 1. 생산 관리 품목별 Bar Chart
 function initProductionChart() {
     const ctx = document.getElementById('productionBarChart');
     if (!ctx) return;
-    
-    // 기존에 그려진 차트가 있다면 파괴 (중복 생성 및 메모리 누수 방지)
-    if (productionBarChartInstance) {
-        productionBarChartInstance.destroy();
-    }
+    if (productionBarChartInstance) productionBarChartInstance.destroy();
     
     productionBarChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: ['목재(Wood)', '합판(Plywood)', 'MDF'],
             datasets: [
-                {
-                    label: '생산 진행중',
-                    data: [45, 30, 20],
-                    backgroundColor: 'rgba(59, 130, 246, 0.6)', // Blue
-                    borderRadius: 5
-                },
-                {
-                    label: '생산 완료',
-                    data: [80, 55, 40],
-                    backgroundColor: 'rgba(34, 197, 94, 0.6)', // Green
-                    borderRadius: 5
-                }
+                { label: '생산 진행중', data: [45, 30, 20], backgroundColor: 'rgba(59, 130, 246, 0.6)', borderRadius: 5 },
+                { label: '생산 완료', data: [80, 55, 40], backgroundColor: 'rgba(34, 197, 94, 0.6)', borderRadius: 5 }
             ]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#94a3b8' } },
-                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
-            },
-            plugins: {
-                legend: { labels: { color: '#f1f5f9', font: { weight: 'bold' } } }
-            }
-        }
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#94a3b8' } }, x: { grid: { display: false }, ticks: { color: '#94a3b8' } } }, plugins: { legend: { labels: { color: '#f1f5f9' } } } }
     });
 }
 
-window.addEventListener('load', () => { 
-    const savedSession = sessionStorage.getItem('yongjin_session');
-    const savedTab = sessionStorage.getItem('active_tab');
+// 2. 회계 관리 월별 비교 Bar Chart
+function initMonthlyComparisonChart() {
+    const ctx = document.getElementById('monthlyComparisonChart');
+    if (!ctx) return;
+    if (monthlyComparisonChartInstance) monthlyComparisonChartInstance.destroy();
 
-    if (savedSession) {
-        currentUser = JSON.parse(savedSession);
-        processLoginSuccess();
-        if (savedTab) { setTimeout(() => { switchTab(savedTab, false); }, 50); }
-    }
-});
-
-document.addEventListener('DOMContentLoaded', function() { console.log('📱 디바이스 판정:', window.innerWidth <= 768 ? '모바일' : 'PC'); });
-
-// --- [추가된 3단 패널 & 드로워 제어 로직] ---
-function openDrawer() {
-    if (window.innerWidth < 1280) {
-        document.getElementById('rightDetailPanel').classList.remove('translate-x-full');
-        document.getElementById('drawerBackdrop').classList.remove('hidden');
-    }
+    monthlyComparisonChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['1월', '2월', '3월', '4월', '5월', '6월'],
+            datasets: [
+                { label: '수주 금액', data: [12000, 15000, 11000, 18000, 14250, 16000], backgroundColor: 'rgba(34, 211, 238, 0.7)', borderRadius: 4 },
+                { label: '실결제 금액', data: [10000, 13000, 11000, 15000, 7540, 12000], backgroundColor: 'rgba(34, 197, 94, 0.7)', borderRadius: 4 }
+            ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', callback: value => '₩' + value.toLocaleString() + '만' } }, x: { grid: { display: false }, ticks: { color: '#94a3b8' } } }, plugins: { legend: { display: false } } }
+    });
 }
 
-function closeDrawer() {
-    if (window.innerWidth < 1280) {
-        document.getElementById('rightDetailPanel').classList.add('translate-x-full');
-        document.getElementById('drawerBackdrop').classList.add('hidden');
-    }
+// 3. 채권 관리 연체 기간별 도넛 차트
+function initReceivableChart() {
+    const ctx = document.getElementById('receivableStatusChart');
+    if (!ctx) return;
+    if (receivableStatusChartInstance) receivableStatusChartInstance.destroy();
+    
+    receivableStatusChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['30일 이내', '60일 초과', '90일 이상 연체'],
+            datasets: [{ data: [84000000, 42200000, 30000000], backgroundColor: ['#3b82f6', '#f97316', '#dc2626'], borderWidth: 0, hoverOffset: 4 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false } } }
+    });
 }
 
-function selectRow(element, orderId) {
-    document.querySelectorAll('.pc-table-row').forEach(row => row.classList.remove('active'));
-    element.classList.add('active');
-    
-    const o = orders.find(x => x.id === orderId);
-    if(!o) return;
-    
-    document.getElementById('emptyDetailState').classList.add('hidden');
-    document.getElementById('activeDetailState').classList.remove('hidden');
-    
-    document.getElementById('detailClientName').textContent = o.client;
-    document.getElementById('detailProjectName').textContent = `${o.material} / ${o.qty}장`;
-    document.getElementById('detailDate').textContent = o.dueDate || '-';
-    document.getElementById('detailAmount').textContent = '₩ ' + ((o.price || 0) * (o.qty || 0)).toLocaleString();
-    
-    openDrawer();
-}
-
-// PC용 실시간 합계 계산
-function calculatePC() {
-    const p = parseInt(document.getElementById('pc-unitPrice').value || 0);
-    const q = parseInt(document.getElementById('pc-qty').value || 0);
-    if(document.getElementById('pc-totalDisplay')) {
-        document.getElementById('pc-totalDisplay').innerText = (p * q).toLocaleString();
-    }
-}
-
-// PC용 수주 데이터 서버 전송
-async function handleReportPC() {
-    if (isSubmitting) return;
-    
-    const client = document.getElementById('pc-clientName').value.trim();
-    const w = document.getElementById('pc-width').value;
-    const h = document.getElementById('pc-height').value;
-    const price = parseInt(document.getElementById('pc-unitPrice').value || 0);
-    const qty = parseInt(document.getElementById('pc-qty').value || 0);
-    const dueDate = document.getElementById('pc-dueDate').value; 
-    const payDate = document.getElementById('pc-payDate').value;   
-
-    if (client.length < 2) return alert('❌ 업체명을 입력하세요.');
-    if (selectedWoodStr === '목재를 선택하세요' || selectedWoodStr === '목재 선택') return alert('❌ 목재를 선택하세요.');
-    if (!w || !h) return alert('❌ 가로, 세로 규격을 입력하세요.');
-    if (price <= 0) return alert('❌ 단가를 입력하세요.');
-    if (!dueDate) return alert('❌ 출고일(납기)을 달력에서 선택해 주세요.');
-    if (!payDate) return alert('❌ 입금기한을 달력에서 선택해 주세요.');
-    if (payDate < dueDate) return alert('❌ 입금기한은 출고일보다 빠를 수 없습니다.');
-
-    if (!confirm('PC 권한으로 수주를 서버에 전송하시겠습니까?')) return;
-
-    isSubmitting = true;
-    const btn = document.getElementById('btnSubmitOrderPC');
-    btn.disabled = true;
-    btn.textContent = "전송 중...";
-
-    const newOrder = {
-        client: client,
-        material: selectedWoodStr,
-        thickness: document.getElementById('pc-thickness').value,
-        price: price,
-        qty: qty,
-        width: w,
-        height: h,
-        dueDate: dueDate,
-        payDate: payDate,
-        status: 'pending',
-        paymentStatus: 'unpaid',
-        reportedBy: currentUser.name + " (PC)",
-        createdAt: Date.now()
-    };
-
-    try {
-        if(typeof db !== 'undefined') {
-            await db.collection('orders').add(newOrder);
-            alert('✅ [PC] 수주 보고 전송 완료!');
-            
-            document.getElementById('pc-clientName').value = '';
-            document.getElementById('pc-width').value = '';
-            document.getElementById('pc-height').value = '';
-            document.getElementById('pc-unitPrice').value = '';
-            document.getElementById('pc-qty').value = '100'; 
-            document.getElementById('pc-dueDate').value = '';
-            document.getElementById('pc-payDate').value = '';
-            document.getElementById('pc-totalDisplay').innerText = '0';
-            
-            switchPCTab('dashboard'); 
-        }
-    } catch(e) {
-        alert('전송 실패: ' + e.message);
-    } finally {
-        isSubmitting = false;
-        btn.disabled = false;
-        btn.textContent = "✅ 수주 데이터 서버 전송";
-    }
-}
-
-// 탭 전환 로직 (초기화 및 스크롤 병목 완벽 제거)
+// --- [탭 전환 로직 (초기화, 스크롤 병목 제거, 차트 동기화)] ---
 function switchPCTab(tabId) {
     document.querySelectorAll('.pc-tab-btn').forEach(btn => {
         btn.classList.remove('bg-[#1e293b]', 'text-blue-400');
@@ -1494,7 +1330,6 @@ function switchPCTab(tabId) {
     }
 
     document.querySelectorAll('.pc-page').forEach(page => {
-        // [핵심 변경점] 기존에 찌꺼기로 남아있던 모든 flex 및 높이 제한 속성을 강제 삭제
         page.classList.remove('block', 'flex', 'h-full', 'flex-col'); 
         page.classList.add('hidden');
     });
@@ -1502,8 +1337,7 @@ function switchPCTab(tabId) {
     const targetPage = document.getElementById('pc-page-' + tabId);
     if(targetPage) {
         targetPage.classList.remove('hidden');
-        // 이제 모든 페이지는 컨텐츠 길이에 맞춰 자연스럽게 늘어나는 'block' 구조로 통일 (스크롤 해결)
-        targetPage.classList.add('block');
+        targetPage.classList.add('block'); // 스크롤 무결성 보장
     }
 
     closeDrawer();
@@ -1515,12 +1349,15 @@ function switchPCTab(tabId) {
     }
     document.querySelectorAll('.pc-table-row').forEach(row => row.classList.remove('active'));
 
-    // 생산 관리 탭 전환 시 차트 렌더링 강제 실행
-   if (tabId === 'factory') {
+    // 숨겨져 있던 차트를 해당 탭이 열릴 때 깨우는 마법의 스위치
+    if (tabId === 'factory') {
         setTimeout(initProductionChart, 100);
     } else if (tabId === 'accounting') {
         setTimeout(initMonthlyComparisonChart, 100);
+    } else if (tabId === 'receivables') {
+        setTimeout(initReceivableChart, 100);
     }
+}
     
 </script>
 </body>
