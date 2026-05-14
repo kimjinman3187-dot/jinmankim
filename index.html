@@ -29,31 +29,13 @@
             -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
         }
         
-        /* 날짜 입력창의 달력 아이콘을 흰색으로 반전 (다크모드용) */
-        input[type="date"]::-webkit-calendar-picker-indicator {
-            filter: invert(1);
-            cursor: pointer;
-        }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
         
-        /* =========================================================
-           [Traffic Control] 모바일 ↔ PC 완벽 투트랙 격리 (절대 삭제 금지)
-           ========================================================= */
-        @media (min-width: 769px) {
-            .mobile-ui { display: none !important; }
-            body { background-color: #0b1120; overflow: hidden; } 
-        }
-        @media (max-width: 768px) {
-            .pc-ui { display: none !important; }
-        }
+        @media (min-width: 769px) { .mobile-ui { display: none !important; } body { background-color: #0b1120; overflow: hidden; } }
+        @media (max-width: 768px) { .pc-ui { display: none !important; } }
 
-        /* =========================================================
-           [1] 모바일 오리지널 전용 CSS 
-           ========================================================= */
-        .login-gateway-layer {
-            position: fixed; inset: 0; z-index: 9999;
-            display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px;
-            background: linear-gradient(160deg, #0f2554 0%, #1e3a8a 100%);
-        }
+        /* 모바일 UI CSS */
+        .login-gateway-layer { position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; background: linear-gradient(160deg, #0f2554 0%, #1e3a8a 100%); }
         .login-card { width: 100%; max-width: 340px; background: #fff; border-radius: 28px; padding: 28px 24px 24px; box-shadow: 0 24px 60px rgba(0,0,0,0.35); }
         .role-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; max-height: 240px; overflow-y: auto; padding: 4px; }
         .role-sel-btn { padding: 14px 4px; border: 2px solid #e2e8f0; border-radius: 12px; background: #f8fafc; font-size: 13px; font-weight: 900; color: #475569; cursor: pointer; transition: all 0.15s; text-align: center; }
@@ -69,26 +51,11 @@
         .system-footer { width: 100%; text-align: center; padding: 20px 0; margin-top: auto; pointer-events: none; }
         .system-footer p { margin: 2px 0; font-size: 10px; font-family: 'Inter', sans-serif; letter-spacing: 1px; font-weight: 600; }
 
-        /* =========================================================
-           [2] PC 프리미엄 로그인 전용 CSS 
-           ========================================================= */
-        #loginPC {
-            position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center;
-            background: radial-gradient(circle at top left, rgba(59,130,246,0.14), transparent 32%),
-                        radial-gradient(circle at bottom right, rgba(0,180,255,0.08), transparent 28%),
-                        linear-gradient(135deg, #020617 0%, #081225 35%, #0b1d3a 70%, #050b16 100%);
-        }
-        .pc-login-wrapper {
-            width: 1380px; max-width: 95vw; height: 820px; max-height: 95vh;
-            border-radius: 30px; overflow: hidden; display: flex;
-            background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
-            border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(24px);
-            box-shadow: 0 30px 80px rgba(0,0,0,0.45);
-        }
+        /* PC UI CSS */
+        #loginPC { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at top left, rgba(59,130,246,0.14), transparent 32%), radial-gradient(circle at bottom right, rgba(0,180,255,0.08), transparent 28%), linear-gradient(135deg, #020617 0%, #081225 35%, #0b1d3a 70%, #050b16 100%); }
+        .pc-login-wrapper { width: 1380px; max-width: 95vw; height: 820px; max-height: 95vh; border-radius: 30px; overflow: hidden; display: flex; background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(24px); box-shadow: 0 30px 80px rgba(0,0,0,0.45); }
 
-        /* =========================================================
-           [공통 모듈 CSS] 
-           ========================================================= */
+        /* 공통 모듈 CSS */
         .active-role { background-color: #1e3a8a !important; color: white !important; transform: scale(1.02); }
         .gradient-bg { background: linear-gradient(135deg, #1e3a8a 0%, #000000 100%); }
         .preview-container { perspective: 800px; display: flex; justify-content: center; align-items: center; padding: 30px; }
@@ -109,8 +76,8 @@
         #toastWrap { position: fixed; top: 84px; left: 50%; transform: translateX(-50%); z-index: 9000; display: flex; flex-direction: column; gap: 8px; width: calc(100% - 32px); max-width: 448px; pointer-events: none; }
         .toast { background: #1e293b; color: #fff; border-radius: 16px; padding: 14px 18px; display: flex; align-items: center; gap: 12px; pointer-events: auto; animation: toastIn 0.3s forwards; }
         @keyframes toastIn { from { opacity:0; transform:translateY(-14px); } to { opacity:1; transform:translateY(0); } }
-        /* PC 3단 구조 테이블 행 선택 효과 */
         .pc-table-row.active { background-color: rgba(59, 130, 246, 0.15) !important; border-left: 3px solid #3b82f6; }
+        
         /* [작업 10] PC 대시보드 공통 스타일 (호버, 테이블 간격 통일) */
         .pc-page .shadow-lg { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: default; }
         .pc-page .shadow-lg:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.2); border-color: rgba(59, 130, 246, 0.4); }
@@ -119,6 +86,7 @@
 </head>
 <body oncontextmenu="return false">
 
+<!-- 모바일 로그인 -->
 <div id="loginMobile" class="mobile-ui login-gateway-layer">
     <div class="login-card">
         <div class="text-center font-black text-blue-900 text-lg mb-1 italic uppercase tracking-tighter">Yongjin ENT.</div>
@@ -142,6 +110,7 @@
     </div>
 </div>
 
+<!-- PC 로그인 -->
 <div id="loginPC" class="pc-ui">
     <div class="pc-login-wrapper relative">
         <div class="w-[46%] p-[70px] flex flex-col justify-between bg-gradient-to-b from-[#0a1428] to-[#08101e] border-r border-white/5">
@@ -171,6 +140,7 @@
     </div>
 </div>
 
+<!-- 모바일 앱 메인 -->
 <div id="appMobile" class="mobile-ui hidden flex-col w-full min-h-screen bg-[#f1f5f9]">
     <nav class="bg-white border-b sticky top-0 z-50 px-4 py-3 shadow-sm">
         <div class="max-w-md mx-auto space-y-3">
@@ -191,13 +161,15 @@
             </div>
         </div>
     </nav>
+
     <main class="max-w-md mx-auto w-full p-4 space-y-6 flex-grow pb-10">
-        <!-- 모바일 영업 관리 -->
+        <!-- 1. 모바일 영업 관리 -->
         <div id="section-sales" class="hidden space-y-6">
             <section class="bg-white p-6 rounded-[2.5rem] shadow-sm border space-y-4">
                 <h3 class="font-bold text-lg text-slate-800">📝 신규 수주 보고</h3>
                 <input type="text" id="clientName" placeholder="업체명 및 현장명" class="w-full p-4 bg-slate-50 rounded-2xl font-bold border-none outline-none">
                 <button onclick="openWoodModal()" class="w-full py-4 border-2 border-slate-800 rounded-2xl font-bold bg-slate-50 active:scale-95 transition-transform">목재 선택</button>
+                
                 <div id="selectedWoodCard" class="bg-white p-4 rounded-2xl border border-blue-200 flex items-center gap-4 relative overflow-hidden shadow-sm">
                     <div class="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>
                     <div id="woodThumbContainer" class="w-14 h-14 bg-slate-100 rounded-xl flex items-center justify-center overflow-hidden border border-slate-200">
@@ -212,6 +184,7 @@
                         </select>
                     </div>
                 </div>
+
                 <div class="preview-container bg-slate-50 rounded-3xl border border-dashed border-slate-200 shadow-inner">
                     <div class="relative">
                         <div id="woodPlate" class="wood-plate bg-slate-300"></div>
@@ -219,6 +192,7 @@
                         <div class="absolute -right-12 top-1/2 -translate-y-1/2 text-[9px] font-black text-blue-600 bg-white px-2 py-0.5 rounded-full border shadow-sm rotate-90" id="labelLength">0 mm</div>
                     </div>
                 </div>
+
                 <div class="grid grid-cols-2 gap-3">
                     <input type="number" id="width" oninput="updatePlateSize()" placeholder="가로" class="w-full p-4 border rounded-2xl font-bold bg-white">
                     <input type="number" id="height" oninput="updatePlateSize()" placeholder="세로" class="w-full p-4 border rounded-2xl font-bold bg-white">
@@ -238,8 +212,8 @@
                 <button id="btnSubmitOrder" onclick="handleReport()" class="w-full bg-blue-600 text-white py-5 rounded-3xl font-black text-lg active:scale-95 transition-all shadow-lg mt-4">✅ 서버 전송</button>
             </section>
         </div>
-
-        <!-- 모바일 회계 관리 -->
+        
+        <!-- 2. 모바일 회계 관리 -->
         <div id="section-accounting" class="hidden space-y-6">
             <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-blue-100">
                 <h3 class="font-bold text-blue-800 mb-4 flex items-center gap-2"><span class="bg-blue-100 p-1.5 rounded-lg">💼</span> 신규 승인 대기</h3>
@@ -255,7 +229,7 @@
             </section>
         </div>
 
-        <!-- 모바일 생산 관리 -->
+        <!-- 3. 모바일 생산 관리 -->
         <div id="section-factory" class="hidden space-y-6">
             <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-orange-100">
                 <h3 class="font-bold text-orange-800 mb-6 italic text-lg">🏭 생산 공정 제어판</h3>
@@ -263,7 +237,7 @@
             </section>
         </div>
 
-        <!-- 모바일 채권 관리 -->
+        <!-- 4. 모바일 채권 관리 -->
         <div id="section-receivables" class="hidden space-y-6">
             <div id="receivableBannerWrap"></div>
             <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-amber-200">
@@ -275,7 +249,7 @@
             </section>
         </div>
 
-        <!-- 모바일 현황 관리 -->
+        <!-- 5. 모바일 현황 관리 -->
         <div id="section-history" class="hidden space-y-6">
             <div class="px-2 flex justify-between items-center mb-2">
                 <h3 class="font-bold text-slate-800 italic">📊 마스터 제어판 (ADMIN)</h3>
@@ -303,6 +277,7 @@
      [PC 전용 화면 시작]
      ============================================== -->
 <div id="appPC" class="pc-ui hidden w-full h-screen flex-row bg-[#0b1120]">
+    <!-- 사이드바 네비게이션 -->
     <aside class="w-64 bg-[#111827] border-r border-[#334155] flex-shrink-0 flex flex-col z-20">
         <div class="h-16 flex items-center px-6 border-b border-[#334155]">
             <div class="text-white font-bold text-xl tracking-tighter text-blue-400">YJ <span class="text-sm text-slate-400 ml-2">YONGJIN ENT.</span></div>
@@ -319,6 +294,7 @@
         </nav>
     </aside>
 
+    <!-- 메인 컨텐츠 영역 -->
     <div class="flex-1 flex flex-col bg-[#0b1120] overflow-hidden min-w-0">
         <header class="h-16 flex items-center justify-between px-6 border-b border-[#334155] bg-[#111827] flex-shrink-0">
             <h1 class="text-lg font-bold text-white">회계 관제탑 대시보드</h1>
@@ -338,7 +314,7 @@
         <div class="flex-1 p-6 overflow-y-auto relative">
             <div id="drawerBackdrop" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden xl:hidden transition-opacity" onclick="closeDrawer()"></div>
 
-            <!-- 1. 통합 대시보드 -->
+            <!-- 1. PC 통합 대시보드 -->
             <div id="pc-page-dashboard" class="pc-page block">
                 <div class="grid grid-cols-4 gap-4 mb-6 relative z-10">
                     <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-4 shadow-lg">
@@ -390,7 +366,7 @@
                 </div>
             </div>
 
-            <!-- 2. 신규 수주 보고 -->
+            <!-- 2. PC 영업 관리 -->
             <div id="pc-page-sales" class="pc-page hidden">
                 <div class="max-w-5xl mx-auto w-full pb-10">
                     <h2 class="text-2xl font-black text-white mb-6">📝 신규 수주 보고</h2>
@@ -468,7 +444,7 @@
                 </div>
             </div>
 
-            <!-- 3. 회계 관리 -->
+            <!-- 3. PC 회계 관리 -->
             <div id="pc-page-accounting" class="pc-page hidden">
                 <div class="max-w-6xl mx-auto w-full p-6 pb-10">
                     <div class="flex justify-between items-center mb-6">
@@ -513,7 +489,7 @@
                 </div>
             </div>
 
-            <!-- 4. 채권 관리 -->
+            <!-- 4. PC 채권 관리 -->
             <div id="pc-page-receivables" class="pc-page hidden">
                 <div class="max-w-6xl mx-auto w-full p-6 pb-10">
                     <div class="flex justify-between items-center mb-6">
@@ -574,7 +550,7 @@
                 </div>
             </div>
 
-            <!-- 5. 생산 관리 -->
+            <!-- 5. PC 생산 관리 -->
             <div id="pc-page-factory" class="pc-page hidden">
                 <div class="max-w-6xl mx-auto w-full p-6 pb-10">
                     <h2 class="text-2xl font-black text-white mb-6">🏭 생산 공정 관제탑</h2>
@@ -1358,4 +1334,4 @@ function switchPCTab(tabId) {
     
 </script>
 </body>
-</html> 이거 지금 새로고침 한거거든. 나 윈도우 F5로 새로고침했어. 다시 검토해줄래?
+</html>
