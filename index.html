@@ -82,6 +82,9 @@
         .pc-page .shadow-lg { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: default; }
         .pc-page .shadow-lg:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.2); border-color: rgba(59, 130, 246, 0.4); }
         .pc-page table tbody tr td { padding-top: 1rem; padding-bottom: 1rem; }
+        /* [패치 1] 거절 사유 디자인 추가 */
+        .reject-reason-box { background: #fee2e2; border: 1px dashed #f87171; color: #b91c1c; padding: 8px 12px; border-radius: 8px; font-size: 11px; font-weight: 800; }
+    
     </style>
 </head>
 <body oncontextmenu="return false">
@@ -707,6 +710,7 @@
 
 <script>
 // --- [전역 변수 설정: 안전하게 선언] ---
+let USERS = []; // [패치 2] 전역 사용자 배열 안전 선언
 let orders = []; 
 let filteredOrders = []; 
 let currentUser = null; 
@@ -816,7 +820,7 @@ function processLoginSuccess() {
     const clearBtn = document.getElementById('clearBtn'); if(clearBtn) clearBtn.style.display = ''; 
     const pcClearBtn = document.getElementById('pcClearBtn'); if(pcClearBtn) pcClearBtn.style.display = ''; 
 }
-    initTabs(); startOrdersListener(); checkNotiBanner();
+    initTabs(); startOrdersListener(); checkNotiBanner(); startNotiPoller(); // [패치 3] 알림 폴러 가동 추가
 }
 
 async function renderAdminMonitor() {
@@ -1341,6 +1345,7 @@ function calculatePC() {
     }
 }
 
+// ===== [복구 & 패치 5] PC 수주 보고 및 감사 로그(Audit Log) 완전 연동 =====
 async function handleReportPC() {
     if (isSubmitting) return;
     const client = document.getElementById('pc-clientName').value.trim();
@@ -1371,15 +1376,31 @@ async function handleReportPC() {
         status: 'pending', paymentStatus: 'unpaid',
         reportedBy: currentUser.name + " (PC)", createdAt: Date.now()
     };
+    
     try {
-        if(typeof db !== 'undefined') { await db.collection('orders').add(newOrder); }
-        alert('✅ [PC] 수주 보고 전송 완료!');
+        if(typeof db !== 'undefined') { 
+            // 1. 주문 데이터 Firestore에 저장 및 ID 반환
+            const docRef = await db.collection('orders').add(newOrder); 
+            // 2. 반환된 ID를 바탕으로 감사 로그(Audit Log) 완벽 기록 (지니님 수정안 반영)
+            await logAction('ORDER_CREATED', docRef.id, { 
+                client: newOrder.client, material: newOrder.material, 
+                qty: newOrder.qty, price: newOrder.price 
+            }); 
+        }
+        alert('✅ [PC] 수주 보고 전송 및 로그 기록 완료!');
+        
+        // 3. 폼 초기화 및 대시보드 복귀
         ['pc-clientName','pc-width','pc-height','pc-unitPrice','pc-dueDate','pc-payDate'].forEach(id => { document.getElementById(id).value = ''; });
         document.getElementById('pc-qty').value = '100';
         document.getElementById('pc-totalDisplay').innerText = '0';
         switchPCTab('dashboard');
-    } catch(e) { alert('전송 실패: ' + e.message); }
-    finally { isSubmitting = false; btn.disabled = false; btn.textContent = "✅ 수주 데이터 서버 전송"; }
+    } catch(e) { 
+        alert('전송 실패: ' + e.message); 
+    } finally { 
+        isSubmitting = false; 
+        btn.disabled = false; 
+        btn.textContent = "✅ 수주 데이터 서버 전송"; 
+    }
 }
 
 function openDrawer() {
@@ -1410,16 +1431,20 @@ function selectRow(element, orderId) {
     openDrawer();
 }
 
-// ===== [복구] F5 세션 복원 블록 =====
+// ===== [복구 & 패치 4] F5 세션 복원 (경쟁 조건 방어) =====
 window.addEventListener('load', () => { 
-    const savedSession = sessionStorage.getItem('yongjin_session');
-    const savedTab = sessionStorage.getItem('active_tab');
-    if (savedSession) {
-        currentUser = JSON.parse(savedSession);
-        processLoginSuccess();
-        if (savedTab) { setTimeout(() => { switchTab(savedTab, false); }, 50); }
-    }
-});    
+    // 브라우저 렌더링 및 Firebase 초기화가 얽히지 않도록 300ms 딜레이(안전장치) 부여
+    setTimeout(() => {
+        const savedSession = sessionStorage.getItem('yongjin_session');
+        const savedTab = sessionStorage.getItem('active_tab');
+        if (savedSession) {
+            currentUser = JSON.parse(savedSession);
+            processLoginSuccess();
+            // 데이터 로드 후 탭이 전환되도록 추가 딜레이 부여
+            if (savedTab) { setTimeout(() => { switchTab(savedTab, false); }, 150); }
+        }
+    }, 300);
+});
     
 </script>
 </body>
