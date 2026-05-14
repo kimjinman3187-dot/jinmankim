@@ -1416,7 +1416,7 @@ async function handleReportPC() {
     }
 }
 
-// 탭 전환 로직 (초기화 포함)
+// 탭 전환 로직 (초기화 및 스크롤 병목 완벽 제거)
 function switchPCTab(tabId) {
     document.querySelectorAll('.pc-tab-btn').forEach(btn => {
         btn.classList.remove('bg-[#1e293b]', 'text-blue-400');
@@ -1435,19 +1435,16 @@ function switchPCTab(tabId) {
     }
 
     document.querySelectorAll('.pc-page').forEach(page => {
-        page.classList.remove('block', 'flex'); 
+        // [핵심 변경점] 기존에 찌꺼기로 남아있던 모든 flex 및 높이 제한 속성을 강제 삭제
+        page.classList.remove('block', 'flex', 'h-full', 'flex-col'); 
         page.classList.add('hidden');
     });
 
     const targetPage = document.getElementById('pc-page-' + tabId);
     if(targetPage) {
         targetPage.classList.remove('hidden');
-        // 대시보드는 block, 나머지는 flex 구조로 렌더링 보장
-        if (tabId === 'dashboard') {
-            targetPage.classList.add('block');
-        } else {
-            targetPage.classList.add('flex'); 
-        }
+        // 이제 모든 페이지는 컨텐츠 길이에 맞춰 자연스럽게 늘어나는 'block' 구조로 통일 (스크롤 해결)
+        targetPage.classList.add('block');
     }
 
     closeDrawer();
@@ -1459,7 +1456,7 @@ function switchPCTab(tabId) {
     }
     document.querySelectorAll('.pc-table-row').forEach(row => row.classList.remove('active'));
 
-    // [TO-BE 추가] 생산 관리 탭 전환 시 차트 렌더링 강제 실행
+    // 생산 관리 탭 전환 시 차트 렌더링 강제 실행
     if (tabId === 'factory') {
         setTimeout(initProductionChart, 100);
     }
