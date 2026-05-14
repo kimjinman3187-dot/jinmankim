@@ -498,9 +498,16 @@
                             <p class="text-[10px] font-bold text-red-400 flex items-center gap-1"><span>▼ 2.1%</span> <span class="text-slate-500 font-normal">회수율 개선 중</span></p>
                         </div>
                     </div>
-                    <div class="bg-[#1e293b] border border-[#334155] rounded-2xl p-8 flex flex-col items-center justify-center text-center opacity-50 border-dashed">
-                        <span class="text-3xl mb-4">📑</span>
-                        <p class="text-sm font-bold text-slate-400">계산서 발행 및 전표 매칭 상세 내역은<br>오후 세션에서 데이터 연동이 완료될 예정입니다.</p>
+                    <!-- 월별 수주 vs 실결제 비교 차트 (작업 9) -->
+                    <div class="bg-[#1e293b] border border-[#334155] rounded-2xl p-6 shadow-xl mb-10">
+                        <h3 class="text-sm font-bold text-slate-400 mb-6 uppercase tracking-widest text-center">📊 상반기 재무 흐름 비교 (수주액 vs 실결제액)</h3>
+                        <div class="relative h-[320px] w-full">
+                            <canvas id="monthlyComparisonChart"></canvas>
+                        </div>
+                        <div class="mt-4 flex justify-center gap-6 text-[10px] font-bold">
+                            <div class="flex items-center gap-2"><span class="w-3 h-3 bg-cyan-400 rounded-sm"></span> <span class="text-slate-300">수주 금액 (Orders)</span></div>
+                            <div class="flex items-center gap-2"><span class="w-3 h-3 bg-green-500 rounded-sm"></span> <span class="text-slate-300">실결제 금액 (Payments)</span></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1243,7 +1250,65 @@ function logout() { if(confirm('로그아웃 하시겠습니까?')) { sessionSto
 
 // 생산 관리 품목별 Bar Chart 전역 변수
 let productionBarChartInstance = null;
+let monthlyComparisonChartInstance = null;
 
+// 작업 9: 월별 비교 차트 초기화 함수
+function initMonthlyComparisonChart() {
+    const ctx = document.getElementById('monthlyComparisonChart');
+    if (!ctx) return;
+
+    if (monthlyComparisonChartInstance) {
+        monthlyComparisonChartInstance.destroy();
+    }
+
+    monthlyComparisonChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['1월', '2월', '3월', '4월', '5월', '6월'],
+            datasets: [
+                {
+                    label: '수주 금액',
+                    data: [12000, 15000, 11000, 18000, 14250, 16000], // 단위: 만원
+                    backgroundColor: 'rgba(34, 211, 238, 0.7)', // Cyan
+                    borderColor: '#22d3ee',
+                    borderWidth: 1,
+                    borderRadius: 4
+                },
+                {
+                    label: '실결제 금액',
+                    data: [10000, 13000, 11000, 15000, 7540, 12000], // 단위: 만원
+                    backgroundColor: 'rgba(34, 197, 94, 0.7)', // Green
+                    borderColor: '#22c55e',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { 
+                    beginAtZero: true, 
+                    grid: { color: 'rgba(255,255,255,0.05)' }, 
+                    ticks: { 
+                        color: '#94a3b8',
+                        callback: value => '₩' + value.toLocaleString() + '만'
+                    } 
+                },
+                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: context => context.dataset.label + ': ₩' + context.raw.toLocaleString() + '만원'
+                    }
+                }
+            }
+        }
+    });
+}
 // 생산 관리 품목별 Bar Chart 초기화 함수
 function initProductionChart() {
     const ctx = document.getElementById('productionBarChart');
@@ -1451,10 +1516,11 @@ function switchPCTab(tabId) {
     document.querySelectorAll('.pc-table-row').forEach(row => row.classList.remove('active'));
 
     // 생산 관리 탭 전환 시 차트 렌더링 강제 실행
-    if (tabId === 'factory') {
+   if (tabId === 'factory') {
         setTimeout(initProductionChart, 100);
+    } else if (tabId === 'accounting') {
+        setTimeout(initMonthlyComparisonChart, 100);
     }
-}
     
 </script>
 </body>
