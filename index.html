@@ -763,9 +763,29 @@ async function logAction(action, orderId, details) { try { if(typeof db !== 'und
 
 window.onload = async function() {
     document.addEventListener('contextmenu', e => e.preventDefault());
-    if (window.FirebaseShared) { FirebaseShared.initializeFirebase(); FirebaseShared.signInAnonymously().then(() => { syncUsers(); }); } else { syncUsers(); }
+    
+    if (window.FirebaseShared) { 
+        FirebaseShared.initializeFirebase(); 
+        FirebaseShared.signInAnonymously().then(() => { 
+            // [패치] Firebase DB 초기화 완료 대기 (최대 3초 폴링)
+            let attempt = 0;
+            const waitForFirebase = setInterval(() => {
+                if (typeof db !== 'undefined') {
+                    clearInterval(waitForFirebase);
+                    syncUsers();  // Firebase 준비 완료 후 유저 동기화 실행
+                } else if (attempt++ > 30) {  // 30 × 100ms = 3초
+                    clearInterval(waitForFirebase);
+                    console.warn('⚠️ Firebase DB 초기화 타임아웃 — 로컬 모드로 강제 전환');
+                    syncUsers();
+                }
+            }, 100);
+        }); 
+    } else { 
+        console.warn('⚠️ window.FirebaseShared 객체 없음 — js/firebase-shared.js 로드 실패');
+        syncUsers(); 
+    }
 };
-
+    
 async function syncUsers() {
     try { 
         if(typeof db !== 'undefined') { 
@@ -1525,19 +1545,31 @@ function selectRow(element, orderId) {
     openDrawer();
 }
 
-// ===== [복구 & 패치 4] F5 세션 복원 (경쟁 조건 방어) =====
+// ===== [복구 & 패치 4] F5 세션 복원 (경쟁 조건 완벽 방어) =====
 window.addEventListener('load', () => { 
-    // 브라우저 렌더링 및 Firebase 초기화가 얽히지 않도록 300ms 딜레이(안전장치) 부여
-    setTimeout(() => {
+    const processLoadEvent = () => {
+        // [패치] Firebase가 로드되기로 되어 있으나 아직 db 객체가 없다면 대기
+        if (window.FirebaseShared && typeof db === 'undefined') {
+            console.warn('⏳ Firebase 미초기화 — 세션 복원 500ms 지연 후 재시도');
+            setTimeout(processLoadEvent, 500);  // 재귀적 재시도
+            return;
+        }
+        
         const savedSession = sessionStorage.getItem('yongjin_session');
         const savedTab = sessionStorage.getItem('active_tab');
+        
         if (savedSession) {
             currentUser = JSON.parse(savedSession);
             processLoginSuccess();
-            // 데이터 로드 후 탭이 전환되도록 추가 딜레이 부여
-            if (savedTab) { setTimeout(() => { switchTab(savedTab, false); }, 150); }
+            
+            if (savedTab) { 
+                setTimeout(() => { switchTab(savedTab, false); }, 150); 
+            }
         }
-    }, 300);
+    };
+
+    // 초기 호출 (안전 마진 500ms 부여)
+    setTimeout(processLoadEvent, 500);
 });
     
 </script>
