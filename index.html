@@ -123,7 +123,7 @@
                         <span class="text-[42px] font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white to-blue-400">YJ</span>
                     </div>
                     <div>
-                        <div class="text-white text-[28px] font-bold tracking-wider">YONGJIN ENT.</div>
+                        <div class="text-white text-[28px] font-bold tracking-wider">YJ Flow</div>
                         <div class="text-white/50 text-[13px] mt-1">Smart Accounting Operating System</div>
                     </div>
                 </div>
@@ -149,7 +149,7 @@
         <div class="max-w-md mx-auto space-y-3">
             <div id="roleTabsWrap" class="grid gap-1"></div>
             <div class="flex items-center justify-between bg-blue-50 px-4 py-2 rounded-xl border border-blue-100">
-                <h1 class="text-sm font-black text-slate-900 italic">YONGJIN ENT.</h1>
+                <h1 class="text-sm font-black text-slate-900 italic">YJ Flow</h1>
                 <div class="flex items-center gap-2">
                     <span id="displayUser" class="text-xs font-black text-blue-700 underline"></span>
                     <button onclick="logout()" class="text-[9px] font-black text-slate-400 bg-slate-100 hover:bg-red-100 hover:text-red-500 px-2 py-1 rounded-lg transition-colors">로그아웃</button>
@@ -290,7 +290,7 @@
     <!-- 사이드바 네비게이션 -->
     <aside class="w-64 bg-[#111827] border-r border-[#334155] flex-shrink-0 flex flex-col z-20">
         <div class="h-16 flex items-center px-6 border-b border-[#334155]">
-            <div class="text-white font-bold text-xl tracking-tighter text-blue-400">YJ <span class="text-sm text-slate-400 ml-2">YONGJIN ENT.</span></div>
+            <div class="text-white font-bold text-xl tracking-tighter text-blue-400">YJ <span class="text-sm text-slate-400 ml-2">YJ Flow</span></div>
         </div>
         <nav class="flex-1 py-4 flex flex-col gap-1 px-3" id="pcNav">
             <a href="#" onclick="switchPCTab('dashboard')" id="pc-tab-dashboard" class="pc-tab-btn px-3 py-3 rounded-lg bg-[#1e293b] text-blue-400 font-medium text-sm transition-colors">📊 통합 대시보드</a>
@@ -307,7 +307,7 @@
     <!-- 메인 컨텐츠 영역 -->
     <div class="flex-1 flex flex-col bg-[#0b1120] overflow-hidden min-w-0">
         <header class="h-16 flex items-center justify-between px-6 border-b border-[#334155] bg-[#111827] flex-shrink-0">
-            <h1 class="text-lg font-bold text-white">회계 관제탑 대시보드</h1>
+            <h1 class="text-lg font-bold text-white">Operations Hub</h1>
             <div class="flex items-center gap-4 text-white">
                 <button onclick="requestNotificationPermission()" class="hover:text-blue-400 transition-colors text-xl">🔔</button>
                 <div class="flex items-center gap-2 ml-2">
@@ -1577,11 +1577,11 @@ function switchPCTab(tabId) {
 
     // [패치 추가] 상단 헤더 타이틀 동적 변경 로직
     const pageTitles = {
-        'dashboard': '📊 통합 관제탑 대시보드',
-        'sales': '📝 영업 관리 대시보드',
-        'accounting': '💼 회계 자산 관제탑',
-        'receivables': '💰 채권 현황 관제탑',
-        'factory': '🏭 생산 공정 관제탑'
+        'dashboard': '📊 Operations Hub',
+        'sales': '📝 Sales Management',
+        'accounting': '💼 Finance Overview',
+        'receivables': '💰 Accounts Receivable',
+        'factory': '🏭 Production Live'
     };
     
     const mainHeader = document.querySelector('header h1');
