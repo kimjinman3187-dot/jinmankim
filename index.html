@@ -988,7 +988,6 @@ function initMonthlyComparisonChart() {
     });
 }
 
-// [신규 생성] 차트 동기화 중앙 컨트롤러
 function updateCharts() {
     const accountingPage = document.getElementById('pc-page-accounting');
     if (accountingPage && accountingPage.classList.contains('block')) {
@@ -1031,7 +1030,6 @@ function renderPCTable() {
         </tr>`;
     }).join('') || '<tr><td colspan="5" class="p-8 text-center text-slate-500">조회된 내역이 없습니다.</td></tr>';
     
-    // 중앙 컨트롤러 호출
     updateCharts(); 
 }
 
