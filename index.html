@@ -915,6 +915,40 @@ function updateCharts() {
         });
     }
 
+function updateCharts() {
+    // 1. 공정 상태 도넛 차트 데이터 연산
+    let pending = 0, approved = 0, completed = 0;
+    filteredOrders.forEach(o => {
+        if(o.status === 'pending') pending++;
+        else if(o.status === 'approved') approved++;
+        else if(o.status === 'completed') completed++;
+    });
+
+    const ctxStatus = document.getElementById('statusChart');
+    if(ctxStatus) {
+        if(myStatusChart) myStatusChart.destroy(); // 기존 차트 파괴
+        myStatusChart = new Chart(ctxStatus, {
+            type: 'doughnut',
+            data: {
+                labels: ['승인대기', '생산중', '생산완료'],
+                datasets: [{
+                    data: [pending, approved, completed],
+                    backgroundColor: ['#eab308', '#3b82f6', '#22c55e'], 
+                    borderWidth: 0,
+                    hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { family: 'Inter' } } }
+                },
+                cutout: '75%' 
+            }
+        });
+    }
+
     // 2. 수주 트렌드 라인 차트 데이터 연산 (납기일 기준)
     const dateMap = {};
     filteredOrders.forEach(o => {
@@ -974,7 +1008,14 @@ function updateCharts() {
             }
         });
     }
+    
+    // [추가] 실시간 데이터 변경 시 회계 대시보드가 열려있다면 Bar Chart도 즉시 동기화
+    const accountingPage = document.getElementById('pc-page-accounting');
+    if (accountingPage && accountingPage.classList.contains('block')) {
+        initMonthlyComparisonChart();
+    }
 }
+    
 function renderPCTable() {
     let pS=0, aS=0, uS=0, cS=0; let aCnt=0, pCnt=0;
     filteredOrders.forEach(o => { const t = (o.price||0) * (o.qty||0); if(o.status==='pending') { pS+=t; pCnt++; } else if(o.status==='approved') { aS+=t; aCnt++; } else if(o.status==='completed' && o.paymentStatus==='unpaid') uS+=t; else if(o.status==='completed' && o.paymentStatus==='paid') cS+=t; });
@@ -1258,19 +1299,82 @@ function initMonthlyComparisonChart() {
     if (!ctx) return;
     if (monthlyComparisonChartInstance) monthlyComparisonChartInstance.destroy();
 
+    const monthlyData = {};
+    
+    filteredOrders.forEach(o => {
+        if (!o.dueDate) return;
+        const monthKey = o.dueDate.substring(0, 7); 
+
+        if (!monthlyData[monthKey]) {
+            monthlyData[monthKey] = { orderTotal: 0, paidTotal: 0 };
+        }
+
+        const totalAmount = (o.price || 0) * (o.qty || 0);
+        const paidAmount = o.paidAmount || 0;
+
+        monthlyData[monthKey].orderTotal += totalAmount;
+        monthlyData[monthKey].paidTotal += paidAmount;
+    });
+
+    const sortedMonths = Object.keys(monthlyData).sort().slice(-6);
+    
+    const labels = sortedMonths.map(m => {
+        const [year, month] = m.split('-');
+        return `${parseInt(month)}월`;
+    });
+    
+    const orderValues = sortedMonths.map(m => monthlyData[m].orderTotal / 10000);
+    const paidValues = sortedMonths.map(m => monthlyData[m].paidTotal / 10000);
+
     monthlyComparisonChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: ['1월', '2월', '3월', '4월', '5월', '6월'],
+            labels: labels.length > 0 ? labels : ['데이터 없음'],
             datasets: [
-                { label: '수주 금액', data: [12000, 15000, 11000, 18000, 14250, 16000], backgroundColor: 'rgba(34, 211, 238, 0.7)', borderRadius: 4 },
-                { label: '실결제 금액', data: [10000, 13000, 11000, 15000, 7540, 12000], backgroundColor: 'rgba(34, 197, 94, 0.7)', borderRadius: 4 }
+                { 
+                    label: '수주 금액', 
+                    data: orderValues.length > 0 ? orderValues : [0], 
+                    backgroundColor: 'rgba(34, 211, 238, 0.8)',
+                    hoverBackgroundColor: 'rgba(34, 211, 238, 1)',
+                    borderRadius: 4,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.8
+                },
+                { 
+                    label: '실결제 금액', 
+                    data: paidValues.length > 0 ? paidValues : [0], 
+                    backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                    hoverBackgroundColor: 'rgba(34, 197, 94, 1)',
+                    borderRadius: 4,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.8
+                }
             ]
         },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', callback: value => '₩' + value.toLocaleString() + '만' } }, x: { grid: { display: false }, ticks: { color: '#94a3b8' } } }, plugins: { legend: { display: false } } }
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false, 
+            interaction: { mode: 'index', intersect: false },
+            scales: { 
+                y: { 
+                    beginAtZero: true,
+                    grid: { color: 'rgba(255,255,255,0.05)' }, 
+                    ticks: { color: '#94a3b8', callback: value => '₩' + value.toLocaleString() + '만' } 
+                }, 
+                x: { grid: { display: false }, ticks: { color: '#94a3b8' } } 
+            }, 
+            plugins: { 
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) { return context.dataset.label + ': ₩' + context.raw.toLocaleString() + '만'; }
+                    }
+                }
+            } 
+        }
     });
 }
-
+    
 // 3. 채권 관리 연체 기간별 도넛 차트
 function initReceivableChart() {
     const ctx = document.getElementById('receivableStatusChart');
