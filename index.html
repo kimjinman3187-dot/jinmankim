@@ -200,9 +200,16 @@
                     <input type="number" id="width" oninput="updatePlateSize()" placeholder="가로" class="w-full p-4 border rounded-2xl font-bold bg-white">
                     <input type="number" id="height" oninput="updatePlateSize()" placeholder="세로" class="w-full p-4 border rounded-2xl font-bold bg-white">
                 </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <input type="number" id="unitPrice" oninput="calculate()" placeholder="단가" class="w-full p-4 border border-blue-100 bg-blue-50 text-blue-700 rounded-2xl font-black">
-                    <input type="number" id="qty" oninput="calculate()" value="100" class="w-full p-4 border rounded-2xl font-bold">
+                <div class="grid grid-cols-2 gap-3 mt-2">
+    <div>
+        <label class="block text-[10px] font-bold text-slate-400 mb-1 ml-1 uppercase">단가 (KRW)</label>
+        <input type="number" id="unitPrice" oninput="calculate()" placeholder="0" class="w-full p-4 border border-blue-100 bg-blue-50 text-blue-700 rounded-2xl font-black">
+    </div>
+    <div>
+        <label class="block text-[10px] font-bold text-slate-400 mb-1 ml-1 uppercase">수량 (장/EA)</label>
+        <input type="number" id="qty" oninput="calculate()" value="100" class="w-full p-4 border rounded-2xl font-bold text-slate-800">
+    </div>
+</div>
                 </div>
                 <div class="grid grid-cols-2 gap-3 text-xs border border-red-200 p-3 rounded-2xl bg-red-50 mt-2 shadow-sm">
                     <div><label class="font-bold text-red-600 ml-1">출고일(납기)*</label><input type="date" id="dueDate" class="w-full p-3 bg-white rounded-xl font-bold mt-1"></div>
@@ -1568,9 +1575,22 @@ function switchPCTab(tabId) {
         activeBtn.classList.add('bg-[#1e293b]', 'text-blue-400');
     }
 
+    // [패치 추가] 상단 헤더 타이틀 동적 변경 로직
+    const pageTitles = {
+        'dashboard': '📊 통합 관제탑 대시보드',
+        'sales': '📝 영업 관리 대시보드',
+        'accounting': '💼 회계 자산 관제탑',
+        'receivables': '💰 채권 현황 관제탑',
+        'factory': '🏭 생산 공정 관제탑'
+    };
+    
+    const mainHeader = document.querySelector('header h1');
+    if (mainHeader && pageTitles[tabId]) {
+        mainHeader.innerText = pageTitles[tabId];
+    }
+
     if(tabId === 'sales') {
         const clientInput = document.getElementById('pc-clientName');
-        if(clientInput) clientInput.value = ''; 
     }
 
     document.querySelectorAll('.pc-page').forEach(page => {
