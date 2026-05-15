@@ -1052,6 +1052,51 @@ function renderPCTable() {
     
     updateCharts(); 
 }
+
+function updateCharts() {
+    const accountingPage = document.getElementById('pc-page-accounting');
+    if (accountingPage && accountingPage.classList.contains('block')) {
+        initMonthlyComparisonChart();
+    }
+    
+    const factoryPage = document.getElementById('pc-page-factory');
+    if (factoryPage && factoryPage.classList.contains('block')) {
+        if (typeof initProductionChart === 'function') initProductionChart();
+    }
+    
+    const receivablesPage = document.getElementById('pc-page-receivables');
+    if (receivablesPage && receivablesPage.classList.contains('block')) {
+        if (typeof initReceivableChart === 'function') initReceivableChart();
+    }
+}
+
+function renderPCTable() {
+    let pS=0, aS=0, uS=0, cS=0; let aCnt=0, pCnt=0;
+    filteredOrders.forEach(o => { const t = (o.price||0) * (o.qty||0); if(o.status==='pending') { pS+=t; pCnt++; } else if(o.status==='approved') { aS+=t; aCnt++; } else if(o.status==='completed' && o.paymentStatus==='unpaid') uS+=t; else if(o.status==='completed' && o.paymentStatus==='paid') cS+=t; });
+    const pcKpiDebt = document.getElementById('pcKpiDebt'); if(pcKpiDebt) pcKpiDebt.innerText = (uS / 100000000).toFixed(1) + '억';
+    const pcKpiSales = document.getElementById('pcKpiSales'); if(pcKpiSales) pcKpiSales.innerText = (cS / 100000000).toFixed(1) + '억';
+    const pcKpiFactory = document.getElementById('pcKpiFactory'); if(pcKpiFactory) pcKpiFactory.innerText = aCnt + '건';
+    const pcKpiPending = document.getElementById('pcKpiPending'); if(pcKpiPending) pcKpiPending.innerText = pCnt + '건';
+    const tbody = document.getElementById('pcTableBody'); if(!tbody) return;
+    
+    tbody.innerHTML = filteredOrders.map(o => {
+        let statusBadge = '';
+        if(o.status === 'pending') statusBadge = '<span class="bg-yellow-500/20 text-yellow-500 border border-yellow-500/20 px-2 py-1 rounded text-xs">승인대기</span>'; 
+        else if(o.status === 'approved') statusBadge = '<span class="bg-blue-500/20 text-blue-400 border border-blue-500/20 px-2 py-1 rounded text-xs">생산중</span>'; 
+        else if(o.status === 'completed') statusBadge = '<span class="bg-green-500/20 text-green-400 border border-green-500/20 px-2 py-1 rounded text-xs">생산완료</span>';
+        
+        return `
+        <tr class="hover:bg-[#1f2b42] transition-colors cursor-pointer border-b border-[#334155]/50 pc-table-row border-l-[3px] border-transparent" onclick="selectRow(this, '${o.id}')">
+            <td class="p-3 text-slate-400">${o.dueDate || '-'}</td>
+            <td class="p-3 font-bold text-white">${o.client}</td>
+            <td class="p-3 text-slate-400 text-xs">${o.material} <br><span class="text-white">${o.qty}장</span></td>
+            <td class="p-3 font-bold text-blue-400 text-right">₩${((o.price || 0) * (o.qty || 0)).toLocaleString()}</td>
+            <td class="p-3 text-center">${statusBadge}</td>
+        </tr>`;
+    }).join('') || '<tr><td colspan="5" class="p-8 text-center text-slate-500">조회된 내역이 없습니다.</td></tr>';
+    
+    updateCharts(); 
+}
 function updateCharts() {
     const accountingPage = document.getElementById('pc-page-accounting');
     if (accountingPage && accountingPage.classList.contains('block')) {
