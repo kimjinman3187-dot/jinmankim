@@ -881,41 +881,7 @@ function startOrdersListener(customQuery = null) {
 let myTrendChart = null;
 let myStatusChart = null;
 
-function updateCharts() {
-    // 1. 공정 상태 도넛 차트 데이터 연산
-    let pending = 0, approved = 0, completed = 0;
-    filteredOrders.forEach(o => {
-        if(o.status === 'pending') pending++;
-        else if(o.status === 'approved') approved++;
-        else if(o.status === 'completed') completed++;
-    });
-
-    const ctxStatus = document.getElementById('statusChart');
-    if(ctxStatus) {
-        if(myStatusChart) myStatusChart.destroy(); // 기존 차트 파괴
-        myStatusChart = new Chart(ctxStatus, {
-            type: 'doughnut',
-            data: {
-                labels: ['승인대기', '생산중', '생산완료'],
-                datasets: [{
-                    data: [pending, approved, completed],
-                    backgroundColor: ['#eab308', '#3b82f6', '#22c55e'], 
-                    borderWidth: 0,
-                    hoverOffset: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { family: 'Inter' } } }
-                },
-                cutout: '75%' 
-            }
-        });
-    }
-
-function updateCharts() {
+ function updateCharts() {
     // 1. 공정 상태 도넛 차트 데이터 연산
     let pending = 0, approved = 0, completed = 0;
     filteredOrders.forEach(o => {
@@ -1014,8 +980,8 @@ function updateCharts() {
     if (accountingPage && accountingPage.classList.contains('block')) {
         initMonthlyComparisonChart();
     }
-}
-    
+}   
+
 function renderPCTable() {
     let pS=0, aS=0, uS=0, cS=0; let aCnt=0, pCnt=0;
     filteredOrders.forEach(o => { const t = (o.price||0) * (o.qty||0); if(o.status==='pending') { pS+=t; pCnt++; } else if(o.status==='approved') { aS+=t; aCnt++; } else if(o.status==='completed' && o.paymentStatus==='unpaid') uS+=t; else if(o.status==='completed' && o.paymentStatus==='paid') cS+=t; });
@@ -1349,7 +1315,7 @@ function initMonthlyComparisonChart() {
                     barPercentage: 0.6,
                     categoryPercentage: 0.8
                 }
-            ]
+                ]
         },
         options: { 
             responsive: true, 
