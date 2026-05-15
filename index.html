@@ -321,23 +321,48 @@
                 <span class="text-xl">🏢</span>
                 <h1 class="text-lg font-black text-white tracking-wide">Operations Hub</h1>
             </div>
-          <div class="flex items-center gap-4 text-white">
+        <div class="flex items-center gap-4 text-white">
     <select id="pcDateRange" onchange="applyGlobalDateFilter()" class="bg-[#1e293b] border border-[#334155] text-slate-300 text-[11px] font-bold px-3 py-2 rounded-lg outline-none focus:border-blue-500 cursor-pointer">
         <option value="7days">최근 7일</option>
         <option value="lastMonth">지난달</option>
         <option value="thisYear" selected>올해 (전체)</option>
     </select>
     <button onclick="requestNotificationPermission()" class="hover:text-blue-400 transition-colors text-xl">🔔</button>
-     // JS 수정: 필터링 로직 추가 (script 하단부에 삽입)
+    </div>
+         
+     // [작업 19 & 20 통합] 전역 필터 및 차트 줌인 로직
 let globalDateRange = 'thisYear';
 
 function applyGlobalDateFilter() {
     globalDateRange = document.getElementById('pcDateRange').value;
-    executeSearch(); // 기존 검색 함수를 재사용하여 데이터 갱신
-    showToast('noti-sales', '📅', '기간 적용', '대시보드 데이터가 선택된 기간으로 갱신되었습니다.');
+    executeSearch(); // 데이터 필터링 실행
+    
+    // [줌인 효과] 차트가 존재하면 선택된 기간에 맞춰 화면을 확대합니다.
+    if (window.trendChartInstance) {
+        updateTrendChartZoom();
+    }
+    
+    showToast('noti-sales', '📅', '기간 적용', '데이터와 차트가 선택된 기간으로 줌인되었습니다.');
 }
 
-// [패치] executeSearch 함수 내 기간 필터 로직 통합
+function updateTrendChartZoom() {
+    const now = new Date();
+    let minDate;
+    
+    if (globalDateRange === '7days') {
+        minDate = new Date(now.setDate(now.getDate() - 7)).toISOString().split('T')[0];
+    } else if (globalDateRange === 'lastMonth') {
+        minDate = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
+    } else {
+        minDate = `${now.getFullYear()}-01-01`; // 올해 전체
+    }
+
+    // 차트의 X축 최소값을 설정하여 선택한 기간만 크게 보이도록 줌인
+    trendChartInstance.options.scales.x.min = minDate;
+    trendChartInstance.update();
+}
+
+// 기존 executeSearch 함수를 이 내용으로 덮어씌우세요.
 function executeSearch() {
     const input = document.getElementById('globalSearchInput');
     const pcInput = document.getElementById('pcSearchInput');
@@ -345,17 +370,27 @@ function executeSearch() {
     
     const now = new Date();
     let startDate;
-    if (globalDateRange === '7days') startDate = new Date(now.setDate(now.getDate() - 7)).toISOString().split('T')[0];
-    else if (globalDateRange === 'lastMonth') startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
-    else startDate = `${now.getFullYear()}-01-01`;
 
+    // 기간 설정 로직
+    if (globalDateRange === '7days') {
+        const tempDate = new Date();
+        startDate = new Date(tempDate.setDate(tempDate.getDate() - 7)).toISOString().split('T')[0];
+    } else if (globalDateRange === 'lastMonth') {
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
+    } else {
+        startDate = `${now.getFullYear()}-01-01`;
+    }
+
+    // 키워드와 기간을 동시에 만족하는 데이터만 추출
     filteredOrders = orders.filter(o => {
-        const matchesKeyword = !keyword || (o.client || '').toLowerCase().includes(keyword) || (o.material || '').toLowerCase().includes(keyword);
-        const matchesDate = o.dueDate >= startDate;
+        const matchesKeyword = !keyword || 
+            (o.client || '').toLowerCase().includes(keyword) || 
+            (o.material || '').toLowerCase().includes(keyword);
+        const matchesDate = (o.dueDate || '') >= startDate;
         return matchesKeyword && matchesDate;
     });
     
-    renderPCTable();
+    renderPCTable(); // 테이블과 KPI 갱신
 }
               
                 <div class="flex items-center gap-2 ml-2">
