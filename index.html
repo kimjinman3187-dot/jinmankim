@@ -289,29 +289,40 @@
 <div id="appPC" class="pc-ui hidden w-full h-screen flex-row bg-[#0b1120]">
     <!-- 사이드바 네비게이션 -->
     <aside class="w-64 bg-[#111827] border-r border-[#334155] flex-shrink-0 flex flex-col z-20">
+        
         <div class="h-16 flex items-center px-6 border-b border-[#334155]">
-            <div class="text-white font-bold text-xl tracking-tighter text-blue-400">YJ <span class="text-sm text-slate-400 ml-2">YJ Flow</span></div>
+            <div class="text-blue-500 font-black text-2xl tracking-tighter">YJ<span class="text-white ml-2 tracking-widest text-lg">Flow</span></div>
         </div>
-        <nav class="flex-1 py-4 flex flex-col gap-1 px-3" id="pcNav">
-            <a href="#" onclick="switchPCTab('dashboard')" id="pc-tab-dashboard" class="pc-tab-btn px-3 py-3 rounded-lg bg-[#1e293b] text-blue-400 font-medium text-sm transition-colors">📊 통합 대시보드</a>
-            <a href="#" onclick="switchPCTab('sales')" id="pc-tab-sales" class="pc-tab-btn px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">📝 영업 관리</a>
-            <a href="#" onclick="switchPCTab('accounting')" id="pc-tab-accounting" class="pc-tab-btn px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">💼 회계 관리</a>
-            <a href="#" onclick="switchPCTab('receivables')" id="pc-tab-receivables" class="pc-tab-btn px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">💰 채권 관리</a>
-            <a href="#" onclick="switchPCTab('factory')" id="pc-tab-factory" class="pc-tab-btn px-3 py-3 rounded-lg text-slate-400 hover:bg-[#1e293b] hover:text-white font-medium text-sm transition-colors">🏭 생산 관리</a>
-            <button onclick="clearAllData()" id="pcClearBtn" style="display:none;" class="mt-auto px-3 py-3 text-left rounded-lg text-red-500 hover:bg-red-500/10 font-bold text-sm transition-colors border border-transparent hover:border-red-500/30">
-                🗑️ 테스트 데이터 초기화
+
+        <nav class="flex-1 py-6 flex flex-col gap-2 px-4" id="pcNav">
+            <a href="#" onclick="switchPCTab('dashboard')" id="pc-tab-dashboard" class="pc-tab-btn px-4 py-3 rounded-xl bg-[#1e293b] text-blue-400 font-bold text-xs uppercase tracking-wider transition-colors">📊 Live</a>
+            <a href="#" onclick="switchPCTab('sales')" id="pc-tab-sales" class="pc-tab-btn px-4 py-3 rounded-xl text-slate-400 hover:bg-[#1e293b] hover:text-white font-bold text-xs uppercase tracking-wider transition-colors">📝 Sales</a>
+            <a href="#" onclick="switchPCTab('accounting')" id="pc-tab-accounting" class="pc-tab-btn px-4 py-3 rounded-xl text-slate-400 hover:bg-[#1e293b] hover:text-white font-bold text-xs uppercase tracking-wider transition-colors">💼 Finance</a>
+            <a href="#" onclick="switchPCTab('receivables')" id="pc-tab-receivables" class="pc-tab-btn px-4 py-3 rounded-xl text-slate-400 hover:bg-[#1e293b] hover:text-white font-bold text-xs uppercase tracking-wider transition-colors">💰 AR</a>
+            <a href="#" onclick="switchPCTab('factory')" id="pc-tab-factory" class="pc-tab-btn px-4 py-3 rounded-xl text-slate-400 hover:bg-[#1e293b] hover:text-white font-bold text-xs uppercase tracking-wider transition-colors">🏭 Production</a>
+            
+            <button onclick="clearAllData()" id="pcClearBtn" style="display:none;" class="mt-4 px-4 py-3 text-left rounded-xl text-red-500/70 hover:bg-red-500/10 font-bold text-xs uppercase transition-colors border border-transparent hover:border-red-500/30">
+                🗑️ Reset Data
             </button>
         </nav>
+
+        <div class="mt-auto p-6 text-center border-t border-[#334155]/50 opacity-40 hover:opacity-100 transition-opacity">
+            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">YJ Flow v2.0</p>
+            <p class="text-[9px] text-slate-500 font-bold">Designed by GENE KIM</p>
+        </div>
     </aside>
 
     <!-- 메인 컨텐츠 영역 -->
     <div class="flex-1 flex flex-col bg-[#0b1120] overflow-hidden min-w-0">
-        <header class="h-16 flex items-center justify-between px-6 border-b border-[#334155] bg-[#111827] flex-shrink-0">
-            <h1 class="text-lg font-bold text-white">Operations Hub</h1>
+     <header class="h-16 flex items-center justify-between px-6 border-b border-[#334155] bg-[#111827] flex-shrink-0">
+            <div class="flex items-center gap-3">
+                <span class="text-xl">🏢</span>
+                <h1 class="text-lg font-black text-white tracking-wide">Operations Hub</h1>
+            </div>
             <div class="flex items-center gap-4 text-white">
                 <button onclick="requestNotificationPermission()" class="hover:text-blue-400 transition-colors text-xl">🔔</button>
                 <div class="flex items-center gap-2 ml-2">
-                    <span id="pcDisplayUser" class="text-sm font-medium text-blue-400 bg-[#1e293b] px-3 py-1.5 rounded-lg border border-[#334155]">관리자</span>
+                    <span id="pcDisplayUser" class="text-sm font-bold text-blue-400 bg-[#1e293b] px-3 py-1.5 rounded-lg border border-[#334155]">관리자</span>
                     <button onclick="logout()" class="p-1.5 bg-[#1e293b] hover:bg-red-500/20 border border-[#334155] hover:border-red-500/50 rounded-lg text-slate-400 hover:text-red-400 transition-all shadow-sm" title="시스템 로그아웃">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -319,7 +330,7 @@
                     </button>
                 </div>
             </div>
-        </header>  
+        </header>   
 
         <div class="flex-1 p-6 overflow-y-auto relative">
             <div id="drawerBackdrop" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden xl:hidden transition-opacity" onclick="closeDrawer()"></div>
