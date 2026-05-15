@@ -329,71 +329,7 @@
     </select>
     <button onclick="requestNotificationPermission()" class="hover:text-blue-400 transition-colors text-xl">🔔</button>
     </div>
-         
-     // [작업 19 & 20 통합] 전역 필터 및 차트 줌인 로직
-let globalDateRange = 'thisYear';
-
-function applyGlobalDateFilter() {
-    globalDateRange = document.getElementById('pcDateRange').value;
-    executeSearch(); // 데이터 필터링 실행
-    
-    // [줌인 효과] 차트가 존재하면 선택된 기간에 맞춰 화면을 확대합니다.
-    if (window.trendChartInstance) {
-        updateTrendChartZoom();
-    }
-    
-    showToast('noti-sales', '📅', '기간 적용', '데이터와 차트가 선택된 기간으로 줌인되었습니다.');
-}
-
-function updateTrendChartZoom() {
-    const now = new Date();
-    let minDate;
-    
-    if (globalDateRange === '7days') {
-        minDate = new Date(now.setDate(now.getDate() - 7)).toISOString().split('T')[0];
-    } else if (globalDateRange === 'lastMonth') {
-        minDate = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
-    } else {
-        minDate = `${now.getFullYear()}-01-01`; // 올해 전체
-    }
-
-    // 차트의 X축 최소값을 설정하여 선택한 기간만 크게 보이도록 줌인
-    trendChartInstance.options.scales.x.min = minDate;
-    trendChartInstance.update();
-}
-
-// 기존 executeSearch 함수를 이 내용으로 덮어씌우세요.
-function executeSearch() {
-    const input = document.getElementById('globalSearchInput');
-    const pcInput = document.getElementById('pcSearchInput');
-    const keyword = ((input && input.value) || (pcInput && pcInput.value) || '').trim().toLowerCase();
-    
-    const now = new Date();
-    let startDate;
-
-    // 기간 설정 로직
-    if (globalDateRange === '7days') {
-        const tempDate = new Date();
-        startDate = new Date(tempDate.setDate(tempDate.getDate() - 7)).toISOString().split('T')[0];
-    } else if (globalDateRange === 'lastMonth') {
-        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
-    } else {
-        startDate = `${now.getFullYear()}-01-01`;
-    }
-
-    // 키워드와 기간을 동시에 만족하는 데이터만 추출
-    filteredOrders = orders.filter(o => {
-        const matchesKeyword = !keyword || 
-            (o.client || '').toLowerCase().includes(keyword) || 
-            (o.material || '').toLowerCase().includes(keyword);
-        const matchesDate = (o.dueDate || '') >= startDate;
-        return matchesKeyword && matchesDate;
-    });
-    
-    renderPCTable(); // 테이블과 KPI 갱신
-}
-              
-                <div class="flex items-center gap-2 ml-2">
+                    <div class="flex items-center gap-2 ml-2">
                     <span id="pcDisplayUser" class="text-sm font-bold text-blue-400 bg-[#1e293b] px-3 py-1.5 rounded-lg border border-[#334155]">관리자</span>
                     <button onclick="logout()" class="p-1.5 bg-[#1e293b] hover:bg-red-500/20 border border-[#334155] hover:border-red-500/50 rounded-lg text-slate-400 hover:text-red-400 transition-all shadow-sm" title="시스템 로그아웃">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -800,6 +736,62 @@ function executeSearch() {
 
 <script>
 // --- [전역 변수 설정: 안전하게 선언] ---
+// [최종 통합] 전역 필터 및 차트 줌인(Zoom-in) 로직
+let globalDateRange = 'thisYear';
+
+function applyGlobalDateFilter() {
+    globalDateRange = document.getElementById('pcDateRange').value;
+    executeSearch(); 
+    
+    // 차트가 있으면 선택 기간에 맞춰 확대(줌인)
+    if (window.trendChartInstance) {
+        updateTrendChartZoom();
+    }
+    showToast('noti-sales', '📅', '기간 적용', '데이터와 차트가 선택 기간으로 정밀 동기화되었습니다.');
+}
+
+function updateTrendChartZoom() {
+    const now = new Date();
+    let minDate;
+    if (globalDateRange === '7days') {
+        minDate = new Date(now.setDate(now.getDate() - 7)).toISOString().split('T')[0];
+    } else if (globalDateRange === 'lastMonth') {
+        minDate = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
+    } else {
+        minDate = `${now.getFullYear()}-01-01`;
+    }
+    if (window.trendChartInstance) {
+        trendChartInstance.options.scales.x.min = minDate;
+        trendChartInstance.update();
+    }
+}
+
+// 기존에 아래쪽에 있던 executeSearch 함수는 지우거나 이 코드로 대체됩니다.
+function executeSearch() {
+    const input = document.getElementById('globalSearchInput');
+    const pcInput = document.getElementById('pcSearchInput');
+    const keyword = ((input && input.value) || (pcInput && pcInput.value) || '').trim().toLowerCase();
+    
+    const now = new Date();
+    let startDate;
+    if (globalDateRange === '7days') {
+        const tempDate = new Date();
+        startDate = new Date(tempDate.setDate(tempDate.getDate() - 7)).toISOString().split('T')[0];
+    } else if (globalDateRange === 'lastMonth') {
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
+    } else {
+        startDate = `${now.getFullYear()}-01-01`;
+    }
+
+    filteredOrders = orders.filter(o => {
+        const matchesKeyword = !keyword || 
+            (o.client || '').toLowerCase().includes(keyword) || 
+            (o.material || '').toLowerCase().includes(keyword);
+        const matchesDate = (o.dueDate || '') >= startDate;
+        return matchesKeyword && matchesDate;
+    });
+    renderPCTable(); 
+}    
 let orders = []; 
 let filteredOrders = []; 
 let currentUser = null; 
