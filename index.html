@@ -1369,12 +1369,74 @@ function startNotiPoller() {
 
 function logout() { if(confirm('로그아웃 하시겠습니까?')) { sessionStorage.removeItem('yongjin_session'); if (notiPoller) { notiPoller(); notiPoller = null; } if (ordersListenerUnsubscribe) { ordersListenerUnsubscribe(); ordersListenerUnsubscribe = null; } location.reload(); } }
 
-// --- [차트 3종 세트 전역 변수 및 초기화] ---
+// --- [차트 전역 변수 및 초기화] ---
 let productionBarChartInstance = null;
 let monthlyComparisonChartInstance = null;
 let receivableStatusChartInstance = null;
+let trendChartInstance = null;   // [신규] 대시보드 트렌드 차트
+let statusChartInstance = null;  // [신규] 대시보드 상태 차트
 
-// 1. 생산 관리 품목별 Bar Chart
+// 1. [신규] 통합 대시보드 차트 초기화 함수
+function initDashboardCharts() {
+    const trendCtx = document.getElementById('trendChart');
+    const statusCtx = document.getElementById('statusChart');
+    if (!trendCtx || !statusCtx) return;
+
+    // ① 공정 상태 비율 (Doughnut Chart)
+    let p = 0, a = 0, c = 0;
+    filteredOrders.forEach(o => {
+        if (o.status === 'pending') p++;
+        else if (o.status === 'approved') a++;
+        else if (o.status === 'completed') c++;
+    });
+
+    if (statusChartInstance) statusChartInstance.destroy();
+    statusChartInstance = new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['승인대기', '생산중', '생산완료'],
+            datasets: [{ data: [p, a, c], backgroundColor: ['#eab308', '#3b82f6', '#22c55e'], borderWidth: 0 }]
+        },
+        options: { 
+            responsive: true, maintainAspectRatio: false, cutout: '70%', 
+            plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11, family: 'Inter' } } } } 
+        }
+    });
+
+    // ② 최근 수주 트렌드 (Line Chart)
+    const mData = {};
+    filteredOrders.forEach(o => {
+        if (!o.dueDate) return;
+        const m = o.dueDate.substring(0, 7);
+        if (!mData[m]) mData[m] = 0;
+        mData[m] += (o.price || 0) * (o.qty || 0);
+    });
+    
+    const sMonths = Object.keys(mData).sort().slice(-6);
+    if (trendChartInstance) trendChartInstance.destroy();
+    trendChartInstance = new Chart(trendCtx, {
+        type: 'line',
+        data: {
+            labels: sMonths.length > 0 ? sMonths.map(m => m.split('-')[1] + '월') : ['데이터 없음'],
+            datasets: [{
+                label: '수주 금액', 
+                data: sMonths.length > 0 ? sMonths.map(m => mData[m] / 10000) : [0],
+                borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                borderWidth: 2, fill: true, tension: 0.4, pointBackgroundColor: '#3b82f6'
+            }]
+        },
+        options: { 
+            responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+            scales: { 
+                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', callback: v => '₩' + v.toLocaleString() + '만' } }, 
+                x: { grid: { display: false }, ticks: { color: '#94a3b8' } } 
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+
+// 2. 생산 관리 품목별 Bar Chart
 function initProductionChart() {
     const ctx = document.getElementById('productionBarChart');
     if (!ctx) return;
@@ -1393,36 +1455,23 @@ function initProductionChart() {
     });
 }
 
-// 2. 회계 관리 월별 비교 Bar Chart
+// 3. 회계 관리 월별 비교 Bar Chart
 function initMonthlyComparisonChart() {
     const ctx = document.getElementById('monthlyComparisonChart');
     if (!ctx) return;
     if (monthlyComparisonChartInstance) monthlyComparisonChartInstance.destroy();
 
     const monthlyData = {};
-    
     filteredOrders.forEach(o => {
         if (!o.dueDate) return;
         const monthKey = o.dueDate.substring(0, 7); 
-
-        if (!monthlyData[monthKey]) {
-            monthlyData[monthKey] = { orderTotal: 0, paidTotal: 0 };
-        }
-
-        const totalAmount = (o.price || 0) * (o.qty || 0);
-        const paidAmount = o.paidAmount || 0;
-
-        monthlyData[monthKey].orderTotal += totalAmount;
-        monthlyData[monthKey].paidTotal += paidAmount;
+        if (!monthlyData[monthKey]) monthlyData[monthKey] = { orderTotal: 0, paidTotal: 0 };
+        monthlyData[monthKey].orderTotal += (o.price || 0) * (o.qty || 0);
+        monthlyData[monthKey].paidTotal += o.paidAmount || 0;
     });
 
     const sortedMonths = Object.keys(monthlyData).sort().slice(-6);
-    
-    const labels = sortedMonths.map(m => {
-        const [year, month] = m.split('-');
-        return `${parseInt(month)}월`;
-    });
-    
+    const labels = sortedMonths.map(m => `${parseInt(m.split('-')[1])}월`);
     const orderValues = sortedMonths.map(m => monthlyData[m].orderTotal / 10000);
     const paidValues = sortedMonths.map(m => monthlyData[m].paidTotal / 10000);
 
@@ -1431,51 +1480,22 @@ function initMonthlyComparisonChart() {
         data: {
             labels: labels.length > 0 ? labels : ['데이터 없음'],
             datasets: [
-                { 
-                    label: '수주 금액', 
-                    data: orderValues.length > 0 ? orderValues : [0], 
-                    backgroundColor: 'rgba(34, 211, 238, 0.8)',
-                    hoverBackgroundColor: 'rgba(34, 211, 238, 1)',
-                    borderRadius: 4,
-                    barPercentage: 0.6,
-                    categoryPercentage: 0.8
-                },
-                { 
-                    label: '실결제 금액', 
-                    data: paidValues.length > 0 ? paidValues : [0], 
-                    backgroundColor: 'rgba(34, 197, 94, 0.8)',
-                    hoverBackgroundColor: 'rgba(34, 197, 94, 1)',
-                    borderRadius: 4,
-                    barPercentage: 0.6,
-                    categoryPercentage: 0.8
-                }
-                ]
+                { label: '수주 금액', data: orderValues.length > 0 ? orderValues : [0], backgroundColor: 'rgba(34, 211, 238, 0.8)', hoverBackgroundColor: 'rgba(34, 211, 238, 1)', borderRadius: 4, barPercentage: 0.6, categoryPercentage: 0.8 },
+                { label: '실결제 금액', data: paidValues.length > 0 ? paidValues : [0], backgroundColor: 'rgba(34, 197, 94, 0.8)', hoverBackgroundColor: 'rgba(34, 197, 94, 1)', borderRadius: 4, barPercentage: 0.6, categoryPercentage: 0.8 }
+            ]
         },
         options: { 
-            responsive: true, 
-            maintainAspectRatio: false, 
-            interaction: { mode: 'index', intersect: false },
-            scales: { 
-                y: { 
-                    beginAtZero: true,
-                    grid: { color: 'rgba(255,255,255,0.05)' }, 
-                    ticks: { color: '#94a3b8', callback: value => '₩' + value.toLocaleString() + '만' } 
-                }, 
-                x: { grid: { display: false }, ticks: { color: '#94a3b8' } } 
-            }, 
+            responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+            scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', callback: v => '₩' + v.toLocaleString() + '만' } }, x: { grid: { display: false }, ticks: { color: '#94a3b8' } } }, 
             plugins: { 
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) { return context.dataset.label + ': ₩' + context.raw.toLocaleString() + '만'; }
-                    }
-                }
+                legend: { display: true, position: 'bottom', labels: { color: '#94a3b8', font: { size: 11, family: 'Inter' } } },
+                tooltip: { enabled: true, backgroundColor: 'rgba(15, 21, 34, 0.95)', titleColor: '#fff', bodyColor: '#cbd5e1', borderColor: '#334155', borderWidth: 1, padding: 12, callbacks: { label: c => c.dataset.label + ': ₩' + c.raw.toLocaleString() + '만' } }
             } 
         }
     });
 }
     
-// 3. 채권 관리 연체 기간별 도넛 차트
+// 4. 채권 관리 연체 기간별 도넛 차트
 function initReceivableChart() {
     const ctx = document.getElementById('receivableStatusChart');
     if (!ctx) return;
@@ -1491,7 +1511,51 @@ function initReceivableChart() {
     });
 }
 
-// --- [탭 전환 로직 (초기화, 스크롤 병목 제거, 차트 동기화)] ---
+// --- [중앙 차트 컨트롤러] ---
+function updateCharts() {
+    const dashboardPage = document.getElementById('pc-page-dashboard');
+    if (dashboardPage && dashboardPage.classList.contains('block')) initDashboardCharts();
+
+    const accountingPage = document.getElementById('pc-page-accounting');
+    if (accountingPage && accountingPage.classList.contains('block')) initMonthlyComparisonChart();
+    
+    const factoryPage = document.getElementById('pc-page-factory');
+    if (factoryPage && factoryPage.classList.contains('block')) initProductionChart();
+    
+    const receivablesPage = document.getElementById('pc-page-receivables');
+    if (receivablesPage && receivablesPage.classList.contains('block')) initReceivableChart();
+}
+
+// --- [메인 테이블 렌더링 (단 하나만 존재해야 함!)] ---
+function renderPCTable() {
+    let pS=0, aS=0, uS=0, cS=0; let aCnt=0, pCnt=0;
+    filteredOrders.forEach(o => { const t = (o.price||0) * (o.qty||0); if(o.status==='pending') { pS+=t; pCnt++; } else if(o.status==='approved') { aS+=t; aCnt++; } else if(o.status==='completed' && o.paymentStatus==='unpaid') uS+=t; else if(o.status==='completed' && o.paymentStatus==='paid') cS+=t; });
+    const pcKpiDebt = document.getElementById('pcKpiDebt'); if(pcKpiDebt) pcKpiDebt.innerText = (uS / 100000000).toFixed(1) + '억';
+    const pcKpiSales = document.getElementById('pcKpiSales'); if(pcKpiSales) pcKpiSales.innerText = (cS / 100000000).toFixed(1) + '억';
+    const pcKpiFactory = document.getElementById('pcKpiFactory'); if(pcKpiFactory) pcKpiFactory.innerText = aCnt + '건';
+    const pcKpiPending = document.getElementById('pcKpiPending'); if(pcKpiPending) pcKpiPending.innerText = pCnt + '건';
+    const tbody = document.getElementById('pcTableBody'); if(!tbody) return;
+    
+    tbody.innerHTML = filteredOrders.map(o => {
+        let statusBadge = '';
+        if(o.status === 'pending') statusBadge = '<span class="bg-yellow-500/20 text-yellow-500 border border-yellow-500/20 px-2 py-1 rounded text-xs">승인대기</span>'; 
+        else if(o.status === 'approved') statusBadge = '<span class="bg-blue-500/20 text-blue-400 border border-blue-500/20 px-2 py-1 rounded text-xs">생산중</span>'; 
+        else if(o.status === 'completed') statusBadge = '<span class="bg-green-500/20 text-green-400 border border-green-500/20 px-2 py-1 rounded text-xs">생산완료</span>';
+        
+        return `
+        <tr class="hover:bg-[#1f2b42] transition-colors cursor-pointer border-b border-[#334155]/50 pc-table-row border-l-[3px] border-transparent" onclick="selectRow(this, '${o.id}')">
+            <td class="p-3 text-slate-400">${o.dueDate || '-'}</td>
+            <td class="p-3 font-bold text-white">${o.client}</td>
+            <td class="p-3 text-slate-400 text-xs">${o.material} <br><span class="text-white">${o.qty}장</span></td>
+            <td class="p-3 font-bold text-blue-400 text-right">₩${((o.price || 0) * (o.qty || 0)).toLocaleString()}</td>
+            <td class="p-3 text-center">${statusBadge}</td>
+        </tr>`;
+    }).join('') || '<tr><td colspan="5" class="p-8 text-center text-slate-500">조회된 내역이 없습니다.</td></tr>';
+    
+    updateCharts(); 
+}
+
+// --- [PC 탭 전환 로직] ---
 function switchPCTab(tabId) {
     document.querySelectorAll('.pc-tab-btn').forEach(btn => {
         btn.classList.remove('bg-[#1e293b]', 'text-blue-400');
@@ -1517,7 +1581,7 @@ function switchPCTab(tabId) {
     const targetPage = document.getElementById('pc-page-' + tabId);
     if(targetPage) {
         targetPage.classList.remove('hidden');
-        targetPage.classList.add('block'); // 스크롤 무결성 보장
+        targetPage.classList.add('block');
     }
 
     closeDrawer();
@@ -1529,14 +1593,11 @@ function switchPCTab(tabId) {
     }
     document.querySelectorAll('.pc-table-row').forEach(row => row.classList.remove('active'));
 
-    // 숨겨져 있던 차트를 해당 탭이 열릴 때 깨우는 마법의 스위치
-    if (tabId === 'factory') {
-        setTimeout(initProductionChart, 100);
-    } else if (tabId === 'accounting') {
-        setTimeout(initMonthlyComparisonChart, 100);
-    } else if (tabId === 'receivables') {
-        setTimeout(initReceivableChart, 100);
-    }
+    // 탭이 열릴 때 해당 페이지의 차트를 깨우는 마법의 스위치
+    if (tabId === 'dashboard') setTimeout(initDashboardCharts, 100);
+    else if (tabId === 'factory') setTimeout(initProductionChart, 100);
+    else if (tabId === 'accounting') setTimeout(initMonthlyComparisonChart, 100);
+    else if (tabId === 'receivables') setTimeout(initReceivableChart, 100);
 }
 
 // ===== [복구] 누락된 PC 전용 함수 5종 =====
