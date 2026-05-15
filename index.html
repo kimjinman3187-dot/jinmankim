@@ -869,111 +869,126 @@ function executeSearch() {
     renderPCTable();
 }
 
-function startOrdersListener(customQuery = null) {
+   function startOrdersListener(customQuery = null) {
     if (ordersListenerUnsubscribe) { ordersListenerUnsubscribe(); ordersListenerUnsubscribe = null; }
-    if(typeof db === 'undefined') return;
+    
+    // [추가] Firebase가 없는 환경에서 UI/UX 검증을 위한 10개 샘플 데이터 강제 주입
+    if(typeof db === 'undefined') {
+        orders = [
+            { id: 'sample1', client: '(주)하네스테크', material: '무광PET/퍼펙트화이트', qty: 150, price: 42000, dueDate: '2026-04-10', status: 'completed', paymentStatus: 'paid', createdAt: Date.now() - 10000 },
+            { id: 'sample2', client: '삼성물산(주)', material: '유광하이그로시/화이트', qty: 300, price: 55000, dueDate: '2026-04-22', status: 'approved', paymentStatus: 'unpaid', createdAt: Date.now() - 9000 },
+            { id: 'sample3', client: 'LG 전자', material: '자작합판', qty: 80, price: 110000, dueDate: '2026-05-02', status: 'pending', paymentStatus: 'unpaid', createdAt: Date.now() - 8000 },
+            { id: 'sample4', client: '현대자동차', material: '미송집성목', qty: 200, price: 75000, dueDate: '2026-05-14', status: 'completed', paymentStatus: 'paid', createdAt: Date.now() - 7000 },
+            { id: 'sample5', client: 'SK 하이닉스', material: 'MDF', qty: 500, price: 15000, dueDate: '2026-05-18', status: 'approved', paymentStatus: 'unpaid', createdAt: Date.now() - 6000 },
+            { id: 'sample6', client: '쿠팡플레이', material: '일반합판', qty: 120, price: 35000, dueDate: '2026-05-20', status: 'completed', paymentStatus: 'paid', createdAt: Date.now() - 5000 },
+            { id: 'sample7', client: '카카오뱅크', material: '전체코팅/연회색', qty: 90, price: 48000, dueDate: '2026-05-25', status: 'pending', paymentStatus: 'unpaid', createdAt: Date.now() - 4000 },
+            { id: 'sample8', client: '네이버 클라우드', material: '양면코팅/블랙', qty: 450, price: 62000, dueDate: '2026-05-28', status: 'approved', paymentStatus: 'unpaid', createdAt: Date.now() - 3000 },
+            { id: 'sample9', client: '토스(비바)', material: '무광PET/모노그레이', qty: 70, price: 54000, dueDate: '2026-06-02', status: 'completed', paymentStatus: 'unpaid', createdAt: Date.now() - 2000 },
+            { id: 'sample10', client: '배달의민족', material: '전체코팅/연월넛', qty: 250, price: 89000, dueDate: '2026-06-05', status: 'pending', paymentStatus: 'unpaid', createdAt: Date.now() - 1000 }
+        ];
+        executeSearch(); // 이 함수가 renderPCTable() 및 updateCharts()를 자동 호출하여 화면에 데이터 바인딩을 완료합니다.
+        return;
+    }
+
     let query;
     if (customQuery) { query = customQuery; } 
     else { const baseRef = db.collection('orders'); if (currentUser.role === 'sales') { query = baseRef.where('reportedBy', '==', currentUser.name).orderBy('createdAt', 'desc').limit(100); } else if (currentUser.role === 'factory') { query = baseRef.where('status', 'in', ['approved', 'completed']).orderBy('createdAt', 'desc').limit(150); } else { query = baseRef.orderBy('createdAt', 'desc').limit(300); } }
     ordersListenerUnsubscribe = query.onSnapshot(snap => { orders = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); executeSearch(); }, error => { console.error("Orders Listener Error:", error); });
 }
-// --- [차트 전역 변수 및 렌더링 함수] ---
-let myTrendChart = null;
-let myStatusChart = null;
 
- function updateCharts() {
-    // 1. 공정 상태 도넛 차트 데이터 연산
-    let pending = 0, approved = 0, completed = 0;
+function initMonthlyComparisonChart() {
+    const ctx = document.getElementById('monthlyComparisonChart');
+    if (!ctx) return;
+    if (monthlyComparisonChartInstance) monthlyComparisonChartInstance.destroy();
+
+    const monthlyData = {};
+    
     filteredOrders.forEach(o => {
-        if(o.status === 'pending') pending++;
-        else if(o.status === 'approved') approved++;
-        else if(o.status === 'completed') completed++;
+        if (!o.dueDate) return;
+        const monthKey = o.dueDate.substring(0, 7); 
+
+        if (!monthlyData[monthKey]) {
+            monthlyData[monthKey] = { orderTotal: 0, paidTotal: 0 };
+        }
+
+        const totalAmount = (o.price || 0) * (o.qty || 0);
+        const paidAmount = o.paidAmount || 0;
+
+        monthlyData[monthKey].orderTotal += totalAmount;
+        monthlyData[monthKey].paidTotal += paidAmount;
     });
 
-    const ctxStatus = document.getElementById('statusChart');
-    if(ctxStatus) {
-        if(myStatusChart) myStatusChart.destroy(); // 기존 차트 파괴
-        myStatusChart = new Chart(ctxStatus, {
-            type: 'doughnut',
-            data: {
-                labels: ['승인대기', '생산중', '생산완료'],
-                datasets: [{
-                    data: [pending, approved, completed],
-                    backgroundColor: ['#eab308', '#3b82f6', '#22c55e'], 
-                    borderWidth: 0,
-                    hoverOffset: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { family: 'Inter' } } }
-                },
-                cutout: '75%' 
-            }
-        });
-    }
-
-    // 2. 수주 트렌드 라인 차트 데이터 연산 (납기일 기준)
-    const dateMap = {};
-    filteredOrders.forEach(o => {
-        if(!o.dueDate) return;
-        if(!dateMap[o.dueDate]) dateMap[o.dueDate] = 0;
-        dateMap[o.dueDate] += ((o.price || 0) * (o.qty || 0));
+    const sortedMonths = Object.keys(monthlyData).sort().slice(-6);
+    
+    const labels = sortedMonths.map(m => {
+        const [year, month] = m.split('-');
+        return `${parseInt(month)}월`;
     });
+    
+    const orderValues = sortedMonths.map(m => monthlyData[m].orderTotal / 10000);
+    const paidValues = sortedMonths.map(m => monthlyData[m].paidTotal / 10000);
 
-    // 날짜 오름차순 정렬 후 최근 7일치 추출
-    const sortedDates = Object.keys(dateMap).sort().slice(-7);
-    const trendData = sortedDates.map(d => dateMap[d]);
-
-    const ctxTrend = document.getElementById('trendChart');
-    if(ctxTrend) {
-        if(myTrendChart) myTrendChart.destroy();
-        myTrendChart = new Chart(ctxTrend, {
-            type: 'line',
-            data: {
-                labels: sortedDates,
-                datasets: [{
-                    label: '총 수주액 (KRW)',
-                    data: trendData,
-                    borderColor: '#00d4ff', 
-                    backgroundColor: 'rgba(0, 212, 255, 0.15)', 
-                    borderWidth: 3,
-                    fill: true,
-                    tension: 0.4, 
-                    pointBackgroundColor: '#1e293b',
-                    pointBorderColor: '#00d4ff',
-                    pointBorderWidth: 2,
-                    pointRadius: 4,
-                    pointHoverRadius: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: { 
-                        beginAtZero: true, 
-                        grid: { color: 'rgba(51, 65, 85, 0.4)' }, 
-                        ticks: { color: '#94a3b8', callback: value => '₩' + (value/10000).toLocaleString() + '만' } 
-                    },
-                    x: { 
-                        grid: { display: false }, 
-                        ticks: { color: '#94a3b8' } 
-                    }
+    monthlyComparisonChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels.length > 0 ? labels : ['데이터 없음'],
+            datasets: [
+                { 
+                    label: '수주 금액', 
+                    data: orderValues.length > 0 ? orderValues : [0], 
+                    backgroundColor: 'rgba(34, 211, 238, 0.8)',
+                    hoverBackgroundColor: 'rgba(34, 211, 238, 1)',
+                    borderRadius: 4,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.8
                 },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) { return '₩ ' + context.raw.toLocaleString(); }
-                        }
+                { 
+                    label: '실결제 금액', 
+                    data: paidValues.length > 0 ? paidValues : [0], 
+                    backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                    hoverBackgroundColor: 'rgba(34, 197, 94, 1)',
+                    borderRadius: 4,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.8
+                }
+                ]
+        },
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false, 
+            interaction: { mode: 'index', intersect: false },
+            scales: { 
+                y: { 
+                    beginAtZero: true,
+                    grid: { color: 'rgba(255,255,255,0.05)' }, 
+                    ticks: { color: '#94a3b8', callback: value => '₩' + value.toLocaleString() + '만' } 
+                }, 
+                x: { grid: { display: false }, ticks: { color: '#94a3b8' } } 
+            }, 
+            plugins: { 
+                // [수정] 범례(Legend) 명시적 활성화 및 디자인 
+                legend: { 
+                    display: true, 
+                    position: 'bottom',
+                    labels: { color: '#94a3b8', font: { size: 11, family: 'Inter' } }
+                },
+                // [수정] 호버 툴팁(Tooltip) 검증 및 명시적 활성화
+                tooltip: {
+                    enabled: true,
+                    backgroundColor: 'rgba(15, 21, 34, 0.95)',
+                    titleColor: '#fff',
+                    bodyColor: '#cbd5e1',
+                    borderColor: '#334155',
+                    borderWidth: 1,
+                    padding: 12,
+                    callbacks: {
+                        label: function(context) { return context.dataset.label + ': ₩' + context.raw.toLocaleString() + '만'; }
                     }
                 }
-            }
-        });
-    }
+            } 
+        }
+    });
+}
     
     // [추가] 실시간 데이터 변경 시 회계 대시보드가 열려있다면 Bar Chart도 즉시 동기화
     const accountingPage = document.getElementById('pc-page-accounting');
