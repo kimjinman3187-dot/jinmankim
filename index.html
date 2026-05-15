@@ -111,7 +111,7 @@
     <p>Designed by GENE KIM</p>    
     <p style="margin-top:10px; letter-spacing:2px; font-weight:700;">SECURE DATA TERMINAL</p>
 </div>
-
+</div>
 <!-- PC 로그인 -->
 <div id="loginPC" class="pc-ui">
     <div class="pc-login-wrapper relative">
@@ -850,7 +850,7 @@ function processLoginSuccess() {
 if (pcLogin) { 
     pcLogin.style.display = 'none'; 
     pcLogin.remove();  // DOM에서 완전 제거
-    
+     }
     if (window.innerWidth > 768) { const appPC = document.getElementById('appPC'); if (appPC) { appPC.classList.remove('hidden'); appPC.style.display = 'flex'; } } 
     else { const appMob = document.getElementById('appMobile'); if (appMob) { appMob.classList.remove('hidden'); appMob.style.display = 'flex'; } }
     
