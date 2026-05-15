@@ -965,14 +965,13 @@ function initMonthlyComparisonChart() {
                 }, 
                 x: { grid: { display: false }, ticks: { color: '#94a3b8' } } 
             }, 
+// ... (initMonthlyComparisonChart 내부 코드 생략 없이 원본 파일 기준)
             plugins: { 
-                // [수정] 범례(Legend) 명시적 활성화 및 디자인 
                 legend: { 
                     display: true, 
                     position: 'bottom',
                     labels: { color: '#94a3b8', font: { size: 11, family: 'Inter' } }
                 },
-                // [수정] 호버 툴팁(Tooltip) 검증 및 명시적 활성화
                 tooltip: {
                     enabled: true,
                     backgroundColor: 'rgba(15, 21, 34, 0.95)',
@@ -989,8 +988,6 @@ function initMonthlyComparisonChart() {
         }
     });
 }
-    
-    // [추가] 실시간 데이터 변경 시 회계 대시보드가 열려있다면 Bar Chart도 즉시 동기화
     const accountingPage = document.getElementById('pc-page-accounting');
     if (accountingPage && accountingPage.classList.contains('block')) {
         initMonthlyComparisonChart();
@@ -1021,8 +1018,9 @@ function renderPCTable() {
             <td class="p-3 text-center">${statusBadge}</td>
         </tr>`;
     }).join('') || '<tr><td colspan="5" class="p-8 text-center text-slate-500">조회된 내역이 없습니다.</td></tr>';
-    updateCharts(); 
-} // renderPCTable 함수 종료 괄호
+    updateCharts(); // <--- [잠재적 오류 원인] 정의되지 않은 함수 호출
+} // renderPCTable 함수 종료 괄호    
+
 
 function updatePlateSize() {
     const w = document.getElementById('width').value || 0; const h = document.getElementById('height').value || 0; const plate = document.getElementById('woodPlate');
