@@ -951,7 +951,7 @@ function initMonthlyComparisonChart() {
                     barPercentage: 0.6,
                     categoryPercentage: 0.8
                 }
-                ]
+            ]
         },
         options: { 
             responsive: true, 
@@ -965,7 +965,6 @@ function initMonthlyComparisonChart() {
                 }, 
                 x: { grid: { display: false }, ticks: { color: '#94a3b8' } } 
             }, 
-// ... (initMonthlyComparisonChart 내부 코드 생략 없이 원본 파일 기준)
             plugins: { 
                 legend: { 
                     display: true, 
@@ -988,11 +987,24 @@ function initMonthlyComparisonChart() {
         }
     });
 }
+
+// [신규 생성] 차트 동기화 중앙 컨트롤러
+function updateCharts() {
     const accountingPage = document.getElementById('pc-page-accounting');
     if (accountingPage && accountingPage.classList.contains('block')) {
         initMonthlyComparisonChart();
     }
-}   
+    
+    const factoryPage = document.getElementById('pc-page-factory');
+    if (factoryPage && factoryPage.classList.contains('block')) {
+        if (typeof initProductionChart === 'function') initProductionChart();
+    }
+    
+    const receivablesPage = document.getElementById('pc-page-receivables');
+    if (receivablesPage && receivablesPage.classList.contains('block')) {
+        if (typeof initReceivableChart === 'function') initReceivableChart();
+    }
+}
 
 function renderPCTable() {
     let pS=0, aS=0, uS=0, cS=0; let aCnt=0, pCnt=0;
@@ -1018,8 +1030,10 @@ function renderPCTable() {
             <td class="p-3 text-center">${statusBadge}</td>
         </tr>`;
     }).join('') || '<tr><td colspan="5" class="p-8 text-center text-slate-500">조회된 내역이 없습니다.</td></tr>';
-    updateCharts(); // <--- [잠재적 오류 원인] 정의되지 않은 함수 호출
-} // renderPCTable 함수 종료 괄호    
+    
+    // 중앙 컨트롤러 호출
+    updateCharts(); 
+}
 
 
 function updatePlateSize() {
