@@ -316,29 +316,29 @@
 
     <!-- 메인 컨텐츠 영역 -->
     <div class="flex-1 flex flex-col bg-[#0b1120] overflow-hidden min-w-0">
-     <header class="h-16 flex items-center justify-between px-6 border-b border-[#334155] bg-[#111827] flex-shrink-0">
-            <div class="flex items-center gap-3">
-                <span class="text-xl">🏢</span>
-                <h1 class="text-lg font-black text-white tracking-wide">Operations Hub</h1>
-            </div>
-        <div class="flex items-center gap-4 text-white">
-    <select id="pcDateRange" onchange="applyGlobalDateFilter()" class="bg-[#1e293b] border border-[#334155] text-slate-300 text-[11px] font-bold px-3 py-2 rounded-lg outline-none focus:border-blue-500 cursor-pointer">
-        <option value="7days">최근 7일</option>
-        <option value="lastMonth">지난달</option>
-        <option value="thisYear" selected>올해 (전체)</option>
-    </select>
-    <button onclick="requestNotificationPermission()" class="hover:text-blue-400 transition-colors text-xl">🔔</button>
+    <header class="h-16 flex items-center justify-between px-6 border-b border-[#334155] bg-[#111827] flex-shrink-0">
+    <div class="flex items-center gap-3">
+        <span class="text-xl">🏢</span>
+        <h1 class="text-lg font-black text-white tracking-wide">Operations Hub</h1>
     </div>
-                    <div class="flex items-center gap-2 ml-2">
-                    <span id="pcDisplayUser" class="text-sm font-bold text-blue-400 bg-[#1e293b] px-3 py-1.5 rounded-lg border border-[#334155]">관리자</span>
-                    <button onclick="logout()" class="p-1.5 bg-[#1e293b] hover:bg-red-500/20 border border-[#334155] hover:border-red-500/50 rounded-lg text-slate-400 hover:text-red-400 transition-all shadow-sm" title="시스템 로그아웃">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-        </header>   
+    <div class="flex items-center gap-4 text-white">
+        <select id="pcDateRange" onchange="applyGlobalDateFilter()" class="bg-[#1e293b] border border-[#334155] text-slate-300 text-[11px] font-bold px-3 py-2 rounded-lg outline-none focus:border-blue-500 cursor-pointer">
+            <option value="7days">최근 7일</option>
+            <option value="lastMonth">지난달</option>
+            <option value="thisYear" selected>올해 (전체)</option>
+        </select>
+        <button onclick="requestNotificationPermission()" class="hover:text-blue-400 transition-colors text-xl">🔔</button>
+        
+        <div class="flex items-center gap-2 ml-2">
+            <span id="pcDisplayUser" class="text-sm font-bold text-blue-400 bg-[#1e293b] px-3 py-1.5 rounded-lg border border-[#334155]">관리자</span>
+            <button onclick="logout()" class="p-1.5 bg-[#1e293b] hover:bg-red-500/20 border border-[#334155] hover:border-red-500/50 rounded-lg text-slate-400 hover:text-red-400 transition-all shadow-sm" title="시스템 로그아웃">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+            </button>
+        </div>
+    </div>
+</header>
 
         <div class="flex-1 p-6 overflow-y-auto relative">
             <div id="drawerBackdrop" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden xl:hidden transition-opacity" onclick="closeDrawer()"></div>
@@ -735,6 +735,58 @@
 </div>
 
 <script>
+<header class="h-16 flex items-center justify-between px-6 border-b border-[#334155] bg-[#111827] flex-shrink-0">
+            <div class="flex items-center gap-3">
+                <span class="text-xl">🏢</span>
+                <h1 class="text-lg font-black text-white tracking-wide">Operations Hub</h1>
+            </div>
+        <div class="flex items-center gap-4 text-white">
+    <select id="pcDateRange" onchange="applyGlobalDateFilter()" class="bg-[#1e293b] border border-[#334155] text-slate-300 text-[11px] font-bold px-3 py-2 rounded-lg outline-none focus:border-blue-500 cursor-pointer">
+        <option value="7days">최근 7일</option>
+        <option value="lastMonth">지난달</option>
+        <option value="thisYear" selected>올해 (전체)</option>
+    </select>
+    <button onclick="requestNotificationPermission()" class="hover:text-blue-400 transition-colors text-xl">🔔</button>
+    </div>
+                    <div class="flex items-center gap-2 ml-2">
+                    <span id="pcDisplayUser" class="text-sm font-bold text-blue-400 bg-[#1e293b] px-3 py-1.5 rounded-lg border border-[#334155]">관리자</span>
+                    <button onclick="logout()" class="p-1.5 bg-[#1e293b] hover:bg-red-500/20 border border-[#334155] hover:border-red-500/50 rounded-lg text-slate-400 hover:text-red-400 transition-all shadow-sm" title="시스템 로그아웃">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                    </button>
+                </div>
+            </div> </header> ```
+
+#### **[변경 후] (정상적인 헤더 구조)**
+이 코드로 통째로 갈아끼우세요. 구조가 한결 간결하고 안정적입니다.
+
+```html
+    <header class="h-16 flex items-center justify-between px-6 border-b border-[#334155] bg-[#111827] flex-shrink-0">
+        <div class="flex items-center gap-3">
+            <span class="text-xl">🏢</span>
+            <h1 class="text-lg font-black text-white tracking-wide">Operations Hub</h1>
+        </div>
+
+        <div class="flex items-center gap-4 text-white">
+            <select id="pcDateRange" onchange="applyGlobalDateFilter()" class="bg-[#1e293b] border border-[#334155] text-slate-300 text-[11px] font-bold px-3 py-2 rounded-lg outline-none focus:border-blue-500 cursor-pointer">
+                <option value="7days">최근 7일</option>
+                <option value="lastMonth">지난달</option>
+                <option value="thisYear" selected>올해 (전체)</option>
+            </select>
+            
+            <button onclick="requestNotificationPermission()" class="hover:text-blue-400 transition-colors text-xl">🔔</button>
+            
+            <div class="flex items-center gap-2 ml-2">
+                <span id="pcDisplayUser" class="text-sm font-bold text-blue-400 bg-[#1e293b] px-3 py-1.5 rounded-lg border border-[#334155]">관리자</span>
+                <button onclick="logout()" class="p-1.5 bg-[#1e293b] hover:bg-red-500/20 border border-[#334155] hover:border-red-500/50 rounded-lg text-slate-400 hover:text-red-400 transition-all" title="로그아웃">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
 // --- [전역 변수 설정: 안전하게 선언] ---
 // [최종 통합] 전역 필터 및 차트 줌인(Zoom-in) 로직
 let globalDateRange = 'thisYear';
