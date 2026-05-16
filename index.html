@@ -48,7 +48,12 @@
         .kp-btn { padding: 14px; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; font-size: 18px; font-weight: 700; cursor: pointer; }
         .kp-btn:active { transform: scale(0.92); background: #dbeafe; }
         .kp-btn.del { font-size: 13px; background: #fee2e2; border-color: #fecaca; color: #dc2626; }
-        .system-footer { width: 100%; text-align: center; padding: 20px 0; margin-top: auto; pointer-events: none; }
+        .system-footer { width: 100%; text-align: left; 
+        /* 상단 20px, 좌우 24px, 하단은 기본 20px에 디바이스 안전 영역을 더함 */
+        padding: 20px 24px calc(20px + env(safe-area-inset-bottom)); 
+        margin-top: auto; 
+        pointer-events: none; 
+        }
         .system-footer p { margin: 2px 0; font-size: 10px; font-family: 'Inter', sans-serif; letter-spacing: 1px; font-weight: 600; }
 
         /* PC UI CSS */
@@ -304,11 +309,11 @@
                 🗑️ Reset Data
             </button>
         </nav>
-        <div class="mt-auto p-6 text-center border-t border-[#334155]/50 opacity-60 hover:opacity-100 transition-opacity">
-    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Last Updated: 26.05.15</p>
-    <p class="text-[9px] font-black text-blue-400/80 uppercase tracking-widest mb-1">YJ Flow v2.0.1</p>
-    <p class="text-[9px] text-slate-500 font-bold">Designed by GENE KIM</p>
-</div>
+        <div class="mt-auto p-6 text-left border-t border-[#334155]/50 opacity-60 hover:opacity-100 transition-opacity">
+        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Last Updated: 26.05.15</p>
+        <p class="text-[9px] font-black text-blue-400/80 uppercase tracking-widest mb-1">YJ Flow v2.0.1</p>
+        <p class="text-[9px] text-slate-500 font-bold">Designed by GENE KIM</p>
+        </div>
        
     </aside>
 
