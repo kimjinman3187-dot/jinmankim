@@ -469,7 +469,73 @@
                     </div>
                 </div>
             </div>
+            <div class="mt-8 pt-8 border-t border-[#334155] flex justify-between items-center">
+                            <div>
+                                <p class="text-xs font-bold text-slate-400 mb-1 uppercase tracking-widest">예상 총 합계 금액</p>
+                                <p class="text-4xl font-black text-white italic tracking-tighter">₩ <span id="pc-totalDisplay">0</span></p>
+                            </div>
+                            <button id="btnSubmitOrderPC" onclick="handleReportPC()" class="bg-blue-600 hover:bg-blue-500 text-white px-12 py-5 rounded-2xl font-black text-lg shadow-[0_0_20px_rgba(59,130,246,0.3)] transition-all">
+                                ✅ 수주 데이터 서버 전송
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
+            <div class="max-w-5xl mx-auto w-full mt-10 pt-10 border-t border-[#334155]/50 pb-20">
+                <h2 class="text-2xl font-black text-white mb-6">📊 영업 대시보드 (Sales Dashboard)</h2>
+                
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
+                        <p class="text-slate-400 text-xs font-medium mb-1">신규 수주 (승인대기)</p>
+                        <p class="text-2xl font-bold text-blue-400" id="salesKpiNew">0건</p>
+                    </div>
+                    <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
+                        <p class="text-slate-400 text-xs font-medium mb-1">진행 중 (생산중)</p>
+                        <p class="text-2xl font-bold text-yellow-500" id="salesKpiInProgress">0건</p>
+                    </div>
+                    <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
+                        <p class="text-slate-400 text-xs font-medium mb-1">마감 임박 (납기 3일 이내)</p>
+                        <p class="text-2xl font-bold text-red-500" id="salesKpiUrgent">0건</p>
+                    </div>
+                    <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
+                        <p class="text-slate-400 text-xs font-medium mb-1">생산 완료</p>
+                        <p class="text-2xl font-bold text-green-400" id="salesKpiCompleted">0건</p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-1 bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
+                        <h3 class="text-sm font-bold text-slate-400 mb-4 uppercase tracking-widest text-center">📈 7일 수주 트렌드</h3>
+                        <div class="relative h-[280px] w-full">
+                            <canvas id="salesTrendLineChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="lg:col-span-2 bg-[#1e293b] border border-[#334155] rounded-xl shadow-lg flex flex-col overflow-hidden">
+                        <div class="p-4 border-b border-[#334155] bg-[#111827]">
+                            <h3 class="text-sm font-bold text-white uppercase tracking-widest">📋 내 수주 현황 리스트</h3>
+                        </div>
+                        <div class="flex-1 overflow-x-auto p-0">
+                            <table class="w-full text-left text-[12px] text-slate-300 whitespace-nowrap">
+                                <thead class="bg-[#0f1522] text-slate-500 font-bold border-b border-[#334155]">
+                                    <tr>
+                                        <th class="px-4 py-3">납기일</th>
+                                        <th class="px-4 py-3">거래처명</th>
+                                        <th class="px-4 py-3">품목/수량</th>
+                                        <th class="px-4 py-3 text-right">금액(KRW)</th>
+                                        <th class="px-4 py-3 text-center">상태</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pcSalesTableBody" class="divide-y divide-[#334155]/50">
+                                    <tr><td colspan="5" class="p-8 text-center text-slate-500">데이터 대기 중...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="pc-page-accounting" class="pc-page hidden">
             <!-- 3. PC 회계 관리 -->
             <div id="pc-page-accounting" class="pc-page hidden">
                 <div class="max-w-6xl mx-auto w-full p-6 pb-10">
