@@ -910,8 +910,9 @@ window.addEventListener('popstate', function(event) {
     const pcStatusFilter = document.getElementById('pcTableStatusFilter')?.value || 'all';
 
     // 모바일/PC 검색 입력값 격리
-    const isPCDashboard = document.getElementById('pc-page-dashboard')?.classList.contains('block') && window.innerWidth > 768;
-    const keywordSource = isPCDashboard ? pcInput : input;
+    const isPCView = window.innerWidth > 768;
+    const isPCDashboard = document.getElementById('pc-page-dashboard')?.classList.contains('block') && isPCView;
+    const keywordSource = isPCView ? pcInput : input;
     const keyword = (keywordSource?.value || '').trim().toLowerCase();
     
     let tempOrders = orders.filter(o => { 
@@ -929,7 +930,7 @@ window.addEventListener('popstate', function(event) {
     });
     
     // PC 전역 날짜 필터 (KST 한국 표준시 기준 연산으로 날짜 오류 방어)
-    if (isPCDashboard && globalDateRange !== 'all') {
+   if (isPCView && globalDateRange !== 'all') {
         const today = new Date();
         const getKSTDateString = (dateObj) => {
             const offset = dateObj.getTimezoneOffset() * 60000;
