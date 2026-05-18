@@ -28,8 +28,17 @@
             margin: 0; padding: 0; 
             -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
         }
-        
-        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+        input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+}
+
+.pc-ui input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+}
+
+.mobile-ui input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: none;
+}
         
         @media (min-width: 769px) { .mobile-ui { display: none !important; } body { background-color: #0b1120; overflow: hidden; } }
         @media (max-width: 768px) { .pc-ui { display: none !important; } }
@@ -895,14 +904,15 @@ window.addEventListener('popstate', function(event) {
     else if (currentUser) { const savedTab = sessionStorage.getItem('active_tab') || 'history'; try { history.pushState({ tab: savedTab }, '', '#' + savedTab); } catch(e){} }
 });
 
-function executeSearch() {
+  function executeSearch() {
     const input = document.getElementById('globalSearchInput'); 
     const pcInput = document.getElementById('pcSearchInput');
     const pcStatusFilter = document.getElementById('pcTableStatusFilter')?.value || 'all';
-    const keyword = ((input && input.value) || (pcInput && pcInput.value) || '').trim().toLowerCase();
-    
-    // [완벽 격리] 화면 너비(768px 초과)까지 체크하여 모바일에서는 PC 필터가 절대 간섭하지 못하게 차단
+
+    // 모바일/PC 검색 입력값 격리
     const isPCDashboard = document.getElementById('pc-page-dashboard')?.classList.contains('block') && window.innerWidth > 768;
+    const keywordSource = isPCDashboard ? pcInput : input;
+    const keyword = (keywordSource?.value || '').trim().toLowerCase();
     
     let tempOrders = orders.filter(o => { 
         const clientName = (o.client || '').toLowerCase(); 
@@ -1123,20 +1133,6 @@ function closeWoodModal() { document.getElementById('modalContainer').innerHTML 
 
 function selectWood(name, imgUrl, color) { 
     selectedWoodStr = name; 
-    if(document.getElementById('selectedWoodName')) document.getElementById('selectedWoodName').innerText = name;
-    if(document.getElementById('pc-selectedWoodName')) document.getElementById('pc-selectedWoodName').innerText = name;
-
-    const pcImg = document.getElementById('pc-woodThumbImg');
-    const pcColor = document.getElementById('pc-woodThumbColor');
-    const pcText = document.getElementById('pc-woodThumbText');
-
-    if(pcImg && pcColor && pcText) {
-        pcText.classList.add('hidden');
-        pcImg.src = imgUrl; pcImg.classList.remove('hidden'); pcColor.classList.add('hidden');
-        pcImg.onerror = function() { this.classList.add('hidden'); pcColor.style.backgroundColor = color; pcColor.classList.remove('hidden'); };
-    }
-    function selectWood(name, imgUrl, color) { 
-    selectedWoodStr = name; 
 
     if (document.getElementById('selectedWoodName')) {
         document.getElementById('selectedWoodName').innerText = name;
@@ -1190,12 +1186,6 @@ function selectWood(name, imgUrl, color) {
         plate.style.backgroundColor = color; 
     }
 
-    closeWoodModal(); 
-}
-  
-    const plate = document.getElementById('woodPlate'); 
-    if(plate) { plate.style.backgroundImage = `url('${imgUrl}')`; plate.style.backgroundColor = color; }
-    
     closeWoodModal(); 
 }
 
@@ -1402,10 +1392,10 @@ function switchPCTab(tabId) {
     if (emptyState && activeState) { emptyState.classList.remove('hidden'); activeState.classList.add('hidden'); }
     document.querySelectorAll('.pc-table-row').forEach(row => row.classList.remove('active'));
 
-    if (tabId === 'dashboard') setTimeout(initDashboardCharts, 100);
-    else if (tabId === 'factory') setTimeout(initProductionChart, 100);
-    else if (tabId === 'accounting') setTimeout(initMonthlyComparisonChart, 100);
-    else if (tabId === 'receivables') setTimeout(initReceivableChart, 100);
+   if (tabId === 'dashboard') setTimeout(executeSearch, 100);
+   else if (tabId === 'factory') setTimeout(initProductionChart, 100);
+   else if (tabId === 'accounting') setTimeout(initMonthlyComparisonChart, 100);
+   else if (tabId === 'receivables') setTimeout(initReceivableChart, 100);
 }
 
 async function handleReport() {
@@ -1545,7 +1535,139 @@ async function handleReport() {
     }
 }
 
-function updatePlateSize() {
+    function calculatePC() {
+    const p = parseInt(document.getElementById('pc-unitPrice')?.value || 0);
+    const q = parseInt(document.getElementById('pc-qty')?.value || 0);
+
+    const totalDisplay = document.getElementById('pc-totalDisplay');
+    if (totalDisplay) {
+        totalDisplay.innerText = (p * q).toLocaleString();
+    }
+}
+
+async function handleReportPC() {
+    if (isSubmitting) return;
+
+    const client = document.getElementById('pc-clientName')?.value.trim() || '';
+    const w = document.getElementById('pc-width')?.value || '';
+    const h = document.getElementById('pc-height')?.value || '';
+    const price = parseInt(document.getElementById('pc-unitPrice')?.value || 0);
+    const qty = parseInt(document.getElementById('pc-qty')?.value || 0);
+    const dueDate = document.getElementById('pc-dueDate')?.value || '';
+    const payDate = document.getElementById('pc-payDate')?.value || '';
+    const thickness = document.getElementById('pc-thickness')?.value || '18T';
+
+    if (client.length < 2) return alert('❌ 거래처 및 현장명을 입력하세요.');
+    if (selectedWoodStr === '목재를 선택하세요' || selectedWoodStr === '목재 선택') return alert('❌ 목재를 선택하세요.');
+    if (!w || !h) return alert('❌ 가로, 세로 규격을 입력하세요.');
+    if (price <= 0) return alert('❌ 단가를 입력하세요.');
+    if (qty <= 0) return alert('❌ 수량을 입력하세요.');
+    if (!dueDate) return alert('❌ 출고일(납기)을 선택해 주세요.');
+    if (!payDate) return alert('❌ 입금기한을 선택해 주세요.');
+    if (payDate < dueDate) return alert('❌ 입금기한은 출고일보다 빠를 수 없습니다.');
+
+    if (!confirm('PC에서 수주 데이터를 서버에 전송하시겠습니까?')) return;
+
+    isSubmitting = true;
+
+    const btn = document.getElementById('btnSubmitOrderPC');
+    const originalText = btn ? btn.textContent : '✅ 수주 데이터 서버 전송';
+
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = '전송 중...';
+    }
+
+    const reporterName = currentUser?.name || 'PC 관리자';
+
+    const newOrder = {
+        client,
+        material: selectedWoodStr,
+        thickness,
+        price,
+        qty,
+        width: w,
+        height: h,
+        dueDate,
+        payDate,
+        status: 'pending',
+        paymentStatus: 'unpaid',
+        reportedBy: reporterName,
+        createdAt: Date.now()
+    };
+
+    try {
+        if (typeof db === 'undefined') {
+            throw new Error('Firebase DB가 초기화되지 않았습니다.');
+        }
+
+        const docRef = await db.collection('orders').add(newOrder);
+
+        await logAction('ORDER_CREATED', docRef.id, {
+            client: newOrder.client,
+            material: newOrder.material,
+            qty: newOrder.qty,
+            price: newOrder.price,
+            device: 'pc'
+        });
+
+        alert('✅ PC 수주 데이터 전송 완료!');
+
+        ['pc-clientName', 'pc-width', 'pc-height', 'pc-unitPrice', 'pc-dueDate', 'pc-payDate'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+
+        const qtyEl = document.getElementById('pc-qty');
+        if (qtyEl) qtyEl.value = '100';
+
+        const totalDisplay = document.getElementById('pc-totalDisplay');
+        if (totalDisplay) totalDisplay.innerText = '0';
+
+        selectedWoodStr = '목재를 선택하세요';
+
+        const pcSelectedWoodName = document.getElementById('pc-selectedWoodName');
+        if (pcSelectedWoodName) pcSelectedWoodName.innerText = '목재를 선택하세요';
+
+        const pcImg = document.getElementById('pc-woodThumbImg');
+        const pcColor = document.getElementById('pc-woodThumbColor');
+        const pcText = document.getElementById('pc-woodThumbText');
+
+        if (pcImg) {
+            pcImg.src = '';
+            pcImg.classList.add('hidden');
+        }
+
+        if (pcColor) {
+            pcColor.style.backgroundColor = '';
+            pcColor.classList.add('hidden');
+        }
+
+        if (pcText) {
+            pcText.classList.remove('hidden');
+        }
+
+        if (typeof showToast === 'function') {
+            showToast('noti-sales', '✅', 'PC 수주 등록 완료', `${client} 수주가 서버에 저장되었습니다.`);
+        }
+
+        if (typeof switchPCTab === 'function') {
+            switchPCTab('dashboard');
+        }
+
+    } catch (e) {
+        alert('전송 실패: ' + e.message);
+    } finally {
+        isSubmitting = false;
+
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+    }
+}
+  
+    function updatePlateSize() {
     const w = document.getElementById('width').value || 0; const h = document.getElementById('height').value || 0; const plate = document.getElementById('woodPlate');
     if (w > 0 && h > 0 && plate) { plate.style.width = Math.min(180, 50 + (w / 20)) + 'px'; plate.style.height = Math.min(130, 30 + (h / 20)) + 'px'; }
     if(document.getElementById('labelWidth')) document.getElementById('labelWidth').innerText = w + ' mm'; if(document.getElementById('labelLength')) document.getElementById('labelLength').innerText = h + ' mm'; calculate();
