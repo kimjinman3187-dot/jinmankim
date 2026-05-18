@@ -901,8 +901,8 @@ function executeSearch() {
     const pcStatusFilter = document.getElementById('pcTableStatusFilter')?.value || 'all';
     const keyword = ((input && input.value) || (pcInput && pcInput.value) || '').trim().toLowerCase();
     
-    // [격리 패치] PC 대시보드 화면인지 확인하여 필터 오염 방지
-    const isPCDashboard = document.getElementById('pc-page-dashboard')?.classList.contains('block');
+    // [완벽 격리] 화면 너비(768px 초과)까지 체크하여 모바일에서는 PC 필터가 절대 간섭하지 못하게 차단
+    const isPCDashboard = document.getElementById('pc-page-dashboard')?.classList.contains('block') && window.innerWidth > 768;
     
     let tempOrders = orders.filter(o => { 
         const clientName = (o.client || '').toLowerCase(); 
@@ -912,29 +912,36 @@ function executeSearch() {
         
         const matchKeyword = !keyword || clientName.includes(keyword) || materialName.includes(keyword) || rejectReason.includes(keyword) || statusName.includes(keyword);
         
-        // 대시보드 화면일 때만 상태 필터 적용, 아닐 경우 무시
+        // 모바일이면 항상 true를 반환하여 데이터 증발 방지, PC 대시보드일 때만 상태 필터 가동
         const matchStatus = (!isPCDashboard || pcStatusFilter === 'all') ? true : o.status === pcStatusFilter;
         
         return matchKeyword && matchStatus; 
     });
     
-    if (globalDateRange !== 'all') {
+    // PC 전역 날짜 필터 (KST 한국 표준시 기준 연산으로 날짜 오류 방어)
+    if (isPCDashboard && globalDateRange !== 'all') {
         const today = new Date();
+        const getKSTDateString = (dateObj) => {
+            const offset = dateObj.getTimezoneOffset() * 60000;
+            const kstDate = new Date(dateObj.getTime() - offset);
+            return kstDate.toISOString().split('T')[0];
+        };
+
         let startStr = ''; let endStr = '';
         
         if (globalDateRange === '7days') {
-            const d = new Date(); d.setDate(today.getDate() - 7);
-            startStr = d.toISOString().split('T')[0];
-            endStr = today.toISOString().split('T')[0];
+            const d = new Date(today); d.setDate(today.getDate() - 7);
+            startStr = getKSTDateString(d);
+            endStr = getKSTDateString(today);
         } else if (globalDateRange === 'lastMonth') {
             const firstDay = new Date(today.getFullYear(), today.getMonth() - 1, 1);
             const lastDay = new Date(today.getFullYear(), today.getMonth(), 0);
-            startStr = firstDay.toISOString().split('T')[0];
-            endStr = lastDay.toISOString().split('T')[0];
+            startStr = getKSTDateString(firstDay);
+            endStr = getKSTDateString(lastDay);
         } else if (globalDateRange === 'thisYear') {
             const firstDay = new Date(today.getFullYear(), 0, 1);
-            startStr = firstDay.toISOString().split('T')[0];
-            endStr = today.toISOString().split('T')[0];
+            startStr = getKSTDateString(firstDay);
+            endStr = getKSTDateString(today);
         }
 
         tempOrders = tempOrders.filter(o => {
@@ -946,10 +953,16 @@ function executeSearch() {
     filteredOrders = tempOrders;
     
     const activeRoleBtn = document.querySelector('.active-role');
-    if (activeRoleBtn) { const cur = activeRoleBtn.id.replace('role-', ''); if(cur === 'accounting') renderAccounting(); else if(cur === 'factory') renderFactory(); else if(cur === 'receivables') renderReceivables(); else if(cur === 'history') renderHistory(); }
+    if (activeRoleBtn) { 
+        const cur = activeRoleBtn.id.replace('role-', ''); 
+        if(cur === 'accounting') renderAccounting(); 
+        else if(cur === 'factory') renderFactory(); 
+        else if(cur === 'receivables') renderReceivables(); 
+        else if(cur === 'history') renderHistory(); 
+    }
     renderPCTable();
 }
-
+    
 function startOrdersListener(customQuery = null) {
     if (ordersListenerUnsubscribe) { ordersListenerUnsubscribe(); ordersListenerUnsubscribe = null; }
     
