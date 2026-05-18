@@ -318,14 +318,20 @@
     </aside>
 
     <!-- 메인 컨텐츠 영역 -->
-    <div class="flex-1 flex flex-col bg-[#0b1120] overflow-hidden min-w-0">
-     <header class="h-16 flex items-center justify-between px-6 border-b border-[#334155] bg-[#111827] flex-shrink-0">
-            <div class="flex items-center gap-3">
-                <span class="text-xl">🏢</span>
-                <h1 class="text-lg font-black text-white tracking-wide">Operations Hub</h1>
-            </div>
-            <div class="flex items-center gap-4 text-white">
-                <button onclick="requestNotificationPermission()" class="hover:text-blue-400 transition-colors text-xl">🔔</button>
+    <header class="h-16 flex items-center justify-between px-6 border-b border-[#334155] bg-[#111827] flex-shrink-0">
+    <div class="flex items-center gap-3">
+        <span class="text-xl">🏢</span>
+        <h1 class="text-lg font-black text-white tracking-wide">Operations Hub</h1>
+    </div>
+    <div class="flex items-center gap-4 text-white">
+        <select id="globalDateFilter" onchange="applyGlobalDateFilter()" class="bg-[#1e293b] border border-[#334155] rounded-lg px-3 py-1.5 text-xs font-bold text-slate-300 outline-none focus:border-blue-400 cursor-pointer shadow-sm">
+            <option value="all">전체 기간</option>
+            <option value="7days">최근 7일</option>
+            <option value="lastMonth">지난 달</option>
+            <option value="thisYear">올해</option>
+        </select>
+        <button onclick="requestNotificationPermission()" class="hover:text-blue-400 transition-colors text-xl">🔔</button>
+        
                 <div class="flex items-center gap-2 ml-2">
                     <span id="pcDisplayUser" class="text-sm font-bold text-blue-400 bg-[#1e293b] px-3 py-1.5 rounded-lg border border-[#334155]">관리자</span>
                     <button onclick="logout()" class="p-1.5 bg-[#1e293b] hover:bg-red-500/20 border border-[#334155] hover:border-red-500/50 rounded-lg text-slate-400 hover:text-red-400 transition-all shadow-sm" title="시스템 로그아웃">
@@ -361,7 +367,16 @@
                     </div>
                 </div>
                 <div class="grid grid-cols-3 gap-4 mb-6 relative z-10">
-                    <div class="col-span-2 bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
+                <div class="col-span-2 bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest">📈 최근 수주 트렌드 (금액)</h3>
+        <select id="chartPeriodFilter" onchange="initDashboardCharts()" class="bg-[#0f1522] border border-[#334155] rounded-md px-2 py-1 text-[11px] font-bold text-slate-400 outline-none focus:border-blue-400 cursor-pointer">
+            <option value="6">최근 6개월</option>
+            <option value="3">최근 3개월</option>
+            <option value="12">최근 1년</option>
+        </select>
+    </div>
+    <div class="relative h-[240px] w-full">    
                         <h3 class="text-sm font-bold text-slate-400 mb-4 uppercase tracking-widest">📈 최근 수주 트렌드 (금액)</h3>
                         <div class="relative h-[240px] w-full">
                             <canvas id="trendChart"></canvas>
@@ -375,10 +390,18 @@
                     </div>
                 </div>
                 <div class="bg-[#1e293b] border border-[#334155] rounded-xl flex flex-col flex-1 min-h-[500px] shadow-2xl relative z-10">
-                    <div class="p-4 flex justify-between items-center border-b border-[#334155]">
-                        <h2 class="font-bold text-white">최근 수주/공정 통합 리스트</h2>
-                        <input type="text" id="pcSearchInput" oninput="executeSearch()" placeholder="검색..." class="bg-[#0f1522] border border-[#334155] rounded-lg px-3 py-1.5 text-sm text-white outline-none focus:border-blue-400">
-                    </div>
+                <div class="p-4 flex justify-between items-center border-b border-[#334155]">
+    <h2 class="font-bold text-white">최근 수주/공정 통합 리스트</h2>
+    <div class="flex gap-2">
+        <select id="pcTableStatusFilter" onchange="executeSearch()" class="bg-[#0f1522] border border-[#334155] rounded-lg px-3 py-1.5 text-sm text-slate-300 outline-none focus:border-blue-400 cursor-pointer shadow-sm">
+            <option value="all">모든 상태</option>
+            <option value="pending">승인대기</option>
+            <option value="approved">생산중</option>
+            <option value="completed">생산완료</option>
+        </select>
+        <input type="text" id="pcSearchInput" oninput="executeSearch()" placeholder="검색..." class="bg-[#0f1522] border border-[#334155] rounded-lg px-3 py-1.5 text-sm text-white outline-none focus:border-blue-400 shadow-sm">
+    </div>
+</div>   
                     <div class="flex-1 overflow-x-auto p-4">
                         <table class="w-full text-left text-sm whitespace-nowrap text-slate-300">
                             <thead class="text-xs text-slate-500 bg-[#0f1522] border-b border-[#334155]">
@@ -749,6 +772,13 @@ let currentPaymentFilter = 'all';
 let isSubmitting = false; 
 const LOCKOUT_MINUTES = 10; 
 
+// [작업 19] GNB 전역 날짜 필터 변수 및 호출 함수
+let globalDateRange = 'all'; 
+function applyGlobalDateFilter() {
+    globalDateRange = document.getElementById('globalDateFilter')?.value || 'all';
+    executeSearch(); // 필터 변경 시 즉시 다중 검색 로직 재실행
+}
+
 const WOODS_DATA = [
     ['무광PET/퍼펙트화이트', 'image_f06ce4.png', '#FDFCF8'], ['유광하이그로시/화이트', 'image_f06ca6.png', '#FFFFFF'],
     ['전체코팅/미백', 'image_f068c3.png', '#F0F0F0'], ['양면코팅/미백', 'image_f068c3.png', '#EAEAEA'],
@@ -906,11 +936,51 @@ window.addEventListener('popstate', function(event) {
 
 function executeSearch() {
     const input = document.getElementById('globalSearchInput'); const pcInput = document.getElementById('pcSearchInput');
+    const pcStatusFilter = document.getElementById('pcTableStatusFilter')?.value || 'all';
     const keyword = ((input && input.value) || (pcInput && pcInput.value) || '').trim().toLowerCase();
     
-    if (!keyword) { filteredOrders = [...orders]; } 
-    else { filteredOrders = orders.filter(o => { const clientName = (o.client || '').toLowerCase(); const materialName = (o.material || '').toLowerCase(); const rejectReason = (o.rejectReason || '').toLowerCase(); const statusName = (o.status || '').toLowerCase(); return clientName.includes(keyword) || materialName.includes(keyword) || rejectReason.includes(keyword) || statusName.includes(keyword); }); }
+    // 1단계: 키워드 및 상태 필터 결합
+    let tempOrders = orders.filter(o => { 
+        const clientName = (o.client || '').toLowerCase(); 
+        const materialName = (o.material || '').toLowerCase(); 
+        const rejectReason = (o.rejectReason || '').toLowerCase(); 
+        const statusName = (o.status || '').toLowerCase(); 
+        
+        const matchKeyword = !keyword || clientName.includes(keyword) || materialName.includes(keyword) || rejectReason.includes(keyword) || statusName.includes(keyword);
+        const matchStatus = pcStatusFilter === 'all' || o.status === pcStatusFilter;
+        
+        return matchKeyword && matchStatus; 
+    });
     
+    // 2단계: 전역 날짜 필터 적용 (dueDate 기준 연산)
+    if (globalDateRange !== 'all') {
+        const today = new Date();
+        let startStr = ''; let endStr = '';
+        
+        if (globalDateRange === '7days') {
+            const d = new Date(); d.setDate(today.getDate() - 7);
+            startStr = d.toISOString().split('T')[0];
+            endStr = today.toISOString().split('T')[0];
+        } else if (globalDateRange === 'lastMonth') {
+            const firstDay = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            const lastDay = new Date(today.getFullYear(), today.getMonth(), 0);
+            startStr = firstDay.toISOString().split('T')[0];
+            endStr = lastDay.toISOString().split('T')[0];
+        } else if (globalDateRange === 'thisYear') {
+            const firstDay = new Date(today.getFullYear(), 0, 1);
+            startStr = firstDay.toISOString().split('T')[0];
+            endStr = today.toISOString().split('T')[0];
+        }
+
+        tempOrders = tempOrders.filter(o => {
+            if (!o.dueDate) return false;
+            return o.dueDate >= startStr && o.dueDate <= endStr;
+        });
+    }
+    
+    filteredOrders = tempOrders;
+    
+    // 3단계: 활성화된 탭 및 테이블 재렌더링
     const activeRoleBtn = document.querySelector('.active-role');
     if (activeRoleBtn) { const cur = activeRoleBtn.id.replace('role-', ''); if(cur === 'accounting') renderAccounting(); else if(cur === 'factory') renderFactory(); else if(cur === 'receivables') renderReceivables(); else if(cur === 'history') renderHistory(); }
     renderPCTable();
@@ -1439,7 +1509,8 @@ function initDashboardCharts() {
         mData[m] += (o.price || 0) * (o.qty || 0);
     });
     
-    const sMonths = Object.keys(mData).sort().slice(-6);
+   const chartPeriod = parseInt(document.getElementById('chartPeriodFilter')?.value || '6');
+   const sMonths = Object.keys(mData).sort().slice(-chartPeriod);
     if (trendChartInstance) trendChartInstance.destroy();
     trendChartInstance = new Chart(trendCtx, {
         type: 'line',
