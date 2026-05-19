@@ -478,30 +478,36 @@
                 <div class="max-w-6xl mx-auto w-full p-6 pb-10">
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="text-2xl font-black text-white">💼 회계 자산 관제탑</h2>
-                        <div class="text-xs font-bold text-slate-500 bg-[#1e293b] px-4 py-2 rounded-lg border border-[#334155]">
-                            기준일: 2026-05-14
-                        </div>
+                    <div class="text-xs font-bold text-slate-500 bg-[#1e293b] px-4 py-2 rounded-lg border border-[#334155]">
+                   기준일: <span id="pcFinanceBaseDate">-</span>
+                   </div>    
                     </div>
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg relative overflow-hidden">
                             <p class="text-slate-400 text-[11px] font-bold mb-2 uppercase">당월 총 수주액</p>
-                            <p class="text-xl font-black text-white mb-1">₩ 142,500,000</p>
-                            <p class="text-[10px] font-bold text-green-400 flex items-center gap-1"><span>▲ 12.5%</span> <span class="text-slate-500 font-normal">vs 전월</span></p>
+                        <p class="text-xl font-black text-white mb-1" id="pcFinanceOrderTotal">₩ 0</p>
+                        <p class="text-[10px] font-bold text-green-400 flex items-center gap-1" id="pcFinanceOrderMeta">
+                       조회 데이터 기준
+                        </p>    
                         </div>
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
                             <p class="text-slate-400 text-[11px] font-bold mb-2 uppercase">계산서 발행액</p>
-                            <p class="text-xl font-black text-blue-400 mb-1">₩ 98,200,000</p>
-                            <p class="text-[10px] font-bold text-slate-500">발행률 68.9%</p>
+                            <p class="text-xl font-black text-blue-400 mb-1" id="pcFinanceIssuedTotal">₩ 0</p>
+                            <p class="text-[10px] font-bold text-slate-500" id="pcFinanceIssuedMeta">완료 건 기준</p>
                         </div>
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg border-l-4 border-l-green-500">
                             <p class="text-slate-400 text-[11px] font-bold mb-2 uppercase">당월 실결제(입금)</p>
-                            <p class="text-xl font-black text-green-400 mb-1">₩ 75,400,000</p>
-                            <p class="text-[10px] font-bold text-green-400 flex items-center gap-1"><span>▲ 5.2%</span> <span class="text-slate-500 font-normal">목표 대비 102%</span></p>
+                        <p class="text-xl font-black text-green-400 mb-1" id="pcFinancePaidTotal">₩ 0</p>
+<p class="text-[10px] font-bold text-green-400 flex items-center gap-1" id="pcFinancePaidMeta">
+    수금률 0%
+</p>
                         </div>
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg border-l-4 border-l-red-500">
                             <p class="text-slate-400 text-[11px] font-bold mb-2 uppercase text-red-400">전체 미수금 합계</p>
-                            <p class="text-xl font-black text-red-500 mb-1">₩ 22,800,000</p>
-                            <p class="text-[10px] font-bold text-red-400 flex items-center gap-1"><span>▼ 2.1%</span> <span class="text-slate-500 font-normal">회수율 개선 중</span></p>
+                            <p class="text-xl font-black text-red-500 mb-1" id="pcFinanceDebtTotal">₩ 0</p>
+<p class="text-[10px] font-bold text-red-400 flex items-center gap-1" id="pcFinanceDebtMeta">
+    미수 0건
+</p>
                         </div>
                     </div>
                     <div class="bg-[#1e293b] border border-[#334155] rounded-2xl p-6 shadow-xl mb-10">
@@ -517,7 +523,7 @@
                 </div>
             </div>
 
-            <div id="pc-page-receivables" class="pc-page hidden">
+                <div id="pc-page-receivables" class="pc-page hidden">
                 <div class="max-w-6xl mx-auto w-full p-6 pb-10">
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="text-2xl font-black text-white">💰 채권 현황 관제탑 (미수금)</h2>
@@ -526,23 +532,23 @@
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                         <div class="bg-[#1e293b] border border-red-500/30 rounded-xl p-5 shadow-lg">
                             <p class="text-red-400 text-[10px] font-black mb-1 uppercase tracking-tighter">Urgent (Overdue)</p>
-                            <p class="text-2xl font-black text-red-500">₩ 8,500,000</p>
-                            <p class="text-[9px] text-slate-500 mt-1">30일 이상 연체 건</p>
+                         <p class="text-2xl font-black text-red-500" id="pcArOverdueAmount">₩ 0</p>
+                         <p class="text-[9px] text-slate-500 mt-1" id="pcArOverdueMeta">30일 이상 연체 0건</p>   
                         </div>
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
                             <p class="text-slate-400 text-[10px] font-black mb-1 uppercase tracking-tighter">Normal Receivable</p>
-                            <p class="text-2xl font-black text-white">₩ 14,300,000</p>
-                            <p class="text-[9px] text-slate-500 mt-1">입금 대기 중인 채권</p>
+                            <p class="text-2xl font-black text-white" id="pcArNormalAmount">₩ 0</p>
+                            <p class="text-[9px] text-slate-500 mt-1" id="pcArNormalMeta">입금 대기 0건</p>
                         </div>
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
                             <p class="text-slate-400 text-[10px] font-black mb-1 uppercase tracking-tighter">Recovery Rate</p>
-                            <p class="text-2xl font-black text-green-400">82%</p>
-                            <p class="text-[9px] text-slate-500 mt-1">이번 달 채권 회수율</p>
+                            <p class="text-2xl font-black text-green-400" id="pcArRecoveryRate">0%</p>
+<p class="text-[9px] text-slate-500 mt-1" id="pcArRecoveryMeta">조회 기준 회수율</p>
                         </div>
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
                             <p class="text-slate-400 text-[10px] font-black mb-1 uppercase tracking-tighter">Credit Limit</p>
-                            <p class="text-2xl font-black text-blue-400">SAFE</p>
-                            <p class="text-[9px] text-slate-500 mt-1">기업 신용 안전 등급</p>
+                            <p class="text-2xl font-black text-blue-400" id="pcArRiskLabel">SAFE</p>
+<p class="text-[9px] text-slate-500 mt-1" id="pcArRiskMeta">연체 리스크 없음</p>
                         </div>
                     </div>
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -551,8 +557,8 @@
                             <div class="flex-1 relative flex items-center justify-center">
                                 <canvas id="receivableStatusChart"></canvas>
                                 <div class="absolute text-center">
-                                    <p class="text-[10px] text-slate-500 font-bold">합계</p>
-                                    <p class="text-lg font-black text-white">1.5억</p>
+                                 <p class="text-[10px] text-slate-500 font-bold">합계</p>
+                                 <p class="text-lg font-black text-white" id="receivableChartTotal">0</p>
                                 </div>
                             </div>
                         </div>
@@ -565,11 +571,13 @@
                                     <thead class="sticky top-0 bg-[#0f1522] text-slate-500 font-bold border-b border-[#334155]">
                                         <tr><th class="px-4 py-3">거래처명</th><th class="px-4 py-3">최종 납기</th><th class="px-4 py-3">경과일</th><th class="px-4 py-3 text-right">잔액(KRW)</th></tr>
                                     </thead>
-                                    <tbody class="divide-y divide-[#334155]/50">
-                                        <tr class="hover:bg-red-500/5"><td class="px-4 py-3 font-bold text-white">(주)가나인테리어</td><td class="px-4 py-3">2026-03-10</td><td class="px-4 py-3 text-red-500 font-bold">65일</td><td class="px-4 py-3 text-right font-black">12,500,000</td></tr>
-                                        <tr class="hover:bg-red-500/5"><td class="px-4 py-3 font-bold text-white">동양목재공사</td><td class="px-4 py-3">2026-02-15</td><td class="px-4 py-3 text-red-500 font-bold">88일</td><td class="px-4 py-3 text-right font-black">8,400,000</td></tr>
-                                        <tr class="hover:bg-red-500/5"><td class="px-4 py-3 font-bold text-white">서초 리모델링 현장</td><td class="px-4 py-3">2026-04-20</td><td class="px-4 py-3 text-orange-400 font-bold">24일</td><td class="px-4 py-3 text-right font-black">22,000,000</td></tr>
-                                    </tbody>
+                                 <tbody id="pcArTableBody" class="divide-y divide-[#334155]/50">
+    <tr>
+        <td colspan="4" class="px-4 py-8 text-center text-slate-500 font-bold">
+            미수금 데이터가 없습니다.
+        </td>
+    </tr>
+</tbody>
                                 </table>
                             </div>
                         </div>
@@ -583,56 +591,41 @@
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
                             <p class="text-slate-400 text-xs font-medium mb-1">진행 중 공정</p>
-                            <p class="text-2xl font-bold text-blue-400">12<span class="text-sm font-normal text-slate-500 ml-1">건</span></p>
+                          <p class="text-2xl font-bold text-blue-400">
+    <span id="pcProductionActiveCount">0</span><span class="text-sm font-normal text-slate-500 ml-1">건</span>
+</p>  
                         </div>
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
                             <p class="text-slate-400 text-xs font-medium mb-1">완료 대기 (포장)</p>
-                            <p class="text-2xl font-bold text-yellow-500">5<span class="text-sm font-normal text-slate-500 ml-1">건</span></p>
+<p class="text-2xl font-bold text-yellow-500">
+    <span id="pcProductionPackingCount">0</span><span class="text-sm font-normal text-slate-500 ml-1">건</span>
+</p>
                         </div>
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
                             <p class="text-slate-400 text-xs font-medium mb-1">당일 배송 완료</p>
-                            <p class="text-2xl font-bold text-green-400">8<span class="text-sm font-normal text-slate-500 ml-1">건</span></p>
+                            <p class="text-2xl font-bold text-green-400">
+    <span id="pcProductionTodayDoneCount">0</span><span class="text-sm font-normal text-slate-500 ml-1">건</span>
+</p>
                         </div>
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
                             <p class="text-slate-400 text-xs font-medium mb-1">평균 리드타임</p>
-                            <p class="text-2xl font-bold text-white">4.2<span class="text-sm font-normal text-slate-500 ml-1">일</span></p>
+                            <p class="text-2xl font-bold text-white">
+    <span id="pcProductionLeadTime">0.0</span><span class="text-sm font-normal text-slate-500 ml-1">일</span>
+</p>
+
                         </div>
                     </div>
                     <div class="bg-[#1e293b] border border-[#334155] rounded-2xl p-6 shadow-xl mb-6">
                         <h3 class="text-sm font-bold text-slate-400 mb-6 uppercase tracking-widest flex items-center gap-2">
                             <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span> 실시간 핵심 공정 진행률
                         </h3>
-                        <div class="space-y-6">
-                            <div>
-                                <div class="flex justify-between text-xs font-bold mb-2">
-                                    <span class="text-white">A동 합판 재단 공정</span>
-                                    <span class="text-blue-400">78%</span>
-                                </div>
-                                <div class="w-full bg-[#0f1522] h-2.5 rounded-full overflow-hidden border border-[#334155]">
-                                    <div class="bg-blue-500 h-full rounded-full transition-all duration-1000 ease-out" style="width: 78%"></div>
-                                </div>
-                            </div>
-                            <div>
-                                <div class="flex justify-between text-xs font-bold mb-2">
-                                    <span class="text-white">B동 무광PET 코팅 작업</span>
-                                    <span class="text-yellow-500">32%</span>
-                                </div>
-                                <div class="w-full bg-[#0f1522] h-2.5 rounded-full overflow-hidden border border-[#334155]">
-                                    <div class="bg-yellow-500 h-full rounded-full transition-all duration-1000 ease-out" style="width: 32%"></div>
-                                </div>
-                            </div>
-                            <div>
-                                <div class="flex justify-between text-xs font-bold mb-2">
-                                    <span class="text-white">C동 CNC 가공 라인</span>
-                                    <span class="text-green-400">100%</span>
-                                </div>
-                                <div class="w-full bg-[#0f1522] h-2.5 rounded-full overflow-hidden border border-[#334155]">
-                                    <div class="bg-green-500 h-full rounded-full shadow-[0_0_10px_rgba(34,197,94,0.3)] transition-all duration-1000 ease-out" style="width: 100%"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="pc-factory-chart-container" class="bg-[#1e293b] border border-[#334155] rounded-2xl p-6 shadow-xl hidden lg:block">
+                        <div id="pcProductionProgressList" class="space-y-6">
+    <p class="text-center text-xs text-slate-500 font-bold py-8">
+        진행 중인 공정 데이터가 없습니다.
+    </p>
+</div>
+</div>
+        <div id="pc-factory-chart-container" class="bg-[#1e293b] border border-[#334155] rounded-2xl p-6 shadow-xl hidden lg:block">
                         <h3 class="text-sm font-bold text-slate-400 mb-6 uppercase tracking-widest text-center">📊 품목별 생산 누적 현황 (진행 vs 완료)</h3>
                         <div class="relative h-[280px] w-full">
                             <canvas id="productionBarChart"></canvas>
@@ -786,6 +779,258 @@ async function applyComplexFilter() {
 }   
 
 function safePercent(completed, total) { const c = Number(completed) || 0; const t = Number(total) || 0; if (t <= 0) return 0; return Math.round((c / t) * 100); }
+// --- [작업 21] PC 서브 대시보드 공통 계산 유틸 ---
+function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.innerText = value;
+}
+
+function getKSTDateString(dateObj = new Date()) {
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Seoul',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).format(dateObj);
+}
+
+function parseKSTDate(dateStr) {
+    if (!dateStr) return null;
+    return new Date(`${dateStr}T00:00:00+09:00`);
+}
+
+function daysBetween(startDateStr, endDateStr) {
+    const start = parseKSTDate(startDateStr);
+    const end = parseKSTDate(endDateStr);
+    if (!start || !end) return 0;
+    return Math.floor((end - start) / 86400000);
+}
+
+function getOrderAmount(order) {
+    return (Number(order.price) || 0) * (Number(order.qty) || 0);
+}
+
+function getPaidAmount(order) {
+    const total = getOrderAmount(order);
+    const paid = Number(order.paidAmount) || 0;
+
+    if (order.paymentStatus === 'paid') {
+        return paid > 0 ? Math.min(paid, total) : total;
+    }
+
+    return Math.min(paid, total);
+}
+
+function getOutstandingAmount(order) {
+    return Math.max(0, getOrderAmount(order) - getPaidAmount(order));
+}
+
+function formatKRW(value) {
+    return `₩ ${Math.round(Number(value) || 0).toLocaleString()}`;
+}
+
+function formatKRWShort(value) {
+    const amount = Number(value) || 0;
+    if (amount >= 100000000) return `${(amount / 100000000).toFixed(1)}억`;
+    if (amount >= 10000) return `${Math.round(amount / 10000).toLocaleString()}만`;
+    return amount.toLocaleString();
+}
+
+function getMaterialBucket(material = '') {
+    const name = String(material);
+
+    if (name.includes('MDF')) return 'MDF';
+    if (name.includes('합판') || name.includes('자작')) return '합판';
+    if (name.includes('PET') || name.includes('하이그로시') || name.includes('코팅')) return '코팅/PET';
+    if (name.includes('목') || name.includes('집성')) return '목재';
+
+    return '기타';
+}
+
+function getPCDashboardMetrics(data = filteredOrders) {
+    const todayStr = getKSTDateString();
+
+    const completedItems = data.filter(o => o.status === 'completed');
+    const activeProductionItems = data.filter(o => o.status === 'approved');
+    const debtItems = data.filter(o =>
+        ['approved', 'completed'].includes(o.status) &&
+        o.paymentStatus !== 'paid' &&
+        getOutstandingAmount(o) > 0
+    );
+
+    const totalOrderAmount = data.reduce((sum, o) => sum + getOrderAmount(o), 0);
+    const issuedAmount = completedItems.reduce((sum, o) => sum + getOrderAmount(o), 0);
+    const paidAmount = data.reduce((sum, o) => sum + getPaidAmount(o), 0);
+    const debtAmount = debtItems.reduce((sum, o) => sum + getOutstandingAmount(o), 0);
+
+    const overdueItems = debtItems.filter(o => {
+        const baseDate = o.payDate || o.dueDate;
+        return baseDate && daysBetween(baseDate, todayStr) >= 30;
+    });
+
+    const overdueAmount = overdueItems.reduce((sum, o) => sum + getOutstandingAmount(o), 0);
+    const normalDebtAmount = Math.max(0, debtAmount - overdueAmount);
+
+    const receivableBase = paidAmount + debtAmount;
+    const recoveryRate = receivableBase > 0 ? Math.round((paidAmount / receivableBase) * 100) : 0;
+
+    const todayDoneItems = completedItems.filter(o => o.dueDate === todayStr);
+    const packingWaitItems = completedItems.filter(o => o.paymentStatus !== 'paid');
+
+    const leadTimes = completedItems
+        .map(o => {
+            if (!o.createdAt || !o.dueDate) return null;
+            const createdDate = getKSTDateString(new Date(Number(o.createdAt)));
+            const diff = daysBetween(createdDate, o.dueDate);
+            return diff >= 0 ? diff : null;
+        })
+        .filter(v => v !== null);
+
+    const avgLeadTime = leadTimes.length
+        ? (leadTimes.reduce((sum, v) => sum + v, 0) / leadTimes.length).toFixed(1)
+        : '0.0';
+
+    return {
+        todayStr,
+        totalCount: data.length,
+        completedItems,
+        activeProductionItems,
+        debtItems,
+        overdueItems,
+        totalOrderAmount,
+        issuedAmount,
+        paidAmount,
+        debtAmount,
+        overdueAmount,
+        normalDebtAmount,
+        recoveryRate,
+        todayDoneItems,
+        packingWaitItems,
+        avgLeadTime
+    };
+}
+// --- [작업 21] Finance / AR / Production 카드 실데이터 렌더링 ---
+function updatePCSubDashboards() {
+    const metrics = getPCDashboardMetrics(filteredOrders);
+
+    updatePCFinanceCards(metrics);
+    updatePCARCards(metrics);
+    updatePCProductionCards(metrics);
+}
+
+function updatePCFinanceCards(metrics) {
+    const collectionRate = metrics.totalOrderAmount > 0
+        ? Math.round((metrics.paidAmount / metrics.totalOrderAmount) * 100)
+        : 0;
+
+    const issuedRate = metrics.totalOrderAmount > 0
+        ? Math.round((metrics.issuedAmount / metrics.totalOrderAmount) * 100)
+        : 0;
+
+    setText('pcFinanceBaseDate', metrics.todayStr);
+    setText('pcFinanceOrderTotal', formatKRW(metrics.totalOrderAmount));
+    setText('pcFinanceOrderMeta', `조회 ${metrics.totalCount}건 기준`);
+    setText('pcFinanceIssuedTotal', formatKRW(metrics.issuedAmount));
+    setText('pcFinanceIssuedMeta', `완료 ${metrics.completedItems.length}건 · 발행 기준율 ${issuedRate}%`);
+    setText('pcFinancePaidTotal', formatKRW(metrics.paidAmount));
+    setText('pcFinancePaidMeta', `수금률 ${collectionRate}%`);
+    setText('pcFinanceDebtTotal', formatKRW(metrics.debtAmount));
+    setText('pcFinanceDebtMeta', `미수 ${metrics.debtItems.length}건`);
+}
+
+function updatePCARCards(metrics) {
+    let riskLabel = 'SAFE';
+    let riskMeta = '연체 리스크 없음';
+
+    if (metrics.overdueAmount > metrics.normalDebtAmount && metrics.overdueAmount > 0) {
+        riskLabel = 'RISK';
+        riskMeta = '장기 연체 우선 회수 필요';
+    } else if (metrics.overdueAmount > 0) {
+        riskLabel = 'WATCH';
+        riskMeta = '30일 이상 연체 존재';
+    }
+
+    setText('pcArOverdueAmount', formatKRW(metrics.overdueAmount));
+    setText('pcArOverdueMeta', `30일 이상 연체 ${metrics.overdueItems.length}건`);
+    setText('pcArNormalAmount', formatKRW(metrics.normalDebtAmount));
+    setText('pcArNormalMeta', `입금 대기 ${Math.max(0, metrics.debtItems.length - metrics.overdueItems.length)}건`);
+    setText('pcArRecoveryRate', `${metrics.recoveryRate}%`);
+    setText('pcArRecoveryMeta', '조회 기준 채권 회수율');
+    setText('pcArRiskLabel', riskLabel);
+    setText('pcArRiskMeta', riskMeta);
+    setText('receivableChartTotal', formatKRWShort(metrics.debtAmount));
+
+    const tbody = document.getElementById('pcArTableBody');
+    if (!tbody) return;
+
+    const todayStr = metrics.todayStr;
+
+    tbody.innerHTML = metrics.debtItems
+        .map(o => {
+            const baseDate = o.payDate || o.dueDate || '-';
+            const elapsed = baseDate !== '-' ? Math.max(0, daysBetween(baseDate, todayStr)) : 0;
+            const remaining = getOutstandingAmount(o);
+            const elapsedClass = elapsed >= 60 ? 'text-red-500' : elapsed >= 30 ? 'text-orange-400' : 'text-slate-400';
+
+            return { o, baseDate, elapsed, remaining, elapsedClass };
+        })
+        .sort((a, b) => b.elapsed - a.elapsed)
+        .slice(0, 10)
+        .map(item => `
+            <tr class="hover:bg-red-500/5">
+                <td class="px-4 py-3 font-bold text-white">${item.o.client || '-'}</td>
+                <td class="px-4 py-3">${item.baseDate}</td>
+                <td class="px-4 py-3 ${item.elapsedClass} font-bold">${item.elapsed}일</td>
+                <td class="px-4 py-3 text-right font-black">${item.remaining.toLocaleString()}</td>
+            </tr>
+        `)
+        .join('') || `
+            <tr>
+                <td colspan="4" class="px-4 py-8 text-center text-slate-500 font-bold">
+                    미수금 데이터가 없습니다.
+                </td>
+            </tr>
+        `;
+}
+
+function updatePCProductionCards(metrics) {
+    setText('pcProductionActiveCount', metrics.activeProductionItems.length);
+    setText('pcProductionPackingCount', metrics.packingWaitItems.length);
+    setText('pcProductionTodayDoneCount', metrics.todayDoneItems.length);
+    setText('pcProductionLeadTime', metrics.avgLeadTime);
+
+    const progressList = document.getElementById('pcProductionProgressList');
+    if (!progressList) return;
+
+    progressList.innerHTML = metrics.activeProductionItems
+        .sort((a, b) => String(a.dueDate || '').localeCompare(String(b.dueDate || '')))
+        .slice(0, 5)
+        .map(o => {
+            const pct = safePercent(o.completedQty, o.qty);
+            const remainQty = Math.max(0, (Number(o.qty) || 0) - (Number(o.completedQty) || 0));
+
+            return `
+                <div>
+                    <div class="flex justify-between text-xs font-bold mb-2">
+                        <span class="text-white">${o.client || '-'} · ${o.material || '-'}</span>
+                        <span class="text-blue-400">${pct}%</span>
+                    </div>
+                    <div class="w-full bg-[#0f1522] h-2.5 rounded-full overflow-hidden border border-[#334155]">
+                        <div class="bg-blue-500 h-full rounded-full transition-all duration-1000 ease-out" style="width: ${pct}%"></div>
+                    </div>
+                    <div class="mt-1 text-[10px] text-slate-500 font-bold flex justify-between">
+                        <span>납기: ${o.dueDate || '-'}</span>
+                        <span>잔여 ${remainQty.toLocaleString()}장</span>
+                    </div>
+                </div>
+            `;
+        })
+        .join('') || `
+            <p class="text-center text-xs text-slate-500 font-bold py-8">
+                진행 중인 공정 데이터가 없습니다.
+            </p>
+        `;
+}
 async function logAction(action, orderId, details) { try { if(typeof db !== 'undefined') { await db.collection('audit_logs').add({ action: action, user: currentUser.name, role: currentUser.role, order_id: orderId, details: details, timestamp: Date.now() }); } } catch(e) { console.warn('Audit log failed:', e); } }
 
 window.onload = async function() {
@@ -999,8 +1244,6 @@ function startOrdersListener(customQuery = null) {
     else { const baseRef = db.collection('orders'); if (currentUser.role === 'sales') { query = baseRef.where('reportedBy', '==', currentUser.name).orderBy('createdAt', 'desc').limit(100); } else if (currentUser.role === 'factory') { query = baseRef.where('status', 'in', ['approved', 'completed']).orderBy('createdAt', 'desc').limit(150); } else { query = baseRef.orderBy('createdAt', 'desc').limit(300); } }
     ordersListenerUnsubscribe = query.onSnapshot(snap => { orders = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); executeSearch(); }, error => { console.error("Orders Listener Error:", error); });
 }
-
-function safePercent(completed, total) { const c = Number(completed) || 0; const t = Number(total) || 0; if (t <= 0) return 0; return Math.round((c / t) * 100); }
 
 function renderAccounting() {
     const list = document.getElementById('accountingList');
@@ -1274,10 +1517,78 @@ function initProductionChart() {
     const ctx = document.getElementById('productionBarChart');
     if (!ctx) return;
     if (productionBarChartInstance) productionBarChartInstance.destroy();
+
+    const buckets = {
+        '목재': { active: 0, completed: 0 },
+        '합판': { active: 0, completed: 0 },
+        'MDF': { active: 0, completed: 0 },
+        '코팅/PET': { active: 0, completed: 0 },
+        '기타': { active: 0, completed: 0 }
+    };
+
+    filteredOrders.forEach(o => {
+        const bucket = getMaterialBucket(o.material);
+        const qty = Number(o.qty) || 0;
+        const completedQty = o.status === 'completed'
+            ? qty
+            : Math.min(Number(o.completedQty) || 0, qty);
+
+        if (!buckets[bucket]) buckets[bucket] = { active: 0, completed: 0 };
+
+        if (o.status === 'approved') {
+            buckets[bucket].active += Math.max(0, qty - completedQty);
+            buckets[bucket].completed += completedQty;
+        } else if (o.status === 'completed') {
+            buckets[bucket].completed += qty;
+        }
+    });
+
+    const labels = Object.keys(buckets);
+    const activeData = labels.map(label => buckets[label].active);
+    const completedData = labels.map(label => buckets[label].completed);
+
     productionBarChartInstance = new Chart(ctx, {
         type: 'bar',
-        data: { labels: ['목재(Wood)', '합판(Plywood)', 'MDF'], datasets: [{ label: '생산 진행중', data: [45, 30, 20], backgroundColor: 'rgba(59, 130, 246, 0.6)', borderRadius: 5 }, { label: '생산 완료', data: [80, 55, 40], backgroundColor: 'rgba(34, 197, 94, 0.6)', borderRadius: 5 }] },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#94a3b8' } }, x: { grid: { display: false }, ticks: { color: '#94a3b8' } } }, plugins: { legend: { labels: { color: '#f1f5f9' } } } }
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: '생산 진행중',
+                    data: activeData,
+                    backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                    borderRadius: 5
+                },
+                {
+                    label: '생산 완료',
+                    data: completedData,
+                    backgroundColor: 'rgba(34, 197, 94, 0.6)',
+                    borderRadius: 5
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(255,255,255,0.1)' },
+                    ticks: { color: '#94a3b8' }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#94a3b8' }
+                }
+            },
+            plugins: {
+                legend: { labels: { color: '#f1f5f9' } },
+                tooltip: {
+                    callbacks: {
+                        label: c => `${c.dataset.label}: ${Number(c.raw || 0).toLocaleString()}장`
+                    }
+                }
+            }
+        }
     });
 }
 
@@ -1287,23 +1598,88 @@ function initMonthlyComparisonChart() {
     if (monthlyComparisonChartInstance) monthlyComparisonChartInstance.destroy();
 
     const monthlyData = {};
+
     filteredOrders.forEach(o => {
         if (!o.dueDate) return;
-        const monthKey = o.dueDate.substring(0, 7); 
-        if (!monthlyData[monthKey]) monthlyData[monthKey] = { orderTotal: 0, paidTotal: 0 };
-        monthlyData[monthKey].orderTotal += (o.price || 0) * (o.qty || 0);
-        monthlyData[monthKey].paidTotal += o.paidAmount || 0;
+
+        const monthKey = o.dueDate.substring(0, 7);
+
+        if (!monthlyData[monthKey]) {
+            monthlyData[monthKey] = { orderTotal: 0, paidTotal: 0 };
+        }
+
+        monthlyData[monthKey].orderTotal += getOrderAmount(o);
+        monthlyData[monthKey].paidTotal += getPaidAmount(o);
     });
 
     const sortedMonths = Object.keys(monthlyData).sort().slice(-6);
-    const labels = sortedMonths.map(m => `${parseInt(m.split('-')[1])}월`);
+    const labels = sortedMonths.map(m => `${parseInt(m.split('-')[1], 10)}월`);
     const orderValues = sortedMonths.map(m => monthlyData[m].orderTotal / 10000);
     const paidValues = sortedMonths.map(m => monthlyData[m].paidTotal / 10000);
 
     monthlyComparisonChartInstance = new Chart(ctx, {
         type: 'bar',
-        data: { labels: labels.length > 0 ? labels : ['데이터 없음'], datasets: [{ label: '수주 금액', data: orderValues.length > 0 ? orderValues : [0], backgroundColor: 'rgba(34, 211, 238, 0.8)', hoverBackgroundColor: 'rgba(34, 211, 238, 1)', borderRadius: 4, barPercentage: 0.6, categoryPercentage: 0.8 }, { label: '실결제 금액', data: paidValues.length > 0 ? paidValues : [0], backgroundColor: 'rgba(34, 197, 94, 0.8)', hoverBackgroundColor: 'rgba(34, 197, 94, 1)', borderRadius: 4, barPercentage: 0.6, categoryPercentage: 0.8 }] },
-        options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', callback: v => '₩' + v.toLocaleString() + '만' } }, x: { grid: { display: false }, ticks: { color: '#94a3b8' } } }, plugins: { legend: { display: true, position: 'bottom', labels: { color: '#94a3b8', font: { size: 11, family: 'Inter' } } }, tooltip: { enabled: true, backgroundColor: 'rgba(15, 21, 34, 0.95)', titleColor: '#fff', bodyColor: '#cbd5e1', borderColor: '#334155', borderWidth: 1, padding: 12, callbacks: { label: c => c.dataset.label + ': ₩' + c.raw.toLocaleString() + '만' } } } }
+        data: {
+            labels: labels.length > 0 ? labels : ['데이터 없음'],
+            datasets: [
+                {
+                    label: '수주 금액',
+                    data: orderValues.length > 0 ? orderValues : [0],
+                    backgroundColor: 'rgba(34, 211, 238, 0.8)',
+                    hoverBackgroundColor: 'rgba(34, 211, 238, 1)',
+                    borderRadius: 4,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.8
+                },
+                {
+                    label: '실결제 금액',
+                    data: paidValues.length > 0 ? paidValues : [0],
+                    backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                    hoverBackgroundColor: 'rgba(34, 197, 94, 1)',
+                    borderRadius: 4,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.8
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: {
+                        color: '#94a3b8',
+                        callback: v => '₩' + v.toLocaleString() + '만'
+                    }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#94a3b8' }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: { color: '#94a3b8', font: { size: 11, family: 'Inter' } }
+                },
+                tooltip: {
+                    enabled: true,
+                    backgroundColor: 'rgba(15, 21, 34, 0.95)',
+                    titleColor: '#fff',
+                    bodyColor: '#cbd5e1',
+                    borderColor: '#334155',
+                    borderWidth: 1,
+                    padding: 12,
+                    callbacks: {
+                        label: c => c.dataset.label + ': ₩' + c.raw.toLocaleString() + '만'
+                    }
+                }
+            }
+        }
     });
 }
     
@@ -1311,15 +1687,64 @@ function initReceivableChart() {
     const ctx = document.getElementById('receivableStatusChart');
     if (!ctx) return;
     if (receivableStatusChartInstance) receivableStatusChartInstance.destroy();
+
+    const todayStr = getKSTDateString();
+
+    const buckets = {
+        under30: 0,
+        over30: 0,
+        over60: 0,
+        over90: 0
+    };
+
+    filteredOrders
+        .filter(o =>
+            ['approved', 'completed'].includes(o.status) &&
+            o.paymentStatus !== 'paid' &&
+            getOutstandingAmount(o) > 0
+        )
+        .forEach(o => {
+            const baseDate = o.payDate || o.dueDate;
+            const elapsed = baseDate ? Math.max(0, daysBetween(baseDate, todayStr)) : 0;
+            const remaining = getOutstandingAmount(o);
+
+            if (elapsed >= 90) buckets.over90 += remaining;
+            else if (elapsed >= 60) buckets.over60 += remaining;
+            else if (elapsed >= 30) buckets.over30 += remaining;
+            else buckets.under30 += remaining;
+        });
+
     receivableStatusChartInstance = new Chart(ctx, {
         type: 'doughnut',
-        data: { labels: ['30일 이내', '60일 초과', '90일 이상 연체'], datasets: [{ data: [84000000, 42200000, 30000000], backgroundColor: ['#3b82f6', '#f97316', '#dc2626'], borderWidth: 0, hoverOffset: 4 }] },
-        options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false } } }
+        data: {
+            labels: ['30일 이내', '31~60일', '61~90일', '91일 이상'],
+            datasets: [{
+                data: [buckets.under30, buckets.over30, buckets.over60, buckets.over90],
+                backgroundColor: ['#3b82f6', '#f97316', '#f59e0b', '#dc2626'],
+                borderWidth: 0,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '75%',
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: c => `${c.label}: ₩${Number(c.raw || 0).toLocaleString()}`
+                    }
+                }
+            }
+        }
     });
 }
-
+    
 // --- [중앙 차트 컨트롤러] ---
 function updateCharts() {
+    updatePCSubDashboards();
+
     const dashboardPage = document.getElementById('pc-page-dashboard');
     if (dashboardPage && dashboardPage.classList.contains('block')) initDashboardCharts();
 
@@ -1390,15 +1815,15 @@ function switchPCTab(tabId) {
     closeDrawer();
     const emptyState = document.getElementById('emptyDetailState');
     const activeState = document.getElementById('activeDetailState');
+   
     if (emptyState && activeState) { emptyState.classList.remove('hidden'); activeState.classList.add('hidden'); }
     document.querySelectorAll('.pc-table-row').forEach(row => row.classList.remove('active'));
-
-   if (tabId === 'dashboard') setTimeout(executeSearch, 100);
-   else if (tabId === 'factory') setTimeout(initProductionChart, 100);
-   else if (tabId === 'accounting') setTimeout(initMonthlyComparisonChart, 100);
-   else if (tabId === 'receivables') setTimeout(initReceivableChart, 100);
+   
+    if (['dashboard', 'factory', 'accounting', 'receivables'].includes(tabId)) {
+    setTimeout(executeSearch, 100);
+    }
 }
-
+    
 async function handleReport() {
     if (isSubmitting) return;
 
