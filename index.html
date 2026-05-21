@@ -2242,19 +2242,37 @@ function selectRow(element, orderId) {
 window.addEventListener('load', () => { 
     const processLoadEvent = () => {
         if (window.FirebaseShared && typeof db === 'undefined') {
-            console.warn('⏳ Firebase 미초기화 — 세션 복원 500ms 지연 후 재시도'); setTimeout(processLoadEvent, 500); return;
+            console.warn('⏳ Firebase 미초기화 — 세션 복원 500ms 지연 후 재시도');
+            setTimeout(processLoadEvent, 500);
+            return;
         }
+
         const savedSession = sessionStorage.getItem('yongjin_session');
         const savedTab = sessionStorage.getItem('active_tab');
-        if (savedSession) {
+
+        if (!savedSession || savedSession === 'undefined' || savedSession === 'null') {
+            sessionStorage.removeItem('yongjin_session');
+            return;
+        }
+
+        try {
             currentUser = JSON.parse(savedSession);
             processLoginSuccess();
-            if (savedTab) { setTimeout(() => { switchTab(savedTab, false); }, 150); }
+
+            if (savedTab) {
+                setTimeout(() => {
+                    switchTab(savedTab, false);
+                }, 150);
+            }
+        } catch (e) {
+            console.warn('세션 복원 실패 — 손상된 세션 정보를 초기화합니다.', e);
+            sessionStorage.removeItem('yongjin_session');
         }
     };
+
     setTimeout(processLoadEvent, 500);
 });
-    
+
 </script>
 </body>
 </html>
