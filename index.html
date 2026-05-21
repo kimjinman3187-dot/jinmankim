@@ -665,6 +665,15 @@
                             <span class="text-slate-500 font-bold">총 청구액</span>
                             <span class="text-blue-400 font-black text-sm" id="detailAmount">0</span>
                         </div>
+                        <div class="border border-[#334155] rounded-xl p-4 bg-[#0f1522]">
+    <div class="flex justify-between items-center mb-3">
+        <span class="text-slate-500 font-bold text-xs">계산서 상태</span>
+        <span id="detailInvoiceStatus" class="text-[11px] font-black px-2 py-1 rounded bg-slate-700 text-slate-300">
+            -
+        </span>
+    </div>
+    <div id="detailInvoiceAction"></div>
+</div>                 
                     </div>
                 </div>
 
@@ -1516,6 +1525,21 @@ async function rejectOrder(id) {
         });
 
         showToast('noti-accounting', '🧾', '계산서 발행 완료', `${o.client || '주문'} 계산서가 발행 처리되었습니다.`);
+        const detailInvoiceStatus = document.getElementById('detailInvoiceStatus');
+const detailInvoiceAction = document.getElementById('detailInvoiceAction');
+
+if (detailInvoiceStatus) {
+    detailInvoiceStatus.textContent = '발행 완료';
+    detailInvoiceStatus.className = 'text-[11px] font-black px-2 py-1 rounded bg-green-500/20 text-green-400 border border-green-500/30';
+}
+
+if (detailInvoiceAction) {
+    detailInvoiceAction.innerHTML = `
+        <button disabled class="w-full py-3 rounded-xl bg-green-500/10 text-green-400 border border-green-500/30 text-xs font-black cursor-not-allowed">
+            🧾 계산서 발행 완료
+        </button>
+    `;
+}
     } catch (e) {
         alert('계산서 발행 처리 실패: ' + e.message);
     }
@@ -2303,14 +2327,51 @@ function closeDrawer() {
 function selectRow(element, orderId) {
     document.querySelectorAll('.pc-table-row').forEach(row => row.classList.remove('active'));
     element.classList.add('active');
+
     const o = orders.find(x => x.id === orderId);
     if(!o) return;
+
     document.getElementById('emptyDetailState').classList.add('hidden');
     document.getElementById('activeDetailState').classList.remove('hidden');
+
     document.getElementById('detailClientName').textContent = o.client;
     document.getElementById('detailProjectName').textContent = `${o.material} / ${o.qty}장`;
     document.getElementById('detailDate').textContent = o.dueDate || '-';
-    document.getElementById('detailAmount').textContent = '₩ ' + ((o.price || 0) * (o.qty || 0)).toLocaleString();
+    document.getElementById('detailAmount').textContent = '₩ ' + getOrderAmount(o).toLocaleString();
+
+    const invoiceIssued = isInvoiceIssued(o);
+    const invoiceStatusEl = document.getElementById('detailInvoiceStatus');
+    const invoiceActionEl = document.getElementById('detailInvoiceAction');
+
+    if (invoiceStatusEl) {
+        invoiceStatusEl.textContent = invoiceIssued ? '발행 완료' : '미발행';
+        invoiceStatusEl.className = invoiceIssued
+            ? 'text-[11px] font-black px-2 py-1 rounded bg-green-500/20 text-green-400 border border-green-500/30'
+            : 'text-[11px] font-black px-2 py-1 rounded bg-slate-700 text-slate-300 border border-slate-600';
+    }
+
+    if (invoiceActionEl) {
+        if (invoiceIssued) {
+            invoiceActionEl.innerHTML = `
+                <button disabled class="w-full py-3 rounded-xl bg-green-500/10 text-green-400 border border-green-500/30 text-xs font-black cursor-not-allowed">
+                    🧾 계산서 발행 완료
+                </button>
+            `;
+        } else if (o.status === 'completed') {
+            invoiceActionEl.innerHTML = `
+                <button onclick="issueInvoice('${o.id}')" class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black shadow-lg transition-colors">
+                    🧾 계산서 발행 처리
+                </button>
+            `;
+        } else {
+            invoiceActionEl.innerHTML = `
+                <button disabled class="w-full py-3 rounded-xl bg-slate-800 text-slate-500 border border-[#334155] text-xs font-black cursor-not-allowed">
+                    생산 완료 후 발행 가능
+                </button>
+            `;
+        }
+    }
+
     openDrawer();
 }
 
