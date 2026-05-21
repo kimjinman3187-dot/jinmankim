@@ -735,6 +735,14 @@
 let orders = []; 
 let filteredOrders = []; 
 let currentUser = null; 
+
+let USERS = [
+    { id: 'admin-local', name: '운진원', role: 'admin', pin: '0000', status: 'active', sort_index: 1 },
+    { id: 'sales-local', name: '영업', role: 'sales', pin: '1111', status: 'active', sort_index: 2 },
+    { id: 'accounting-local', name: '회계', role: 'accounting', pin: '2222', status: 'active', sort_index: 3 },
+    { id: 'factory-local', name: '공장', role: 'factory', pin: '3333', status: 'active', sort_index: 4 }
+];
+    
 let chosenUserId = null; 
 let pinBuffer = ''; 
 let selectedWoodStr = '목재를 선택하세요';
@@ -1119,14 +1127,25 @@ async function syncUsers() {
     try { 
         if(typeof db !== 'undefined') { 
             const snapshot = await db.collection('users').where('status', '==', 'active').orderBy('sort_index', 'asc').get(); 
-            USERS = snapshot.docs.map(doc => { const d = doc.data(); if(d.role === 'ccounting') d.role = 'accounting'; return { id: doc.id, ...d }; }); 
+            const fetchedUsers = snapshot.docs.map(doc => { 
+                const d = doc.data(); 
+                if(d.role === 'ccounting') d.role = 'accounting'; 
+                return { id: doc.id, ...d }; 
+            });
+
+            if (fetchedUsers.length > 0) {
+                USERS = fetchedUsers;
+            }
         } 
-    } catch(e) { console.warn(e); }
+    } catch(e) { 
+        console.warn('Users sync failed. Local fallback users will be used:', e); 
+    }
     
     const grid = document.getElementById('roleGrid'); 
-    if (grid && typeof USERS !== 'undefined') { 
+    if (grid && Array.isArray(USERS)) { 
         grid.innerHTML = USERS.map(u => `<button class="role-sel-btn" id="rsb-${u.id}" onclick="chooseUser('${u.id}')">${u.name}</button>`).join(''); 
     }
+
     if (chosenUserId) checkLockoutStatus();
 }
 
