@@ -824,6 +824,34 @@ function getPaidAmount(order) {
 function getOutstandingAmount(order) {
     return Math.max(0, getOrderAmount(order) - getPaidAmount(order));
 }
+// --- [작업 22-1] 기존 orders 데이터 호환용 lifecycle helper ---
+function getInvoiceStatus(order = {}) {
+    if (order.invoiceStatus) return order.invoiceStatus;
+
+    // 기존 데이터 호환:
+    // 작업 21까지는 생산완료(completed)를 계산서 발행 기준으로 임시 사용했다.
+    if (order.status === 'completed') return 'issued';
+
+    return 'none';
+}
+
+function isInvoiceIssued(order = {}) {
+    return getInvoiceStatus(order) === 'issued';
+}
+
+function getCompletedAt(order = {}) {
+    if (order.completedAt) return order.completedAt;
+
+    // 기존 데이터 fallback:
+    // completedAt이 없는 기존 완료 주문은 dueDate를 완료 기준일로 임시 사용한다.
+    if (order.status === 'completed' && order.dueDate) return order.dueDate;
+
+    return null;
+}
+
+function getCreditGrade(order = {}) {
+    return order.creditGrade || 'SAFE';
+}
 
 function formatKRW(value) {
     return `₩ ${Math.round(Number(value) || 0).toLocaleString()}`;
@@ -851,17 +879,18 @@ function getPCDashboardMetrics(data = filteredOrders) {
     const todayStr = getKSTDateString();
 
     const completedItems = data.filter(o => o.status === 'completed');
-    const activeProductionItems = data.filter(o => o.status === 'approved');
-    const debtItems = data.filter(o =>
-        ['approved', 'completed'].includes(o.status) &&
-        o.paymentStatus !== 'paid' &&
-        getOutstandingAmount(o) > 0
-    );
+const issuedItems = data.filter(o => isInvoiceIssued(o));
+const activeProductionItems = data.filter(o => o.status === 'approved');
+const debtItems = data.filter(o =>
+    ['approved', 'completed'].includes(o.status) &&
+    o.paymentStatus !== 'paid' &&
+    getOutstandingAmount(o) > 0
+);
 
-    const totalOrderAmount = data.reduce((sum, o) => sum + getOrderAmount(o), 0);
-    const issuedAmount = completedItems.reduce((sum, o) => sum + getOrderAmount(o), 0);
-    const paidAmount = data.reduce((sum, o) => sum + getPaidAmount(o), 0);
-    const debtAmount = debtItems.reduce((sum, o) => sum + getOutstandingAmount(o), 0);
+const totalOrderAmount = data.reduce((sum, o) => sum + getOrderAmount(o), 0);
+const issuedAmount = issuedItems.reduce((sum, o) => sum + getOrderAmount(o), 0);
+const paidAmount = data.reduce((sum, o) => sum + getPaidAmount(o), 0);
+const debtAmount = debtItems.reduce((sum, o) => sum + getOutstandingAmount(o), 0);
 
     const overdueItems = debtItems.filter(o => {
         const baseDate = o.payDate || o.dueDate;
@@ -891,22 +920,23 @@ function getPCDashboardMetrics(data = filteredOrders) {
         : '0.0';
 
     return {
-        todayStr,
-        totalCount: data.length,
-        completedItems,
-        activeProductionItems,
-        debtItems,
-        overdueItems,
-        totalOrderAmount,
-        issuedAmount,
-        paidAmount,
-        debtAmount,
-        overdueAmount,
-        normalDebtAmount,
-        recoveryRate,
-        todayDoneItems,
-        packingWaitItems,
-        avgLeadTime
+    todayStr,
+    totalCount: data.length,
+    completedItems,
+    issuedItems,
+    activeProductionItems,
+    debtItems,
+    overdueItems,
+    totalOrderAmount,
+    issuedAmount,
+    paidAmount,
+    debtAmount,
+    overdueAmount,
+    normalDebtAmount,
+    recoveryRate,
+    todayDoneItems,
+    packingWaitItems,
+    avgLeadTime
     };
 }
 // --- [작업 21] Finance / AR / Production 카드 실데이터 렌더링 ---
@@ -931,7 +961,7 @@ function updatePCFinanceCards(metrics) {
     setText('pcFinanceOrderTotal', formatKRW(metrics.totalOrderAmount));
     setText('pcFinanceOrderMeta', `조회 ${metrics.totalCount}건 기준`);
     setText('pcFinanceIssuedTotal', formatKRW(metrics.issuedAmount));
-    setText('pcFinanceIssuedMeta', `완료 ${metrics.completedItems.length}건 · 발행 기준율 ${issuedRate}%`);
+    setText('pcFinanceIssuedMeta', `발행 ${metrics.issuedItems.length}건 · 발행 기준율 ${issuedRate}%`);
     setText('pcFinancePaidTotal', formatKRW(metrics.paidAmount));
     setText('pcFinancePaidMeta', `수금률 ${collectionRate}%`);
     setText('pcFinanceDebtTotal', formatKRW(metrics.debtAmount));
@@ -1293,14 +1323,59 @@ function renderFactory() {
 }
 
 async function addProgress(id) { 
-    const o = orders.find(x => x.id === id); const inputEl = document.getElementById('in-' + id); if (!inputEl) return;
-    const inputVal = inputEl.value.trim(); if (!/^\d+$/.test(inputVal)) return alert('정수(숫자)만 입력 가능합니다.');
-    const val = parseInt(inputVal); if (val <= 0) return alert('0보다 큰 수를 입력하세요.'); 
-    if ((o.completedQty || 0) + val > o.qty) return alert(`초과! 남은 수량: ${o.qty - (o.completedQty || 0)}장`); 
-    inputEl.value = ''; const newQty = (o.completedQty || 0) + val; const newStatus = newQty >= o.qty ? 'completed' : 'approved'; 
-    try { if(typeof db !== 'undefined') await db.collection('orders').doc(id).update({ completedQty: newQty, status: newStatus }); await logAction('FACTORY_PROGRESS', id, { added: val, total: newQty, status: newStatus }); } catch (e) { alert('서버 전송 실패: ' + e.message); }
-}
+    const o = orders.find(x => x.id === id);
+    const inputEl = document.getElementById('in-' + id);
 
+    if (!o) return alert('주문 데이터를 찾을 수 없습니다.');
+    if (!inputEl) return;
+
+    const inputVal = inputEl.value.trim();
+
+    if (!/^\d+$/.test(inputVal)) {
+        return alert('정수(숫자)만 입력 가능합니다.');
+    }
+
+    const val = parseInt(inputVal, 10);
+
+    if (val <= 0) {
+        return alert('0보다 큰 수를 입력하세요.');
+    }
+
+    if ((o.completedQty || 0) + val > o.qty) {
+        return alert(`초과! 남은 수량: ${o.qty - (o.completedQty || 0)}장`);
+    }
+
+    inputEl.value = '';
+
+    const newQty = (o.completedQty || 0) + val;
+    const newStatus = newQty >= o.qty ? 'completed' : 'approved';
+
+    const updatePayload = {
+        completedQty: newQty,
+        status: newStatus
+    };
+
+    // [작업 22-1] 생산 완료 시 실제 완료 시각 저장
+    if (newStatus === 'completed' && !o.completedAt) {
+        updatePayload.completedAt = Date.now();
+    }
+
+    try {
+        if (typeof db !== 'undefined') {
+            await db.collection('orders').doc(id).update(updatePayload);
+        }
+
+        await logAction('FACTORY_PROGRESS', id, {
+            added: val,
+            total: newQty,
+            status: newStatus,
+            completedAt: updatePayload.completedAt || o.completedAt || null
+        });
+    } catch (e) {
+        alert('서버 전송 실패: ' + e.message);
+    }
+}
+    
 function renderReceivables() {
     const debtItems = filteredOrders.filter(o => o.paymentStatus !== 'paid' && (o.status === 'completed' || o.status === 'approved'));
     const totalDebt = debtItems.reduce((acc, o) => { const total = (o.price || 0) * (o.qty || 0); const paid = o.paidAmount || 0; return acc + (total - paid); }, 0);
@@ -1860,21 +1935,29 @@ async function handleReport() {
     const reporterName = currentUser?.name || '모바일 사용자';
 
     const newOrder = {
-        client,
-        material: selectedWoodStr,
-        thickness,
-        price,
-        qty,
-        width: w,
-        height: h,
-        dueDate,
-        payDate,
-        status: 'pending',
-        paymentStatus: 'unpaid',
-        reportedBy: reporterName,
-        createdAt: Date.now()
-    };
+    client,
+    material: selectedWoodStr,
+    thickness,
+    price,
+    qty,
+    width: w,
+    height: h,
+    dueDate,
+    payDate,
+    status: 'pending',
+    paymentStatus: 'unpaid',
 
+    // [작업 22-1] orders lifecycle 기본 필드
+    invoiceStatus: 'none',
+    invoiceIssuedAt: null,
+    completedAt: null,
+    shippedAt: null,
+    creditGrade: 'SAFE',
+
+    reportedBy: reporterName,
+    createdAt: Date.now()
+};
+    
     try {
         if (typeof db === 'undefined') {
             throw new Error('Firebase DB가 초기화되지 않았습니다.');
@@ -2006,21 +2089,29 @@ async function handleReportPC() {
 
     const reporterName = currentUser?.name || 'PC 관리자';
 
-    const newOrder = {
-        client,
-        material: selectedWoodStr,
-        thickness,
-        price,
-        qty,
-        width: w,
-        height: h,
-        dueDate,
-        payDate,
-        status: 'pending',
-        paymentStatus: 'unpaid',
-        reportedBy: reporterName,
-        createdAt: Date.now()
-    };
+   const newOrder = {
+    client,
+    material: selectedWoodStr,
+    thickness,
+    price,
+    qty,
+    width: w,
+    height: h,
+    dueDate,
+    payDate,
+    status: 'pending',
+    paymentStatus: 'unpaid',
+
+    // [작업 22-1] orders lifecycle 기본 필드
+    invoiceStatus: 'none',
+    invoiceIssuedAt: null,
+    completedAt: null,
+    shippedAt: null,
+    creditGrade: 'SAFE',
+
+    reportedBy: reporterName,
+    createdAt: Date.now()
+};
 
     try {
         if (typeof db === 'undefined') {
