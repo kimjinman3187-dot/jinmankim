@@ -529,20 +529,12 @@
             </p>
         </div>
     <div class="flex items-center gap-2">
-    <button 
-        onclick="createInvoiceTestOrder()" 
-        class="text-[10px] font-black text-yellow-300 bg-yellow-500/10 border border-yellow-500/30 px-3 py-1.5 rounded-lg hover:bg-yellow-500/20 transition-colors"
-        title="작업22-3C 검수용 미발행 테스트 주문 생성"
-    >
-        DEV 테스트 주문
-    </button>
-
     <span id="pcFinanceInvoiceWaitMeta" class="text-[11px] font-black text-blue-400 bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 rounded-lg">
         0건
     </span>
 </div>
 </div>
-                       
+             
     <div class="overflow-x-auto">
         <table class="w-full text-left text-[11px] text-slate-300">
             <thead class="bg-[#0f1522] text-slate-500 font-bold border-b border-[#334155]">
@@ -1618,83 +1610,6 @@ async function rejectOrder(id) {
     if(typeof db !== 'undefined') await db.collection('orders').doc(id).update({ status: 'rejected', rejectReason: reason }); await logAction('ORDER_REJECTED', id, { reason: reason });
 }
 
-    async function createInvoiceTestOrder() {
-    if (!currentUser || currentUser.role !== 'admin') {
-        return alert('관리자만 테스트 주문을 생성할 수 있습니다.');
-    }
-
-    if (!confirm('작업22-3C 검수용 미발행 테스트 주문을 생성하시겠습니까?\n\n생성 후 Finance 하단에서 계산서 발행 버튼을 테스트합니다.')) {
-        return;
-    }
-
-    const todayStr = getKSTDateString();
-    const now = Date.now();
-
-    const testOrder = {
-        client: 'TEST_22_3C_미발행검증',
-        material: '무광PET/퍼펙트화이트',
-        thickness: '18T',
-        price: 1000,
-        qty: 1,
-        width: 100,
-        height: 100,
-        dueDate: todayStr,
-        payDate: todayStr,
-
-        // 핵심 테스트 조건
-        status: 'completed',
-        paymentStatus: 'unpaid',
-        paidAmount: 0,
-        completedQty: 1,
-
-        // 계산서 미발행 상태
-        invoiceStatus: 'none',
-        invoiceIssuedAt: null,
-
-        // lifecycle 기본 필드
-        completedAt: now,
-        shippedAt: null,
-        creditGrade: 'SAFE',
-
-        // 추적용 메타
-        reportedBy: currentUser.name || 'admin',
-        createdAt: now,
-        updatedAt: now,
-        devTest: true,
-        testTag: 'WORK22_3C_INVOICE_WAIT'
-    };
-
-    try {
-        if (typeof db !== 'undefined') {
-            const docRef = await db.collection('orders').add(testOrder);
-
-            await logAction('DEV_TEST_ORDER_CREATED', docRef.id, {
-                testTag: testOrder.testTag,
-                client: testOrder.client,
-                purpose: 'WORK22_3C invoiceStatus none test'
-            });
-        } else {
-            const localId = 'local-test-22-3c-' + now;
-            orders.unshift({ id: localId, ...testOrder });
-            executeSearch();
-        }
-
-        showToast(
-            'noti-accounting',
-            '🧪',
-            '테스트 주문 생성',
-            'Finance 하단에서 미발행 계산서 버튼을 확인하세요.'
-        );
-
-        setTimeout(() => {
-            switchPCTab('accounting');
-            executeSearch();
-        }, 300);
-
-    } catch (e) {
-        alert('테스트 주문 생성 실패: ' + e.message);
-    }
-}
     async function issueInvoice(id) {
     const o = orders.find(x => x.id === id);
     if (!o) return alert('주문 데이터를 찾을 수 없습니다.');
