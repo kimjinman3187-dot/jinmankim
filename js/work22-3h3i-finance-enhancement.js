@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════
-// 작업22-3H/3I — PC Finance 접기/펼치기 UI + 요약 카드 추가
+// 작업22-3H/3I/3J — PC Finance 접기/펼치기 UI + 요약 카드 + 기간 필터 보정
 // ═══════════════════════════════════════════════════════
 (function installWork22_3H3IFinanceEnhancementPatch() {
     if (window.__WORK22_3H3I_FINANCE_ENHANCEMENT_PATCH__) return;
@@ -13,7 +13,16 @@
         { id: 'pcFinanceCompletedSection', defaultOpen: false, label: '완료 거래' }
     ];
 
+    const SECTION_BODY_META_MAP = [
+        { bodyId: 'pcFinanceApprovalWaitBody', metaId: 'pcFinanceApprovalWaitMeta' },
+        { bodyId: 'pcFinanceProductionProgressBody', metaId: 'pcFinanceProductionProgressMeta' },
+        { bodyId: 'pcFinanceInvoiceWaitBody', metaId: 'pcFinanceInvoiceWaitMeta' },
+        { bodyId: 'pcFinanceCollectionWaitBody', metaId: 'pcFinanceCollectionWaitMeta' },
+        { bodyId: 'pcFinanceCompletedBody', metaId: 'pcFinanceCompletedMeta' }
+    ];
+
     let financeSummaryUnsubscribe = null;
+    let financeSummaryOrdersCache = [];
 
     function injectFinanceEnhanceStyle() {
         if (document.getElementById('work22-3h3i-finance-enhance-style')) return;
@@ -32,10 +41,67 @@
             .yj-finance-summary-label{font-size:10px;color:#94a3b8;font-weight:900;letter-spacing:.08em;text-transform:uppercase;}
             .yj-finance-summary-value{font-size:18px;color:#fff;font-weight:1000;margin-top:.35rem;}
             .yj-finance-summary-sub{font-size:10px;color:#64748b;font-weight:800;margin-top:.25rem;}
+            .yj-finance-period-badge{font-size:10px;font-weight:900;color:#38bdf8;background:rgba(14,165,233,.08);border:1px solid rgba(14,165,233,.22);padding:.25rem .5rem;border-radius:.5rem;margin-top:.5rem;display:inline-flex;}
+            .yj-finance-row-hidden-by-period{display:none!important;}
             @media(max-width:1024px){.yj-finance-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
             @media(max-width:640px){.yj-finance-summary-grid{grid-template-columns:1fr;}.yj-finance-section-header{align-items:flex-start!important;flex-direction:column!important;}.yj-finance-section-actions{justify-content:flex-start;}}
         `;
         document.head.appendChild(style);
+    }
+
+    function getKSTDateString(dateObj = new Date()) {
+        return new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Seoul',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        }).format(dateObj);
+    }
+
+    function getFinancePeriodRange() {
+        const value = document.getElementById('globalDateFilter')?.value || 'all';
+        const today = new Date();
+        let start = '';
+        let end = '';
+        let label = '전체 기간';
+
+        if (value === '7days') {
+            const d = new Date(today);
+            d.setDate(today.getDate() - 7);
+            start = getKSTDateString(d);
+            end = getKSTDateString(today);
+            label = '최근 7일';
+        } else if (value === 'lastMonth') {
+            const firstDay = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            const lastDay = new Date(today.getFullYear(), today.getMonth(), 0);
+            start = getKSTDateString(firstDay);
+            end = getKSTDateString(lastDay);
+            label = '지난 달';
+        } else if (value === 'thisYear') {
+            const firstDay = new Date(today.getFullYear(), 0, 1);
+            start = getKSTDateString(firstDay);
+            end = getKSTDateString(today);
+            label = '올해';
+        }
+
+        return { value, start, end, label };
+    }
+
+    function getOrderFinanceDate(order = {}) {
+        return String(order.dueDate || order.payDate || order.paymentConfirmedAt || order.paidAt || order.updatedAt || '').slice(0, 10);
+    }
+
+    function isDateInFinancePeriod(dateText, range = getFinancePeriodRange()) {
+        if (!range || range.value === 'all') return true;
+        const normalized = String(dateText || '').slice(0, 10);
+        if (!normalized || normalized === '-') return false;
+        return normalized >= range.start && normalized <= range.end;
+    }
+
+    function filterOrdersByFinancePeriod(orders = []) {
+        const range = getFinancePeriodRange();
+        if (range.value === 'all') return orders;
+        return orders.filter(order => isDateInFinancePeriod(getOrderFinanceDate(order), range));
     }
 
     function findSection(rule) {
@@ -118,10 +184,10 @@
         if (!anchor || !anchor.parentElement) return;
         anchor.insertAdjacentHTML('beforebegin', `
             <div id='pcFinanceEnhanceSummary' class='yj-finance-summary-grid'>
-                <div class='yj-finance-summary-card'><div class='yj-finance-summary-label'>Invoice Wait</div><div id='pcFinanceSummaryInvoiceWait' class='yj-finance-summary-value'>0건</div><div id='pcFinanceSummaryInvoiceAmount' class='yj-finance-summary-sub'>청구 예정 ₩ 0</div></div>
-                <div class='yj-finance-summary-card'><div class='yj-finance-summary-label'>Collection Wait</div><div id='pcFinanceSummaryCollectionWait' class='yj-finance-summary-value'>0건</div><div id='pcFinanceSummaryCollectionAmount' class='yj-finance-summary-sub'>잔금 ₩ 0</div></div>
-                <div class='yj-finance-summary-card'><div class='yj-finance-summary-label'>Completed</div><div id='pcFinanceSummaryCompleted' class='yj-finance-summary-value'>0건</div><div id='pcFinanceSummaryCompletedAmount' class='yj-finance-summary-sub'>입금 완료 ₩ 0</div></div>
-                <div class='yj-finance-summary-card'><div class='yj-finance-summary-label'>Action Queue</div><div id='pcFinanceSummaryActionQueue' class='yj-finance-summary-value'>0건</div><div id='pcFinanceSummaryActionSub' class='yj-finance-summary-sub'>승인/생산/청구/수금 처리 필요</div></div>
+                <div class='yj-finance-summary-card'><div class='yj-finance-summary-label'>Invoice Wait</div><div id='pcFinanceSummaryInvoiceWait' class='yj-finance-summary-value'>0건</div><div id='pcFinanceSummaryInvoiceAmount' class='yj-finance-summary-sub'>청구 예정 ₩ 0</div><div id='pcFinanceSummaryPeriodA' class='yj-finance-period-badge'>전체 기간</div></div>
+                <div class='yj-finance-summary-card'><div class='yj-finance-summary-label'>Collection Wait</div><div id='pcFinanceSummaryCollectionWait' class='yj-finance-summary-value'>0건</div><div id='pcFinanceSummaryCollectionAmount' class='yj-finance-summary-sub'>잔금 ₩ 0</div><div id='pcFinanceSummaryPeriodB' class='yj-finance-period-badge'>전체 기간</div></div>
+                <div class='yj-finance-summary-card'><div class='yj-finance-summary-label'>Completed</div><div id='pcFinanceSummaryCompleted' class='yj-finance-summary-value'>0건</div><div id='pcFinanceSummaryCompletedAmount' class='yj-finance-summary-sub'>입금 완료 ₩ 0</div><div id='pcFinanceSummaryPeriodC' class='yj-finance-period-badge'>전체 기간</div></div>
+                <div class='yj-finance-summary-card'><div class='yj-finance-summary-label'>Action Queue</div><div id='pcFinanceSummaryActionQueue' class='yj-finance-summary-value'>0건</div><div id='pcFinanceSummaryActionSub' class='yj-finance-summary-sub'>승인/생산/청구/수금 처리 필요</div><div id='pcFinanceSummaryPeriodD' class='yj-finance-period-badge'>전체 기간</div></div>
             </div>`);
     }
 
@@ -167,6 +233,7 @@
 
     function renderFinanceSummary(summary) {
         injectSummaryGrid();
+        const range = getFinancePeriodRange();
         const setText = (id, text) => {
             const el = document.getElementById(id);
             if (el) el.textContent = text;
@@ -178,26 +245,61 @@
         setText('pcFinanceSummaryCompleted', `${summary.completedCount}건`);
         setText('pcFinanceSummaryCompletedAmount', `입금 완료 ${window.yjFormatKRW(summary.completedPaidAmount)}`);
         setText('pcFinanceSummaryActionQueue', `${summary.actionQueueCount}건`);
+        ['pcFinanceSummaryPeriodA', 'pcFinanceSummaryPeriodB', 'pcFinanceSummaryPeriodC', 'pcFinanceSummaryPeriodD'].forEach(id => setText(id, range.label));
+    }
+
+    function filterRenderedFinanceRows() {
+        const range = getFinancePeriodRange();
+        SECTION_BODY_META_MAP.forEach(({ bodyId, metaId }) => {
+            const tbody = document.getElementById(bodyId);
+            const meta = document.getElementById(metaId);
+            if (!tbody) return;
+            let visibleCount = 0;
+            Array.from(tbody.querySelectorAll('tr')).forEach(row => {
+                if (row.querySelector('td[colspan]')) {
+                    row.classList.remove('yj-finance-row-hidden-by-period');
+                    return;
+                }
+                const firstDateText = row.querySelector('td')?.textContent?.trim()?.slice(0, 10) || '';
+                const isVisible = isDateInFinancePeriod(firstDateText, range);
+                row.classList.toggle('yj-finance-row-hidden-by-period', !isVisible);
+                if (isVisible) visibleCount += 1;
+            });
+            if (meta && range.value !== 'all') meta.textContent = `${visibleCount}건`;
+        });
+    }
+
+    function refreshFinancePeriodView() {
+        const filtered = filterOrdersByFinancePeriod(financeSummaryOrdersCache);
+        renderFinanceSummary(computeFinanceSummary(filtered));
+        filterRenderedFinanceRows();
     }
 
     function startFinanceSummaryListener() {
         if (financeSummaryUnsubscribe || !window.db) return;
         try {
             financeSummaryUnsubscribe = window.db.collection('orders').limit(300).onSnapshot(snapshot => {
-                const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderFinanceSummary(computeFinanceSummary(orders));
-            }, error => console.error('작업22-3H/3I Finance 요약 카드 로드 실패:', error));
+                financeSummaryOrdersCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                refreshFinancePeriodView();
+            }, error => console.error('작업22-3J Finance 기간 필터 요약 카드 로드 실패:', error));
         } catch (error) {
-            console.error('작업22-3H/3I Finance 요약 리스너 시작 실패:', error);
+            console.error('작업22-3J Finance 기간 필터 요약 리스너 시작 실패:', error);
         }
     }
+
+    document.addEventListener('change', event => {
+        if (event.target && event.target.id === 'globalDateFilter') {
+            refreshFinancePeriodView();
+        }
+    });
 
     const timer = setInterval(() => {
         enhanceFinanceSections();
         injectSummaryGrid();
         startFinanceSummaryListener();
+        refreshFinancePeriodView();
         window.yjPatchFooterVersion();
     }, 300);
     setTimeout(() => clearInterval(timer), 30000);
-    console.log('✅ 작업22-3H/3I PC Finance 접기/펼치기 및 요약 카드 패치 준비 완료');
+    console.log('✅ 작업22-3J PC Finance 월별/기간 필터 보정 패치 준비 완료');
 })();
