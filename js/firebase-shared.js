@@ -509,3 +509,196 @@ console.log('📦 firebase-shared.js 로드 완료');
     console.log('✅ 작업22-3E-1 신규 승인 UI 보정 패치 완료');
     console.log(`📌 PATCH VERSION: ${PATCH_VERSION} / PATCH DATE: 2026-05-26`);
 })();
+
+// ═══════════════════════════════════════════════════════
+// 작업22-3F — PC Finance 수금 대기 리스트 추가 + PC 업데이트 표기 보정
+// 목적: 계산서 발행 후 아직 입금 완료되지 않은 주문을 Finance 화면에서 확인/처리
+// 원칙: 기존 confirmPayment 재사용, paymentStatus/status/completedAt/confirmPayment 로직 변경 금지
+// ═══════════════════════════════════════════════════════
+(function installWork22_3FFinanceCollectionPatch() {
+    if (window.__WORK22_3F_FINANCE_COLLECTION_PATCH__) return;
+    window.__WORK22_3F_FINANCE_COLLECTION_PATCH__ = true;
+
+    const PATCH_VERSION = 'v2.0.2';
+    const PATCH_DATE = '26.05.26';
+    let collectionOrdersUnsubscribe = null;
+    let collectionOrdersCache = [];
+
+    function getAmount(order = {}) {
+        if (typeof window.getOrderAmount === 'function') return window.getOrderAmount(order);
+        return (Number(order.price) || 0) * (Number(order.qty) || 0);
+    }
+
+    function getPaid(order = {}) {
+        if (typeof window.getPaidAmount === 'function') return window.getPaidAmount(order);
+        return Number(order.paidAmount) || 0;
+    }
+
+    function isIssued(order = {}) {
+        if (typeof window.isInvoiceIssued === 'function') return window.isInvoiceIssued(order);
+        return order.invoiceStatus === 'issued' || !!order.invoiceIssuedAt;
+    }
+
+    function formatAmount(value) {
+        if (typeof window.formatKRW === 'function') return window.formatKRW(value);
+        return `₩ ${Math.round(Number(value) || 0).toLocaleString()}`;
+    }
+
+    function updateAllVersionFooters() {
+        document.querySelectorAll('.system-footer p').forEach(p => {
+            const text = p.textContent || '';
+            if (/last\s*updated/i.test(text)) {
+                p.textContent = `LAST UPDATED: ${PATCH_DATE} / ${PATCH_VERSION}`;
+            }
+            if (/yj\s*flow/i.test(text)) {
+                p.textContent = `YJ FLOW ${PATCH_VERSION.toUpperCase()}`;
+            }
+        });
+    }
+
+    function injectCollectionSection() {
+        if (document.getElementById('pcFinanceCollectionWaitBody')) return;
+
+        const invoiceBody = document.getElementById('pcFinanceInvoiceWaitBody');
+        const invoiceTable = invoiceBody && invoiceBody.closest('table');
+        const invoiceWrapper = invoiceTable && invoiceTable.parentElement && invoiceTable.parentElement.parentElement;
+        if (!invoiceWrapper) return;
+
+        invoiceWrapper.insertAdjacentHTML('afterend', `
+            <div id="pcFinanceCollectionWaitSection" class="bg-[#1e293b] border border-[#334155] rounded-2xl shadow-xl overflow-hidden mt-8 mb-8">
+                <div class="p-5 border-b border-[#334155] bg-[#111827] flex justify-between items-center">
+                    <div>
+                        <h3 class="text-sm font-bold text-white uppercase tracking-widest">💰 PC 수금 대기 리스트</h3>
+                        <p class="text-[10px] text-slate-500 font-bold mt-1">
+                            계산서 발행 후 입금 등록 또는 잔금 관리가 필요한 주문
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span id="pcFinanceCollectionWaitMeta" class="text-[11px] font-black text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-lg">
+                            0건
+                        </span>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-[11px] text-slate-300">
+                        <thead class="bg-[#0f1522] text-slate-500 font-bold border-b border-[#334155]">
+                            <tr>
+                                <th class="px-4 py-3">입금기한</th>
+                                <th class="px-4 py-3">거래처명</th>
+                                <th class="px-4 py-3">자재 / 수량</th>
+                                <th class="px-4 py-3 text-right">청구액</th>
+                                <th class="px-4 py-3 text-right">입금 / 잔금</th>
+                                <th class="px-4 py-3 text-center">처리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pcFinanceCollectionWaitBody" class="divide-y divide-[#334155]/50">
+                            <tr>
+                                <td colspan="6" class="px-4 py-8 text-center text-slate-500 font-bold">
+                                    수금 대기 데이터가 없습니다.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `);
+    }
+
+    function renderCollectionWaitList() {
+        injectCollectionSection();
+        updateAllVersionFooters();
+
+        const tbody = document.getElementById('pcFinanceCollectionWaitBody');
+        const meta = document.getElementById('pcFinanceCollectionWaitMeta');
+        if (!tbody) return;
+
+        const items = collectionOrdersCache
+            .filter(o => isIssued(o) && o.paymentStatus !== 'paid')
+            .map(o => {
+                const total = getAmount(o);
+                const paid = getPaid(o);
+                const remaining = Math.max(0, total - paid);
+                return { o, total, paid, remaining };
+            })
+            .filter(item => item.remaining > 0)
+            .sort((a, b) => String(a.o.payDate || a.o.dueDate || '').localeCompare(String(b.o.payDate || b.o.dueDate || '')));
+
+        if (meta) meta.textContent = `${items.length}건`;
+
+        tbody.innerHTML = items.map(item => {
+            const o = item.o;
+            const qty = Number(o.qty) || 0;
+            const pct = item.total > 0 ? Math.min(100, Math.round((item.paid / item.total) * 100)) : 0;
+            const paymentButton = typeof window.confirmPayment === 'function'
+                ? `<button onclick="confirmPayment('${o.id}')" class="min-w-[88px] h-10 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-[12px] font-black whitespace-nowrap leading-none inline-flex items-center justify-center shadow-md transition-colors">입금 등록</button>`
+                : `<button disabled class="min-w-[88px] h-10 px-4 rounded-xl bg-slate-700 text-slate-400 text-[12px] font-black whitespace-nowrap leading-none inline-flex items-center justify-center cursor-not-allowed">처리 불가</button>`;
+
+            return `
+                <tr class="hover:bg-amber-500/5 transition-colors">
+                    <td class="px-4 py-3 text-slate-400">${o.payDate || o.dueDate || '-'}</td>
+                    <td class="px-4 py-3 font-bold text-white">${o.client || '-'}</td>
+                    <td class="px-4 py-3 text-slate-400">
+                        ${o.material || '-'}<br>
+                        <span class="text-white font-bold">${qty.toLocaleString()}장</span>
+                    </td>
+                    <td class="px-4 py-3 text-right font-black text-blue-400">${formatAmount(item.total)}</td>
+                    <td class="px-4 py-3 min-w-[190px]">
+                        <div class="flex justify-between text-[10px] font-bold mb-1">
+                            <span class="text-slate-400">${formatAmount(item.paid)}</span>
+                            <span class="text-amber-400">잔금 ${formatAmount(item.remaining)}</span>
+                        </div>
+                        <div class="w-full bg-[#0f1522] h-2.5 rounded-full overflow-hidden border border-[#334155]">
+                            <div class="bg-amber-500 h-full rounded-full transition-all duration-1000 ease-out" style="width: ${pct}%"></div>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 text-center">${paymentButton}</td>
+                </tr>
+            `;
+        }).join('') || `
+            <tr>
+                <td colspan="6" class="px-4 py-8 text-center text-slate-500 font-bold">
+                    수금 대기 데이터가 없습니다.
+                </td>
+            </tr>
+        `;
+    }
+
+    function startCollectionOrdersListener() {
+        if (collectionOrdersUnsubscribe || !window.db) return;
+
+        try {
+            collectionOrdersUnsubscribe = window.db.collection('orders')
+                .where('status', 'in', ['approved', 'completed'])
+                .orderBy('createdAt', 'desc')
+                .limit(150)
+                .onSnapshot(snapshot => {
+                    collectionOrdersCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    renderCollectionWaitList();
+                }, error => {
+                    console.error('작업22-3F 수금 대기 리스트 로드 실패:', error);
+                });
+        } catch (error) {
+            console.error('작업22-3F 수금 대기 리스너 시작 실패:', error);
+        }
+    }
+
+    function install() {
+        injectCollectionSection();
+        updateAllVersionFooters();
+        startCollectionOrdersListener();
+        renderCollectionWaitList();
+    }
+
+    let patchAttempts = 0;
+    const patchTimer = setInterval(() => {
+        patchAttempts += 1;
+        install();
+        if (document.getElementById('pcFinanceCollectionWaitBody') && window.db) {
+            console.log('✅ 작업22-3F PC Finance 수금 대기 리스트 패치 완료');
+            console.log(`📌 LAST UPDATED: ${PATCH_DATE} / ${PATCH_VERSION} / PC footer synchronized`);
+            clearInterval(patchTimer);
+        }
+        if (patchAttempts >= 80) clearInterval(patchTimer);
+    }, 250);
+})();
