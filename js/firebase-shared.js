@@ -236,3 +236,178 @@ console.log('📦 firebase-shared.js 로드 완료');
         }
     }, 250);
 })();
+
+// ═══════════════════════════════════════════════════════
+// 작업22-3E — PC Finance 신규 승인 대기 리스트 추가
+// 목적: PC Finance 화면에서 신규 승인 대기 주문을 업무 첫 단계로 확인/처리
+// 원칙: 기존 updateStatus/rejectOrder 재사용, lifecycle 필드 직접 변경 금지
+// ═══════════════════════════════════════════════════════
+(function installWork22_3EFinanceApprovalPatch() {
+    if (window.__WORK22_3E_FINANCE_APPROVAL_PATCH__) return;
+    window.__WORK22_3E_FINANCE_APPROVAL_PATCH__ = true;
+
+    let pendingOrdersUnsubscribe = null;
+    let pendingOrdersCache = [];
+
+    function getAmount(order = {}) {
+        if (typeof window.getOrderAmount === 'function') {
+            return window.getOrderAmount(order);
+        }
+        return (Number(order.price) || 0) * (Number(order.qty) || 0);
+    }
+
+    function formatAmount(value) {
+        if (typeof window.formatKRW === 'function') {
+            return window.formatKRW(value);
+        }
+        return `₩ ${Math.round(Number(value) || 0).toLocaleString()}`;
+    }
+
+    function injectFinanceApprovalSection() {
+        if (document.getElementById('pcFinanceApprovalWaitBody')) return;
+
+        const productionSection = document.getElementById('pcFinanceProductionProgressSection');
+        const invoiceBody = document.getElementById('pcFinanceInvoiceWaitBody');
+        const invoiceTable = invoiceBody && invoiceBody.closest('table');
+        const invoiceWrapper = invoiceTable && invoiceTable.parentElement && invoiceTable.parentElement.parentElement;
+        const anchor = productionSection || invoiceWrapper;
+
+        if (!anchor) return;
+
+        anchor.insertAdjacentHTML('beforebegin', `
+            <div id="pcFinanceApprovalWaitSection" class="bg-[#1e293b] border border-[#334155] rounded-2xl shadow-xl overflow-hidden mb-8">
+                <div class="p-5 border-b border-[#334155] bg-[#111827] flex justify-between items-center">
+                    <div>
+                        <h3 class="text-sm font-bold text-white uppercase tracking-widest">📝 PC 신규 승인 대기 리스트</h3>
+                        <p class="text-[10px] text-slate-500 font-bold mt-1">
+                            영업 접수 후 회계 승인 또는 반려 처리가 필요한 주문
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span id="pcFinanceApprovalWaitMeta" class="text-[11px] font-black text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-3 py-1.5 rounded-lg">
+                            0건
+                        </span>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-[11px] text-slate-300">
+                        <thead class="bg-[#0f1522] text-slate-500 font-bold border-b border-[#334155]">
+                            <tr>
+                                <th class="px-4 py-3">납기일</th>
+                                <th class="px-4 py-3">거래처명</th>
+                                <th class="px-4 py-3">자재 / 수량</th>
+                                <th class="px-4 py-3 text-right">예상 금액</th>
+                                <th class="px-4 py-3 text-center">상태</th>
+                                <th class="px-4 py-3 text-center">처리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pcFinanceApprovalWaitBody" class="divide-y divide-[#334155]/50">
+                            <tr>
+                                <td colspan="6" class="px-4 py-8 text-center text-slate-500 font-bold">
+                                    신규 승인 대기 데이터가 없습니다.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `);
+    }
+
+    function renderFinanceApprovalWaitList() {
+        injectFinanceApprovalSection();
+
+        const tbody = document.getElementById('pcFinanceApprovalWaitBody');
+        const meta = document.getElementById('pcFinanceApprovalWaitMeta');
+        if (!tbody) return;
+
+        const items = [...pendingOrdersCache].sort((a, b) => {
+            const dueCompare = String(a.dueDate || '').localeCompare(String(b.dueDate || ''));
+            if (dueCompare !== 0) return dueCompare;
+            return Number(b.createdAt || 0) - Number(a.createdAt || 0);
+        });
+
+        if (meta) {
+            meta.textContent = `${items.length}건`;
+        }
+
+        tbody.innerHTML = items.map(o => {
+            const qty = Number(o.qty) || 0;
+            const amount = getAmount(o);
+            const approveButton = typeof window.updateStatus === 'function'
+                ? `<button onclick="updateStatus('${o.id}', 'approved')" class="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black shadow-md transition-colors">수주 승인</button>`
+                : `<button disabled class="px-3 py-2 rounded-lg bg-slate-700 text-slate-400 text-[10px] font-black cursor-not-allowed">승인 불가</button>`;
+
+            const rejectButton = typeof window.rejectOrder === 'function'
+                ? `<button onclick="rejectOrder('${o.id}')" class="px-3 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] font-black transition-colors">반려</button>`
+                : '';
+
+            return `
+                <tr class="hover:bg-cyan-500/5 transition-colors">
+                    <td class="px-4 py-3 text-slate-400">${o.dueDate || '-'}</td>
+                    <td class="px-4 py-3 font-bold text-white">${o.client || '-'}</td>
+                    <td class="px-4 py-3 text-slate-400">
+                        ${o.material || '-'}<br>
+                        <span class="text-white font-bold">${qty.toLocaleString()}장</span>
+                    </td>
+                    <td class="px-4 py-3 text-right font-black text-cyan-400">${formatAmount(amount)}</td>
+                    <td class="px-4 py-3 text-center">
+                        <span class="bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-2 py-1 rounded text-[10px] font-black">승인대기</span>
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                        <div class="flex justify-center gap-2">
+                            ${rejectButton}
+                            ${approveButton}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('') || `
+            <tr>
+                <td colspan="6" class="px-4 py-8 text-center text-slate-500 font-bold">
+                    신규 승인 대기 데이터가 없습니다.
+                </td>
+            </tr>
+        `;
+    }
+
+    function startPendingOrdersListener() {
+        if (pendingOrdersUnsubscribe || !window.db) return;
+
+        try {
+            pendingOrdersUnsubscribe = window.db.collection('orders')
+                .where('status', '==', 'pending')
+                .orderBy('createdAt', 'desc')
+                .limit(100)
+                .onSnapshot(snapshot => {
+                    pendingOrdersCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    renderFinanceApprovalWaitList();
+                }, error => {
+                    console.error('작업22-3E 신규 승인 대기 리스트 로드 실패:', error);
+                });
+        } catch (error) {
+            console.error('작업22-3E 신규 승인 대기 리스너 시작 실패:', error);
+        }
+    }
+
+    function waitAndInstall() {
+        injectFinanceApprovalSection();
+        startPendingOrdersListener();
+    }
+
+    let patchAttempts = 0;
+    const patchTimer = setInterval(() => {
+        patchAttempts += 1;
+        waitAndInstall();
+
+        if (document.getElementById('pcFinanceApprovalWaitBody') && window.db) {
+            console.log('✅ 작업22-3E PC Finance 신규 승인 대기 리스트 패치 완료');
+            clearInterval(patchTimer);
+        }
+
+        if (patchAttempts >= 80) {
+            clearInterval(patchTimer);
+        }
+    }, 250);
+})();
