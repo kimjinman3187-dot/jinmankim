@@ -433,3 +433,15 @@ console.log('📦 firebase-shared.js 로드 완료');
         }
     }, 250);
 })();
+
+// ═══════════════════════════════════════════════════════
+// 작업22-3H/3I — PC Finance 화면 고도화 보조 스크립트 로더
+// ═══════════════════════════════════════════════════════
+(function loadWork22_3H3IFinanceEnhancement() {
+    if (window.__WORK22_3H3I_FINANCE_ENHANCEMENT_LOADER__) return;
+    window.__WORK22_3H3I_FINANCE_ENHANCEMENT_LOADER__ = true;
+    const script = document.createElement('script');
+    script.src = 'js/work22-3h3i-finance-enhancement.js?v=20260526';
+    script.defer = true;
+    document.head.appendChild(script);
+})();
