@@ -22,6 +22,7 @@
     ];
 
     let financeSummaryUnsubscribe = null;
+    let financeSummaryOrdersCache = [];
 
     function injectFinanceEnhanceStyle() {
         if (document.getElementById('work22-3h3i-finance-enhance-style')) return;
@@ -268,14 +269,18 @@
         });
     }
 
+    function refreshFinancePeriodView() {
+        const filtered = filterOrdersByFinancePeriod(financeSummaryOrdersCache);
+        renderFinanceSummary(computeFinanceSummary(filtered));
+        filterRenderedFinanceRows();
+    }
+
     function startFinanceSummaryListener() {
         if (financeSummaryUnsubscribe || !window.db) return;
         try {
             financeSummaryUnsubscribe = window.db.collection('orders').limit(300).onSnapshot(snapshot => {
-                const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                const filtered = filterOrdersByFinancePeriod(orders);
-                renderFinanceSummary(computeFinanceSummary(filtered));
-                filterRenderedFinanceRows();
+                financeSummaryOrdersCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                refreshFinancePeriodView();
             }, error => console.error('작업22-3J Finance 기간 필터 요약 카드 로드 실패:', error));
         } catch (error) {
             console.error('작업22-3J Finance 기간 필터 요약 리스너 시작 실패:', error);
@@ -284,8 +289,7 @@
 
     document.addEventListener('change', event => {
         if (event.target && event.target.id === 'globalDateFilter') {
-            startFinanceSummaryListener();
-            filterRenderedFinanceRows();
+            refreshFinancePeriodView();
         }
     });
 
@@ -293,7 +297,7 @@
         enhanceFinanceSections();
         injectSummaryGrid();
         startFinanceSummaryListener();
-        filterRenderedFinanceRows();
+        refreshFinancePeriodView();
         window.yjPatchFooterVersion();
     }, 300);
     setTimeout(() => clearInterval(timer), 30000);
