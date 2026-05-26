@@ -336,11 +336,11 @@ console.log('📦 firebase-shared.js 로드 완료');
             const qty = Number(o.qty) || 0;
             const amount = getAmount(o);
             const approveButton = typeof window.updateStatus === 'function'
-                ? `<button onclick="updateStatus('${o.id}', 'approved')" class="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black shadow-md transition-colors">수주 승인</button>`
-                : `<button disabled class="px-3 py-2 rounded-lg bg-slate-700 text-slate-400 text-[10px] font-black cursor-not-allowed">승인 불가</button>`;
+                ? `<button onclick="updateStatus('${o.id}', 'approved')" class="min-w-[88px] h-10 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[12px] font-black whitespace-nowrap leading-none inline-flex items-center justify-center shadow-md transition-colors">수주 승인</button>`
+                : `<button disabled class="min-w-[88px] h-10 px-4 rounded-xl bg-slate-700 text-slate-400 text-[12px] font-black whitespace-nowrap leading-none inline-flex items-center justify-center cursor-not-allowed">승인 불가</button>`;
 
             const rejectButton = typeof window.rejectOrder === 'function'
-                ? `<button onclick="rejectOrder('${o.id}')" class="px-3 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] font-black transition-colors">반려</button>`
+                ? `<button onclick="rejectOrder('${o.id}')" class="min-w-[64px] h-10 px-4 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-[12px] font-black whitespace-nowrap leading-none inline-flex items-center justify-center transition-colors">반려</button>`
                 : '';
 
             return `
@@ -353,10 +353,10 @@ console.log('📦 firebase-shared.js 로드 완료');
                     </td>
                     <td class="px-4 py-3 text-right font-black text-cyan-400">${formatAmount(amount)}</td>
                     <td class="px-4 py-3 text-center">
-                        <span class="bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-2 py-1 rounded text-[10px] font-black">승인대기</span>
+                        <span class="bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-2 py-1 rounded text-[10px] font-black whitespace-nowrap">승인대기</span>
                     </td>
                     <td class="px-4 py-3 text-center">
-                        <div class="flex justify-center gap-2">
+                        <div class="flex justify-center items-center gap-2 whitespace-nowrap">
                             ${rejectButton}
                             ${approveButton}
                         </div>
@@ -410,4 +410,102 @@ console.log('📦 firebase-shared.js 로드 완료');
             clearInterval(patchTimer);
         }
     }, 250);
+})();
+
+// ═══════════════════════════════════════════════════════
+// 작업22-3E-1 — 신규 승인 UI 보정 + 패치 버전/일자 반영
+// 목적: 승인/반려 버튼 줄바꿈 제거, 모바일 업데이트 표기 중앙 정렬
+// ═══════════════════════════════════════════════════════
+(function installWork22_3E1UIPatch() {
+    if (window.__WORK22_3E1_UI_PATCH__) return;
+    window.__WORK22_3E1_UI_PATCH__ = true;
+
+    const PATCH_VERSION = 'v2.0.2';
+    const PATCH_DATE = '26.05.26';
+
+    function injectUIPatchStyle() {
+        if (document.getElementById('work22-3e1-ui-style')) return;
+
+        const style = document.createElement('style');
+        style.id = 'work22-3e1-ui-style';
+        style.textContent = `
+            #pcFinanceApprovalWaitSection button {
+                white-space: nowrap !important;
+                line-height: 1 !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                word-break: keep-all !important;
+            }
+
+            #pcFinanceApprovalWaitSection td:last-child > div {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                gap: 0.5rem !important;
+                white-space: nowrap !important;
+            }
+
+            @media (max-width: 768px) {
+                .mobile-ui .system-footer {
+                    text-align: center !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    padding-left: 0 !important;
+                    padding-right: 0 !important;
+                }
+                .mobile-ui .system-footer p {
+                    text-align: center !important;
+                    width: 100% !important;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    function updatePatchVersionText() {
+        document.querySelectorAll('.system-footer').forEach(footer => {
+            const lines = footer.querySelectorAll('p');
+            if (!lines.length) return;
+
+            lines[0].textContent = `Last Updated: ${PATCH_DATE} / ${PATCH_VERSION}`;
+
+            if (lines[1] && lines[1].textContent.includes('YJ Flow')) {
+                lines[1].textContent = `YJ Flow ${PATCH_VERSION.toUpperCase()}`;
+            }
+        });
+    }
+
+    function normalizeApprovalButtons() {
+        const section = document.getElementById('pcFinanceApprovalWaitSection');
+        if (!section) return;
+
+        section.querySelectorAll('button').forEach(button => {
+            button.style.whiteSpace = 'nowrap';
+            button.style.wordBreak = 'keep-all';
+            button.style.lineHeight = '1';
+            button.style.display = 'inline-flex';
+            button.style.alignItems = 'center';
+            button.style.justifyContent = 'center';
+        });
+    }
+
+    function applyPatch() {
+        injectUIPatchStyle();
+        updatePatchVersionText();
+        normalizeApprovalButtons();
+    }
+
+    let patchAttempts = 0;
+    const patchTimer = setInterval(() => {
+        patchAttempts += 1;
+        applyPatch();
+
+        if (patchAttempts >= 80) {
+            clearInterval(patchTimer);
+        }
+    }, 250);
+
+    console.log('✅ 작업22-3E-1 신규 승인 UI 보정 패치 완료');
+    console.log(`📌 PATCH VERSION: ${PATCH_VERSION} / PATCH DATE: 2026-05-26`);
 })();
