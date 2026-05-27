@@ -5,6 +5,7 @@
 // 작업22-5A — Dashboard 통합 지표 정리
 // 작업22-5A-1 — Dashboard KPI overflow + LAST UPDATED 보정
 // 작업22-5A-2 — Dashboard KPI 카드 레이아웃 직접 보정
+// 작업22-5A-3 — PC KPI 카드 공통 overflow 보정
 // ═══════════════════════════════════════════════════════
 (function installYJFlowPCEnhancementPatches() {
     if (window.__YJ_FLOW_PC_ENHANCEMENT_PATCHES__) return;
@@ -12,6 +13,16 @@
 
     const PATCH_VERSION = 'V2.0.2';
     const LAST_UPDATED = '26.05.27';
+
+    const MONEY_KPI_IDS = [
+        'pcKpiSales', 'pcKpiDebt',
+        'pcFinanceOrderTotal', 'pcFinanceIssuedTotal', 'pcFinancePaidTotal', 'pcFinanceDebtTotal',
+        'pcArOverdueAmount', 'pcArNormalAmount', 'receivableChartTotal'
+    ];
+    const COMMON_KPI_IDS = [
+        ...MONEY_KPI_IDS,
+        'pcKpiFactory', 'pcKpiPending', 'pcArRecoveryRate', 'pcArRiskLabel'
+    ];
 
     const krw = value => {
         if (typeof window.yjFormatKRW === 'function') return window.yjFormatKRW(value);
@@ -27,8 +38,9 @@
     };
 
     const dashboardKrwShort = value => {
-        const amount = Number(value) || 0;
+        const amount = Math.max(0, Number(value) || 0);
         if (amount >= 100000000) return `${(amount / 100000000).toFixed(1)}억`;
+        if (amount >= 10000000) return `${(amount / 10000000).toFixed(1)}천만`;
         if (amount >= 10000) return `${Math.round(amount / 10000)}만`;
         return `${Math.round(amount).toLocaleString()}`;
     };
@@ -91,6 +103,40 @@
         });
     }
 
+    function parseMoneyText(text = '') {
+        const clean = String(text).replace(/[^0-9.-]/g, '');
+        const number = Number(clean);
+        return Number.isFinite(number) ? number : 0;
+    }
+
+    function markCommonKpiCards() {
+        COMMON_KPI_IDS.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.classList.add('yj-common-kpi-value');
+            const card = el.parentElement;
+            if (card) card.classList.add('yj-common-kpi-card');
+        });
+    }
+
+    function compactMoneyKpis() {
+        MONEY_KPI_IDS.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const text = el.textContent || '';
+            if (text.includes('억') || text.includes('천만') || /^\d+만$/.test(text.trim())) return;
+            const amount = parseMoneyText(text);
+            if (amount > 0) el.textContent = dashboardKrwShort(amount);
+        });
+    }
+
+    function applyCommonKpiLayout() {
+        injectSharedStyle();
+        markCommonKpiCards();
+        compactMoneyKpis();
+        patchLastUpdated();
+    }
+
     function injectSharedStyle() {
         if (document.getElementById('work22-pc-enhancement-style')) return;
         const style = document.createElement('style');
@@ -110,11 +156,16 @@
             .yj-finance-summary-sub{font-size:10px;color:#64748b;font-weight:800;margin-top:.25rem;}
             .yj-finance-period-badge{font-size:10px;font-weight:900;color:#38bdf8;background:rgba(14,165,233,.08);border:1px solid rgba(14,165,233,.22);padding:.25rem .5rem;border-radius:.5rem;margin-top:.5rem;display:inline-flex;}
             .yj-finance-row-hidden-by-period{display:none!important;}
+            .yj-common-kpi-card{min-width:0!important;overflow:hidden!important;padding:.85rem .9rem!important;display:flex!important;flex-direction:column!important;justify-content:center!important;gap:.16rem!important;}
+            .yj-common-kpi-card p,.yj-common-kpi-card span,.yj-common-kpi-card div{max-width:100%!important;min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;}
+            .yj-common-kpi-value{display:block!important;width:100%!important;max-width:100%!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;font-size:1.08rem!important;line-height:1.05!important;letter-spacing:-0.055em!important;font-variant-numeric:tabular-nums!important;}
             .yj-dashboard-kpi-card{min-width:0!important;overflow:hidden!important;padding:.75rem .85rem!important;display:flex!important;flex-direction:column!important;justify-content:center!important;gap:.18rem!important;}
             .yj-dashboard-kpi-card p,.yj-dashboard-kpi-card span,.yj-dashboard-kpi-card div{max-width:100%!important;min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;}
             .yj-dashboard-meta{display:block;margin-top:.18rem;font-size:9px!important;line-height:1.1!important;font-weight:900;color:#64748b;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
             #pcKpiSales,#pcKpiDebt,#pcKpiFactory,#pcKpiPending{display:block!important;width:100%!important;max-width:100%!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;font-size:1.05rem!important;line-height:1.05!important;letter-spacing:-0.045em!important;font-variant-numeric:tabular-nums!important;}
-            @media(max-width:1280px){#pcKpiSales,#pcKpiDebt,#pcKpiFactory,#pcKpiPending{font-size:.95rem!important;}.yj-dashboard-kpi-card{padding:.65rem .75rem!important;}.yj-dashboard-meta{font-size:8.5px!important;}}
+            #pcFinanceOrderTotal,#pcFinanceIssuedTotal,#pcFinancePaidTotal,#pcFinanceDebtTotal,#pcArOverdueAmount,#pcArNormalAmount{font-size:1.05rem!important;letter-spacing:-0.055em!important;}
+            #pcArRecoveryRate,#pcArRiskLabel{font-size:1.22rem!important;letter-spacing:-0.035em!important;}
+            @media(max-width:1280px){.yj-common-kpi-value,#pcKpiSales,#pcKpiDebt,#pcKpiFactory,#pcKpiPending,#pcFinanceOrderTotal,#pcFinanceIssuedTotal,#pcFinancePaidTotal,#pcFinanceDebtTotal,#pcArOverdueAmount,#pcArNormalAmount{font-size:.95rem!important;}.yj-common-kpi-card,.yj-dashboard-kpi-card{padding:.7rem .75rem!important;}.yj-dashboard-meta{font-size:8.5px!important;}}
             @media(max-width:1024px){.yj-finance-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
             @media(max-width:640px){.yj-finance-summary-grid{grid-template-columns:1fr;}.yj-finance-section-header{align-items:flex-start!important;flex-direction:column!important;}.yj-finance-section-actions{justify-content:flex-start;}}
         `;
@@ -339,7 +390,7 @@
             injectSummaryGrid();
             startFinanceSummaryListener();
             refreshFinancePeriodView();
-            patchLastUpdated();
+            applyCommonKpiLayout();
         }, 300);
         setTimeout(() => clearInterval(timer), 30000);
         console.log('✅ 작업22-3J PC Finance 월별/기간 필터 보정 패치 준비 완료');
@@ -378,7 +429,7 @@
             tbody.innerHTML = clientItems.slice(0, 15).map(item => {
                 const riskBadge = item.maxElapsed >= 60 ? `<span class='bg-red-500/10 text-red-400 border border-red-500/30 px-2 py-1 rounded text-[10px] font-black'>RISK</span>` : item.maxElapsed >= 30 ? `<span class='bg-orange-500/10 text-orange-400 border border-orange-500/30 px-2 py-1 rounded text-[10px] font-black'>WATCH</span>` : `<span class='bg-green-500/10 text-green-400 border border-green-500/30 px-2 py-1 rounded text-[10px] font-black'>SAFE</span>`;
                 const elapsedClass = item.maxElapsed >= 60 ? 'text-red-500' : item.maxElapsed >= 30 ? 'text-orange-400' : 'text-slate-400';
-                return `<tr class='hover:bg-red-500/5 transition-colors'><td class='px-4 py-3 font-bold text-white'>${item.client}<br><span class='text-[10px] text-slate-500 font-black'>미수 ${item.orderCount}건</span></td><td class='px-4 py-3 text-slate-400'>${item.latestDate}</td><td class='px-4 py-3 ${elapsedClass} font-bold'>${item.maxElapsed}일<br>${riskBadge}</td><td class='px-4 py-3 text-right font-black text-red-400'>${krw(item.balanceAmount)}</td></tr>`;
+                return `<tr class='hover:bg-red-500/5 transition-colors'><td class='px-4 py-3 font-bold text-white'>${item.client}<br><span class='text-[10px] text-slate-500 font-black'>미수 ${item.orderCount}건</span></td><td class='px-4 py-3 text-slate-400'>${item.latestDate}</td><td class='px-4 py-3 ${elapsedClass} font-bold'>${item.maxElapsed}일<br>${riskBadge}</td><td class='px-4 py-3 text-right font-black text-red-400'>${dashboardKrwShort(item.balanceAmount)}</td></tr>`;
             }).join('') || `<tr><td colspan='4' class='px-4 py-8 text-center text-slate-500 font-bold'>미수금 데이터가 없습니다.</td></tr>`;
         }
 
@@ -394,16 +445,17 @@
             const recoveryRate = paidAmount + debtAmount > 0 ? Math.round((paidAmount / (paidAmount + debtAmount)) * 100) : 0;
             const riskLabel = overdueAmount > normalAmount && overdueAmount > 0 ? 'RISK' : overdueAmount > 0 ? 'WATCH' : 'SAFE';
             const riskMeta = riskLabel === 'RISK' ? '장기 미수 거래처 우선 회수 필요' : riskLabel === 'WATCH' ? '30일 이상 미수 거래처 존재' : '거래처별 연체 리스크 없음';
-            setText('pcArOverdueAmount', krw(overdueAmount));
+            setText('pcArOverdueAmount', dashboardKrwShort(overdueAmount));
             setText('pcArOverdueMeta', `30일 이상 ${overdueClients.length}개 거래처`);
-            setText('pcArNormalAmount', krw(normalAmount));
+            setText('pcArNormalAmount', dashboardKrwShort(normalAmount));
             setText('pcArNormalMeta', `입금 대기 ${normalClients.length}개 거래처`);
             setText('pcArRecoveryRate', `${recoveryRate}%`);
             setText('pcArRecoveryMeta', '거래처별 잔액 기준 회수율');
             setText('pcArRiskLabel', riskLabel);
             setText('pcArRiskMeta', riskMeta);
-            setText('receivableChartTotal', krwShort(debtAmount));
+            setText('receivableChartTotal', dashboardKrwShort(debtAmount));
             renderClientBalanceRows(clientItems);
+            applyCommonKpiLayout();
         }
 
         function patchARCards() {
@@ -417,11 +469,11 @@
         }
 
         let attempts = 0;
-        const timer = setInterval(() => { attempts += 1; if (patchARCards() || attempts >= 80) clearInterval(timer); }, 250);
+        const timer = setInterval(() => { attempts += 1; applyCommonKpiLayout(); if (patchARCards() || attempts >= 80) clearInterval(timer); }, 250);
     })();
 
     // ───────────────────────────────────────────────
-    // 작업22-5A/5A-1/5A-2 — Dashboard 통합 지표 + 레이아웃 보정
+    // 작업22-5A/5A-1/5A-2/5A-3 — Dashboard 통합 지표 + PC KPI 공통 레이아웃 보정
     // ───────────────────────────────────────────────
     (function installDashboardIntegratedKpiPatch() {
         if (window.__WORK22_5A_DASHBOARD_INTEGRATED_KPI_PATCH__) return;
@@ -430,7 +482,8 @@
         function markDashboardKpiCard(valueId) {
             const valueEl = document.getElementById(valueId);
             const card = valueEl?.parentElement;
-            if (card) card.classList.add('yj-dashboard-kpi-card');
+            if (card) card.classList.add('yj-dashboard-kpi-card', 'yj-common-kpi-card');
+            if (valueEl) valueEl.classList.add('yj-common-kpi-value');
         }
 
         function setCardLabel(valueId, label) {
@@ -438,13 +491,15 @@
             const card = valueEl?.parentElement;
             const labelEl = card?.querySelector('p:first-child');
             if (labelEl) labelEl.textContent = label;
-            if (card) card.classList.add('yj-dashboard-kpi-card');
+            if (card) card.classList.add('yj-dashboard-kpi-card', 'yj-common-kpi-card');
+            if (valueEl) valueEl.classList.add('yj-common-kpi-value');
         }
 
         function setCardMeta(valueId, meta) {
             const valueEl = document.getElementById(valueId);
             if (!valueEl || !valueEl.parentElement) return;
-            valueEl.parentElement.classList.add('yj-dashboard-kpi-card');
+            valueEl.parentElement.classList.add('yj-dashboard-kpi-card', 'yj-common-kpi-card');
+            valueEl.classList.add('yj-common-kpi-value');
             let metaEl = valueEl.parentElement.querySelector('.yj-dashboard-meta');
             if (!metaEl) { metaEl = document.createElement('span'); metaEl.className = 'yj-dashboard-meta'; valueEl.insertAdjacentElement('afterend', metaEl); }
             metaEl.textContent = meta;
@@ -476,7 +531,7 @@
             setCardLabel('pcKpiPending', 'Finance');
             setText('pcKpiPending', `${pendingCount}건`);
             setCardMeta('pcKpiPending', `수금률 ${collectionRate}% · 입금 ${dashboardKrwShort(paidAmount)}`);
-            patchLastUpdated();
+            applyCommonKpiLayout();
         }
 
         function patchDashboard() {
@@ -494,15 +549,14 @@
                 }
             };
             window.updatePCSubDashboards.__WORK22_5A_PATCHED__ = true;
-            console.log('✅ 작업22-5A-2 Dashboard KPI 카드 레이아웃 직접 보정 패치 완료');
+            console.log('✅ 작업22-5A-3 PC KPI 카드 공통 overflow 보정 패치 완료');
             return true;
         }
 
         let attempts = 0;
         const timer = setInterval(() => {
             attempts += 1;
-            injectSharedStyle();
-            patchLastUpdated();
+            applyCommonKpiLayout();
             if (patchDashboard() || attempts >= 80) clearInterval(timer);
         }, 250);
     })();
