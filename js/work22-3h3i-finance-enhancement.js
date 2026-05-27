@@ -303,3 +303,155 @@
     setTimeout(() => clearInterval(timer), 30000);
     console.log('✅ 작업22-3J PC Finance 월별/기간 필터 보정 패치 준비 완료');
 })();
+
+// ═══════════════════════════════════════════════════════
+// 작업22-4B — PC AR 거래처별 잔액 리스트 구현
+// ═══════════════════════════════════════════════════════
+(function installWork22_4BPCARClientBalancePatch() {
+    if (window.__WORK22_4B_PC_AR_CLIENT_BALANCE_PATCH__) return;
+    window.__WORK22_4B_PC_AR_CLIENT_BALANCE_PATCH__ = true;
+
+    function setText(id, value) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    }
+
+    function getTodayText() {
+        if (typeof window.getKSTDateString === 'function') return window.getKSTDateString();
+        return new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Seoul',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        }).format(new Date());
+    }
+
+    function daysBetweenSafe(startDateStr, endDateStr) {
+        if (typeof window.daysBetween === 'function') return window.daysBetween(startDateStr, endDateStr);
+        if (!startDateStr || !endDateStr) return 0;
+        const start = new Date(`${String(startDateStr).slice(0, 10)}T00:00:00+09:00`);
+        const end = new Date(`${String(endDateStr).slice(0, 10)}T00:00:00+09:00`);
+        if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
+        return Math.max(0, Math.floor((end - start) / 86400000));
+    }
+
+    function getOutstanding(order = {}) {
+        if (typeof window.getOutstandingAmount === 'function') return window.getOutstandingAmount(order);
+        return Math.max(0, window.yjGetAmount(order) - window.yjGetPaid(order));
+    }
+
+    function groupDebtByClient(debtItems = [], todayStr = getTodayText()) {
+        const map = new Map();
+        debtItems.forEach(order => {
+            const client = String(order.client || '미지정 거래처').trim() || '미지정 거래처';
+            const total = window.yjGetAmount(order);
+            const paid = window.yjGetPaid(order);
+            const balance = getOutstanding(order);
+            if (balance <= 0) return;
+
+            const baseDate = String(order.payDate || order.dueDate || '').slice(0, 10) || '-';
+            const elapsed = baseDate !== '-' ? daysBetweenSafe(baseDate, todayStr) : 0;
+
+            if (!map.has(client)) {
+                map.set(client, {
+                    client,
+                    orderCount: 0,
+                    totalAmount: 0,
+                    paidAmount: 0,
+                    balanceAmount: 0,
+                    latestDate: '-',
+                    maxElapsed: 0,
+                    hasOverdue: false
+                });
+            }
+
+            const item = map.get(client);
+            item.orderCount += 1;
+            item.totalAmount += total;
+            item.paidAmount += paid;
+            item.balanceAmount += balance;
+            item.maxElapsed = Math.max(item.maxElapsed, elapsed);
+            item.hasOverdue = item.hasOverdue || elapsed >= 30;
+
+            if (baseDate !== '-' && (item.latestDate === '-' || baseDate > item.latestDate)) {
+                item.latestDate = baseDate;
+            }
+        });
+
+        return Array.from(map.values()).sort((a, b) => {
+            if (b.maxElapsed !== a.maxElapsed) return b.maxElapsed - a.maxElapsed;
+            return b.balanceAmount - a.balanceAmount;
+        });
+    }
+
+    function renderClientBalanceRows(clientItems = []) {
+        const tbody = document.getElementById('pcArTableBody');
+        if (!tbody) return;
+
+        tbody.innerHTML = clientItems.slice(0, 15).map(item => {
+            const riskBadge = item.maxElapsed >= 60
+                ? `<span class='bg-red-500/10 text-red-400 border border-red-500/30 px-2 py-1 rounded text-[10px] font-black'>RISK</span>`
+                : item.maxElapsed >= 30
+                    ? `<span class='bg-orange-500/10 text-orange-400 border border-orange-500/30 px-2 py-1 rounded text-[10px] font-black'>WATCH</span>`
+                    : `<span class='bg-green-500/10 text-green-400 border border-green-500/30 px-2 py-1 rounded text-[10px] font-black'>SAFE</span>`;
+            const elapsedClass = item.maxElapsed >= 60 ? 'text-red-500' : item.maxElapsed >= 30 ? 'text-orange-400' : 'text-slate-400';
+
+            return `
+                <tr class='hover:bg-red-500/5 transition-colors'>
+                    <td class='px-4 py-3 font-bold text-white'>${item.client}<br><span class='text-[10px] text-slate-500 font-black'>미수 ${item.orderCount}건</span></td>
+                    <td class='px-4 py-3 text-slate-400'>${item.latestDate}</td>
+                    <td class='px-4 py-3 ${elapsedClass} font-bold'>${item.maxElapsed}일<br>${riskBadge}</td>
+                    <td class='px-4 py-3 text-right font-black text-red-400'>${window.yjFormatKRW(item.balanceAmount)}</td>
+                </tr>
+            `;
+        }).join('') || `
+            <tr>
+                <td colspan='4' class='px-4 py-8 text-center text-slate-500 font-bold'>
+                    미수금 데이터가 없습니다.
+                </td>
+            </tr>
+        `;
+    }
+
+    function patchARCards() {
+        if (typeof window.updatePCARCards !== 'function') return false;
+        if (window.updatePCARCards.__WORK22_4B_PATCHED__) return true;
+
+        const originalUpdatePCARCards = window.updatePCARCards;
+        window.updatePCARCards = function patchedUpdatePCARCards(metrics = {}) {
+            originalUpdatePCARCards(metrics);
+            const todayStr = metrics.todayStr || getTodayText();
+            const clientItems = groupDebtByClient(Array.isArray(metrics.debtItems) ? metrics.debtItems : [], todayStr);
+            const overdueClients = clientItems.filter(item => item.maxElapsed >= 30);
+            const normalClients = clientItems.filter(item => item.maxElapsed < 30);
+            const overdueAmount = overdueClients.reduce((sum, item) => sum + item.balanceAmount, 0);
+            const normalAmount = normalClients.reduce((sum, item) => sum + item.balanceAmount, 0);
+            const paidAmount = Number(metrics.paidAmount) || 0;
+            const debtAmount = overdueAmount + normalAmount;
+            const recoveryRate = paidAmount + debtAmount > 0 ? Math.round((paidAmount / (paidAmount + debtAmount)) * 100) : 0;
+            const riskLabel = overdueAmount > normalAmount && overdueAmount > 0 ? 'RISK' : overdueAmount > 0 ? 'WATCH' : 'SAFE';
+            const riskMeta = riskLabel === 'RISK' ? '장기 미수 거래처 우선 회수 필요' : riskLabel === 'WATCH' ? '30일 이상 미수 거래처 존재' : '거래처별 연체 리스크 없음';
+
+            setText('pcArOverdueAmount', window.yjFormatKRW(overdueAmount));
+            setText('pcArOverdueMeta', `30일 이상 ${overdueClients.length}개 거래처`);
+            setText('pcArNormalAmount', window.yjFormatKRW(normalAmount));
+            setText('pcArNormalMeta', `입금 대기 ${normalClients.length}개 거래처`);
+            setText('pcArRecoveryRate', `${recoveryRate}%`);
+            setText('pcArRecoveryMeta', '거래처별 잔액 기준 회수율');
+            setText('pcArRiskLabel', riskLabel);
+            setText('pcArRiskMeta', riskMeta);
+            setText('receivableChartTotal', typeof window.formatKRWShort === 'function' ? window.formatKRWShort(debtAmount) : Math.round(debtAmount).toLocaleString());
+            renderClientBalanceRows(clientItems);
+        };
+
+        window.updatePCARCards.__WORK22_4B_PATCHED__ = true;
+        console.log('✅ 작업22-4B PC AR 거래처별 잔액 리스트 패치 완료');
+        return true;
+    }
+
+    let attempts = 0;
+    const timer = setInterval(() => {
+        attempts += 1;
+        if (patchARCards() || attempts >= 80) clearInterval(timer);
+    }, 250);
+})();
