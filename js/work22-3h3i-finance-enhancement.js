@@ -9,6 +9,7 @@
 // 작업23-0A-1 — 공통 UI/용어/모바일 표시 정리
 // 작업23-0A-2 — PC 상단 제목 이모티콘 중복 제거 보정
 // 작업23-1A-1 — Production 진행 리스트 운영성 개선
+// 작업23-1A-2 — Production 완료/포장 대기 리스트 운영성 개선
 // ═══════════════════════════════════════════════════════
 (function installYJFlowPCEnhancementPatches() {
     if (window.__YJ_FLOW_PC_ENHANCEMENT_PATCHES__) return;
@@ -29,20 +30,14 @@
     const PC_TITLE_MARKERS = [
         'LIVE Dashboard', 'Live Dashboard', 'Operations Hub',
         'Sales Management', 'Finance Overview', 'Accounts Receivable',
-        'Production Management', 'Production', '회계 자산 현황판', '채권 현황판', '생산 공정 현황판'
+        'Production Management', 'Production Live', 'Production',
+        '회계 자산 현황판', '채권 현황판', '생산 공정 현황판'
     ];
 
     const krw = value => {
         if (typeof window.yjFormatKRW === 'function') return window.yjFormatKRW(value);
         if (typeof window.formatKRW === 'function') return window.formatKRW(value);
         return `₩ ${Math.round(Number(value) || 0).toLocaleString()}`;
-    };
-
-    const krwShort = value => {
-        const amount = Number(value) || 0;
-        if (amount >= 100000000) return `${(amount / 100000000).toFixed(1)}억`;
-        if (amount >= 10000) return `${Math.round(amount / 10000).toLocaleString()}만`;
-        return amount.toLocaleString();
     };
 
     const dashboardKrwShort = value => {
@@ -103,14 +98,6 @@
         return Math.max(0, Math.floor((end - start) / 86400000));
     };
 
-    function patchLastUpdated() {
-        document.querySelectorAll('.system-footer p, aside p').forEach(p => {
-            const text = (p.textContent || '').toLowerCase();
-            if (text.includes('last updated')) p.textContent = `LAST UPDATED: ${LAST_UPDATED}`;
-            if (text.includes('yj flow')) p.textContent = `YJ FLOW ${PATCH_VERSION}`;
-        });
-    }
-
     function normalizeUiLabel(text = '') {
         return String(text)
             .replace('회계 자산 관제탑', '회계 자산 현황판')
@@ -120,6 +107,14 @@
 
     function stripLeadingEmoji(text = '') {
         return String(text).replace(/^\s*(?:[\u{1F300}-\u{1FAFF}]|[\u{2600}-\u{27BF}]|\uFE0F)+\s*/u, '');
+    }
+
+    function patchLastUpdated() {
+        document.querySelectorAll('.system-footer p, aside p').forEach(p => {
+            const text = (p.textContent || '').toLowerCase();
+            if (text.includes('last updated')) p.textContent = `LAST UPDATED: ${LAST_UPDATED}`;
+            if (text.includes('yj flow')) p.textContent = `YJ FLOW ${PATCH_VERSION}`;
+        });
     }
 
     function patchCommonUiText() {
@@ -156,16 +151,6 @@
         return Number.isFinite(number) ? number : 0;
     }
 
-    function markCommonKpiCards() {
-        COMMON_KPI_IDS.forEach(id => {
-            const el = document.getElementById(id);
-            if (!el) return;
-            el.classList.add('yj-common-kpi-value');
-            const card = el.parentElement;
-            if (card) card.classList.add('yj-common-kpi-card');
-        });
-    }
-
     function compactMoneyKpis() {
         MONEY_KPI_IDS.forEach(id => {
             const el = document.getElementById(id);
@@ -174,6 +159,16 @@
             if (text.includes('억') || text.includes('천만') || /^\d+만$/.test(text.trim())) return;
             const amount = parseMoneyText(text);
             if (amount > 0) el.textContent = dashboardKrwShort(amount);
+        });
+    }
+
+    function markCommonKpiCards() {
+        COMMON_KPI_IDS.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.classList.add('yj-common-kpi-value');
+            const card = el.parentElement;
+            if (card) card.classList.add('yj-common-kpi-card');
         });
     }
 
@@ -214,16 +209,24 @@
             .yj-production-summary-card{border:1px solid rgba(51,65,85,.9);background:rgba(15,21,34,.74);border-radius:1rem;padding:.8rem;min-width:0;overflow:hidden;}
             .yj-production-summary-label{font-size:9px;color:#64748b;font-weight:900;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
             .yj-production-summary-value{font-size:1.05rem;color:#fff;font-weight:1000;margin-top:.2rem;letter-spacing:-.03em;}
-            .yj-production-card{border:1px solid rgba(51,65,85,.95);background:rgba(15,21,34,.72);border-radius:1rem;padding:1rem;transition:border-color .15s ease,background .15s ease;}
+            .yj-production-card{border:1px solid rgba(51,65,85,.95);background:rgba(15,21,34,.72);border-radius:1rem;padding:1rem;transition:border-color .15s ease,background .15s ease,box-shadow .15s ease;}
             .yj-production-card.is-overdue{border-color:rgba(239,68,68,.5);background:rgba(127,29,29,.13);}
             .yj-production-card.is-today{border-color:rgba(249,115,22,.48);background:rgba(124,45,18,.12);}
             .yj-production-card.is-soon{border-color:rgba(234,179,8,.42);background:rgba(113,63,18,.1);}
+            .yj-production-card.is-ready{border-color:rgba(34,197,94,.55);background:rgba(20,83,45,.14);box-shadow:0 0 0 1px rgba(34,197,94,.18) inset;}
+            .yj-production-card.is-packing{border-color:rgba(59,130,246,.48);background:rgba(30,64,175,.13);}
             .yj-production-badge{display:inline-flex;align-items:center;justify-content:center;min-height:22px;padding:0 .45rem;border-radius:.5rem;border:1px solid rgba(148,163,184,.2);font-size:10px;font-weight:1000;white-space:nowrap;}
             .yj-production-badge.overdue{color:#f87171;background:rgba(239,68,68,.10);border-color:rgba(239,68,68,.32);}
             .yj-production-badge.today{color:#fb923c;background:rgba(249,115,22,.10);border-color:rgba(249,115,22,.32);}
             .yj-production-badge.soon{color:#facc15;background:rgba(234,179,8,.10);border-color:rgba(234,179,8,.32);}
             .yj-production-badge.normal{color:#38bdf8;background:rgba(14,165,233,.09);border-color:rgba(14,165,233,.28);}
             .yj-production-badge.progress{color:#a78bfa;background:rgba(139,92,246,.10);border-color:rgba(139,92,246,.26);}
+            .yj-production-badge.ready{color:#4ade80;background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.34);}
+            .yj-production-badge.packing{color:#60a5fa;background:rgba(59,130,246,.12);border-color:rgba(59,130,246,.34);}
+            .yj-production-wait-panel{border:1px solid rgba(34,197,94,.24);background:rgba(20,83,45,.08);border-radius:1rem;padding:.85rem;margin-bottom:1rem;}
+            .yj-production-wait-title{font-size:11px;color:#bbf7d0;font-weight:1000;letter-spacing:-.02em;margin-bottom:.55rem;}
+            .yj-production-wait-row{display:flex;justify-content:space-between;gap:.75rem;padding:.45rem 0;border-top:1px solid rgba(148,163,184,.12);font-size:11px;font-weight:900;}
+            .yj-production-wait-row:first-of-type{border-top:0;}
             #pcKpiSales,#pcKpiDebt,#pcKpiFactory,#pcKpiPending{display:block!important;width:100%!important;max-width:100%!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;font-size:1.05rem!important;line-height:1.05!important;letter-spacing:-0.045em!important;font-variant-numeric:tabular-nums!important;}
             #pcFinanceOrderTotal,#pcFinanceIssuedTotal,#pcFinancePaidTotal,#pcFinanceDebtTotal,#pcArOverdueAmount,#pcArNormalAmount{font-size:1.05rem!important;letter-spacing:-0.055em!important;}
             #pcArRecoveryRate,#pcArRiskLabel{font-size:1.22rem!important;letter-spacing:-0.035em!important;}
@@ -535,11 +538,11 @@
     })();
 
     // ───────────────────────────────────────────────
-    // 작업23-1A-1 — Production 진행 리스트 운영성 개선
+    // 작업23-1A-1/1A-2 — Production 진행 리스트 운영성 개선
     // ───────────────────────────────────────────────
     (function installProductionOperationsPatch() {
-        if (window.__WORK23_1A1_PRODUCTION_OPERATIONS_PATCH__) return;
-        window.__WORK23_1A1_PRODUCTION_OPERATIONS_PATCH__ = true;
+        if (window.__WORK23_1A_PRODUCTION_OPERATIONS_PATCH__) return;
+        window.__WORK23_1A_PRODUCTION_OPERATIONS_PATCH__ = true;
 
         function percent(done, total) {
             if (typeof window.yjSafePercent === 'function') return window.yjSafePercent(done, total);
@@ -558,12 +561,13 @@
             return { key: 'normal', label: `D-${left}`, sort: 30, days: left };
         }
 
-        function getProgressLabel(pct) {
-            if (pct >= 100) return '완료 대기';
-            if (pct >= 70) return '마감 단계';
-            if (pct >= 35) return '진행 중';
-            if (pct > 0) return '초기 진행';
-            return '착수 대기';
+        function getPackingState(pct, remainQty) {
+            if (remainQty <= 0 || pct >= 100) return { key: 'ready', label: '완료 대기', sort: -20 };
+            if (pct >= 90) return { key: 'packing', label: '포장 대기', sort: -10 };
+            if (pct >= 70) return { key: 'progress', label: '마감 단계', sort: 10 };
+            if (pct >= 35) return { key: 'progress', label: '진행 중', sort: 20 };
+            if (pct > 0) return { key: 'progress', label: '초기 진행', sort: 30 };
+            return { key: 'progress', label: '착수 대기', sort: 40 };
         }
 
         function renderEnhancedProductionList(metrics = {}) {
@@ -577,13 +581,15 @@
                 const pct = percent(completedQty, qty);
                 const due = getDueState(order, todayStr);
                 const remainQty = Math.max(0, qty - completedQty);
-                return { order, qty, completedQty, pct, due, remainQty };
-            }).sort((a, b) => a.due.sort - b.due.sort || String(a.order.dueDate || '').localeCompare(String(b.order.dueDate || '')) || b.pct - a.pct);
+                const packing = getPackingState(pct, remainQty);
+                return { order, qty, completedQty, pct, due, remainQty, packing };
+            }).sort((a, b) => a.packing.sort - b.packing.sort || a.due.sort - b.due.sort || String(a.order.dueDate || '').localeCompare(String(b.order.dueDate || '')) || b.pct - a.pct);
 
             const overdueCount = decorated.filter(item => item.due.key === 'overdue').length;
-            const todayCount = decorated.filter(item => item.due.key === 'today').length;
-            const soonCount = decorated.filter(item => item.due.key === 'soon').length;
+            const readyCount = decorated.filter(item => item.packing.key === 'ready').length;
+            const packingCount = decorated.filter(item => item.packing.key === 'packing').length;
             const totalRemain = decorated.reduce((sum, item) => sum + item.remainQty, 0);
+            const waitItems = decorated.filter(item => item.packing.key === 'ready' || item.packing.key === 'packing');
 
             if (!decorated.length) {
                 list.innerHTML = `<p class='text-center text-xs text-slate-500 font-bold py-8'>진행 중인 공정 데이터가 없습니다.</p>`;
@@ -593,18 +599,29 @@
             const summary = `
                 <div class='yj-production-summary-grid'>
                     <div class='yj-production-summary-card'><div class='yj-production-summary-label'>Overdue</div><div class='yj-production-summary-value text-red-400'>${overdueCount}건</div></div>
-                    <div class='yj-production-summary-card'><div class='yj-production-summary-label'>Today</div><div class='yj-production-summary-value text-orange-400'>${todayCount}건</div></div>
-                    <div class='yj-production-summary-card'><div class='yj-production-summary-label'>D-3</div><div class='yj-production-summary-value text-yellow-400'>${soonCount}건</div></div>
+                    <div class='yj-production-summary-card'><div class='yj-production-summary-label'>Ready</div><div class='yj-production-summary-value text-green-400'>${readyCount}건</div></div>
+                    <div class='yj-production-summary-card'><div class='yj-production-summary-label'>Packing</div><div class='yj-production-summary-value text-blue-400'>${packingCount}건</div></div>
                     <div class='yj-production-summary-card'><div class='yj-production-summary-label'>Remain</div><div class='yj-production-summary-value text-blue-400'>${totalRemain.toLocaleString()}장</div></div>
                 </div>`;
+
+            const waitPanel = waitItems.length ? `
+                <div class='yj-production-wait-panel'>
+                    <div class='yj-production-wait-title'>완료/포장 대기 우선 처리</div>
+                    ${waitItems.slice(0, 4).map(item => `
+                        <div class='yj-production-wait-row'>
+                            <span class='text-white truncate'>${item.order.client || '-'}</span>
+                            <span class='${item.packing.key === 'ready' ? 'text-green-400' : 'text-blue-400'}'>${item.packing.label} · 잔여 ${item.remainQty.toLocaleString()}장</span>
+                        </div>`).join('')}
+                </div>` : '';
 
             const rows = decorated.slice(0, 8).map(item => {
                 const o = item.order;
                 const inputId = `pc-in-${o.id}`;
-                const progressLabel = getProgressLabel(item.pct);
                 const dueClass = item.due.key;
+                const cardClass = item.packing.key === 'ready' ? 'ready' : item.packing.key === 'packing' ? 'packing' : dueClass;
+                const remainClass = item.remainQty <= 0 ? 'text-green-400' : item.pct >= 90 ? 'text-blue-400' : 'text-slate-300';
                 return `
-                    <div class='yj-production-card is-${dueClass}'>
+                    <div class='yj-production-card is-${cardClass}'>
                         <div class='flex justify-between items-start gap-3 text-xs font-bold mb-2'>
                             <div class='min-w-0'>
                                 <div class='text-white truncate'>${o.client || '-'}</div>
@@ -612,19 +629,19 @@
                             </div>
                             <div class='flex flex-col items-end gap-1 shrink-0'>
                                 <span class='yj-production-badge ${dueClass}'>${item.due.label}</span>
-                                <span class='yj-production-badge progress'>${progressLabel}</span>
+                                <span class='yj-production-badge ${item.packing.key}'>${item.packing.label}</span>
                             </div>
                         </div>
                         <div class='flex justify-between text-[10px] font-bold mb-1'>
                             <span class='text-slate-400'>${item.completedQty.toLocaleString()} / ${item.qty.toLocaleString()}장</span>
-                            <span class='text-blue-400'>${item.pct}%</span>
+                            <span class='${item.pct >= 90 ? 'text-green-400' : 'text-blue-400'}'>${item.pct}%</span>
                         </div>
                         <div class='w-full bg-[#0f1522] h-2.5 rounded-full overflow-hidden border border-[#334155]'>
-                            <div class='bg-blue-500 h-full rounded-full transition-all duration-1000 ease-out' style='width: ${item.pct}%'></div>
+                            <div class='${item.pct >= 90 ? 'bg-green-500' : 'bg-blue-500'} h-full rounded-full transition-all duration-1000 ease-out' style='width: ${item.pct}%'></div>
                         </div>
                         <div class='mt-2 text-[10px] text-slate-500 font-bold flex justify-between'>
                             <span>납기: ${o.dueDate || '-'}</span>
-                            <span class='${item.remainQty > 0 ? 'text-slate-300' : 'text-green-400'}'>잔여 ${item.remainQty.toLocaleString()}장</span>
+                            <span class='${remainClass}'>잔여 ${item.remainQty.toLocaleString()}장</span>
                         </div>
                         <div class='mt-3 flex gap-2'>
                             <input type='text' id='${inputId}' class='flex-1 px-3 py-2 bg-[#111827] border border-[#334155] rounded-lg text-xs text-white font-bold outline-none focus:border-blue-400' placeholder='생산 수량'>
@@ -632,19 +649,19 @@
                         </div>
                     </div>`;
             }).join('');
-            list.innerHTML = summary + rows;
+            list.innerHTML = summary + waitPanel + rows;
         }
 
         function patchProductionCards() {
             if (typeof window.updatePCProductionCards !== 'function') return false;
-            if (window.updatePCProductionCards.__WORK23_1A1_PATCHED__) return true;
+            if (window.updatePCProductionCards.__WORK23_1A_PATCHED__) return true;
             const originalUpdatePCProductionCards = window.updatePCProductionCards;
             window.updatePCProductionCards = function patchedUpdatePCProductionCards(metrics = {}) {
                 originalUpdatePCProductionCards(metrics);
                 renderEnhancedProductionList(metrics);
             };
-            window.updatePCProductionCards.__WORK23_1A1_PATCHED__ = true;
-            console.log('✅ 작업23-1A-1 Production 진행 리스트 운영성 개선 패치 완료');
+            window.updatePCProductionCards.__WORK23_1A_PATCHED__ = true;
+            console.log('✅ 작업23-1A-2 Production 완료/포장 대기 리스트 운영성 개선 패치 완료');
             return true;
         }
 
