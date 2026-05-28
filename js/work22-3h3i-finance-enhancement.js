@@ -6,13 +6,14 @@
 // 작업22-5A-1 — Dashboard KPI overflow + LAST UPDATED 보정
 // 작업22-5A-2 — Dashboard KPI 카드 레이아웃 직접 보정
 // 작업22-5A-3 — PC KPI 카드 공통 overflow 보정
+// 작업23-0A-1 — 공통 UI/용어/모바일 표시 정리
 // ═══════════════════════════════════════════════════════
 (function installYJFlowPCEnhancementPatches() {
     if (window.__YJ_FLOW_PC_ENHANCEMENT_PATCHES__) return;
     window.__YJ_FLOW_PC_ENHANCEMENT_PATCHES__ = true;
 
     const PATCH_VERSION = 'V2.0.2';
-    const LAST_UPDATED = '26.05.27';
+    const LAST_UPDATED = '26.05.28';
 
     const MONEY_KPI_IDS = [
         'pcKpiSales', 'pcKpiDebt',
@@ -103,6 +104,34 @@
         });
     }
 
+    function patchCommonUiText() {
+        document.querySelectorAll('.system-footer').forEach(footer => {
+            const rows = Array.from(footer.querySelectorAll('p'));
+            if (!rows.length) return;
+            const firstText = rows[0].textContent || '';
+            if (firstText.includes('LAST UPDATED') || firstText.includes('26.05.15') || firstText.includes('v2.0.1') || firstText.trim().startsWith(':')) {
+                rows[0].textContent = `LAST UPDATED: ${LAST_UPDATED}`;
+            }
+            const hasVersion = rows.some(p => (p.textContent || '').includes('YJ FLOW'));
+            if (!hasVersion) {
+                const versionLine = document.createElement('p');
+                versionLine.textContent = `YJ FLOW ${PATCH_VERSION}`;
+                rows[0].insertAdjacentElement('afterend', versionLine);
+            }
+        });
+
+        const textNodes = Array.from(document.querySelectorAll('h1, h2, h3, .pc-page h1, .pc-page h2, .pc-page h3'));
+        textNodes.forEach(el => {
+            if (!el || !el.textContent) return;
+            let next = el.textContent;
+            next = next.replace('회계 자산 관제탑', '회계 자산 현황판');
+            next = next.replace('채권 현황 관제탑', '채권 현황판');
+            next = next.replace('생산 공정 관제탑', '생산 공정 현황판');
+            next = next.replace(/^\s*[📊📝💼💰🏭📜🔍📦✅⚠️🚨🔒]\s+/, '');
+            if (next !== el.textContent) el.textContent = next;
+        });
+    }
+
     function parseMoneyText(text = '') {
         const clean = String(text).replace(/[^0-9.-]/g, '');
         const number = Number(clean);
@@ -135,6 +164,7 @@
         markCommonKpiCards();
         compactMoneyKpis();
         patchLastUpdated();
+        patchCommonUiText();
     }
 
     function injectSharedStyle() {
@@ -557,6 +587,7 @@
         const timer = setInterval(() => {
             attempts += 1;
             applyCommonKpiLayout();
+            patchCommonUiText();
             if (patchDashboard() || attempts >= 80) clearInterval(timer);
         }, 250);
     })();
