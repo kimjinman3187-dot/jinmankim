@@ -8,6 +8,7 @@
 // 작업22-5A-3 — PC KPI 카드 공통 overflow 보정
 // 작업23-0A-1 — 공통 UI/용어/모바일 표시 정리
 // 작업23-0A-2 — PC 상단 제목 이모티콘 중복 제거 보정
+// 작업23-1A-1 — Production 진행 리스트 운영성 개선
 // ═══════════════════════════════════════════════════════
 (function installYJFlowPCEnhancementPatches() {
     if (window.__YJ_FLOW_PC_ENHANCEMENT_PATCHES__) return;
@@ -209,12 +210,26 @@
             .yj-dashboard-kpi-card{min-width:0!important;overflow:hidden!important;padding:.75rem .85rem!important;display:flex!important;flex-direction:column!important;justify-content:center!important;gap:.18rem!important;}
             .yj-dashboard-kpi-card p,.yj-dashboard-kpi-card span,.yj-dashboard-kpi-card div{max-width:100%!important;min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;}
             .yj-dashboard-meta{display:block;margin-top:.18rem;font-size:9px!important;line-height:1.1!important;font-weight:900;color:#64748b;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+            .yj-production-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem;margin-bottom:1rem;}
+            .yj-production-summary-card{border:1px solid rgba(51,65,85,.9);background:rgba(15,21,34,.74);border-radius:1rem;padding:.8rem;min-width:0;overflow:hidden;}
+            .yj-production-summary-label{font-size:9px;color:#64748b;font-weight:900;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+            .yj-production-summary-value{font-size:1.05rem;color:#fff;font-weight:1000;margin-top:.2rem;letter-spacing:-.03em;}
+            .yj-production-card{border:1px solid rgba(51,65,85,.95);background:rgba(15,21,34,.72);border-radius:1rem;padding:1rem;transition:border-color .15s ease,background .15s ease;}
+            .yj-production-card.is-overdue{border-color:rgba(239,68,68,.5);background:rgba(127,29,29,.13);}
+            .yj-production-card.is-today{border-color:rgba(249,115,22,.48);background:rgba(124,45,18,.12);}
+            .yj-production-card.is-soon{border-color:rgba(234,179,8,.42);background:rgba(113,63,18,.1);}
+            .yj-production-badge{display:inline-flex;align-items:center;justify-content:center;min-height:22px;padding:0 .45rem;border-radius:.5rem;border:1px solid rgba(148,163,184,.2);font-size:10px;font-weight:1000;white-space:nowrap;}
+            .yj-production-badge.overdue{color:#f87171;background:rgba(239,68,68,.10);border-color:rgba(239,68,68,.32);}
+            .yj-production-badge.today{color:#fb923c;background:rgba(249,115,22,.10);border-color:rgba(249,115,22,.32);}
+            .yj-production-badge.soon{color:#facc15;background:rgba(234,179,8,.10);border-color:rgba(234,179,8,.32);}
+            .yj-production-badge.normal{color:#38bdf8;background:rgba(14,165,233,.09);border-color:rgba(14,165,233,.28);}
+            .yj-production-badge.progress{color:#a78bfa;background:rgba(139,92,246,.10);border-color:rgba(139,92,246,.26);}
             #pcKpiSales,#pcKpiDebt,#pcKpiFactory,#pcKpiPending{display:block!important;width:100%!important;max-width:100%!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;font-size:1.05rem!important;line-height:1.05!important;letter-spacing:-0.045em!important;font-variant-numeric:tabular-nums!important;}
             #pcFinanceOrderTotal,#pcFinanceIssuedTotal,#pcFinancePaidTotal,#pcFinanceDebtTotal,#pcArOverdueAmount,#pcArNormalAmount{font-size:1.05rem!important;letter-spacing:-0.055em!important;}
             #pcArRecoveryRate,#pcArRiskLabel{font-size:1.22rem!important;letter-spacing:-0.035em!important;}
             @media(max-width:1280px){.yj-common-kpi-value,#pcKpiSales,#pcKpiDebt,#pcKpiFactory,#pcKpiPending,#pcFinanceOrderTotal,#pcFinanceIssuedTotal,#pcFinancePaidTotal,#pcFinanceDebtTotal,#pcArOverdueAmount,#pcArNormalAmount{font-size:.95rem!important;}.yj-common-kpi-card,.yj-dashboard-kpi-card{padding:.7rem .75rem!important;}.yj-dashboard-meta{font-size:8.5px!important;}}
-            @media(max-width:1024px){.yj-finance-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
-            @media(max-width:640px){.yj-finance-summary-grid{grid-template-columns:1fr;}.yj-finance-section-header{align-items:flex-start!important;flex-direction:column!important;}.yj-finance-section-actions{justify-content:flex-start;}}
+            @media(max-width:1024px){.yj-finance-summary-grid,.yj-production-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+            @media(max-width:640px){.yj-finance-summary-grid,.yj-production-summary-grid{grid-template-columns:1fr;}.yj-finance-section-header{align-items:flex-start!important;flex-direction:column!important;}.yj-finance-section-actions{justify-content:flex-start;}}
         `;
         document.head.appendChild(style);
     }
@@ -517,6 +532,129 @@
 
         let attempts = 0;
         const timer = setInterval(() => { attempts += 1; applyCommonKpiLayout(); if (patchARCards() || attempts >= 80) clearInterval(timer); }, 250);
+    })();
+
+    // ───────────────────────────────────────────────
+    // 작업23-1A-1 — Production 진행 리스트 운영성 개선
+    // ───────────────────────────────────────────────
+    (function installProductionOperationsPatch() {
+        if (window.__WORK23_1A1_PRODUCTION_OPERATIONS_PATCH__) return;
+        window.__WORK23_1A1_PRODUCTION_OPERATIONS_PATCH__ = true;
+
+        function percent(done, total) {
+            if (typeof window.yjSafePercent === 'function') return window.yjSafePercent(done, total);
+            const totalNumber = Number(total) || 0;
+            if (totalNumber <= 0) return 0;
+            return Math.min(100, Math.round(((Number(done) || 0) / totalNumber) * 100));
+        }
+
+        function getDueState(order = {}, todayStr = getKSTDateStringSafe()) {
+            const dueDate = String(order.dueDate || '').slice(0, 10);
+            if (!dueDate || dueDate === '-') return { key: 'normal', label: '납기 미지정', sort: 40, days: null };
+            if (dueDate < todayStr) return { key: 'overdue', label: `지연 ${daysBetweenSafe(dueDate, todayStr)}일`, sort: 0, days: -daysBetweenSafe(dueDate, todayStr) };
+            if (dueDate === todayStr) return { key: 'today', label: '오늘 납기', sort: 10, days: 0 };
+            const left = daysBetweenSafe(todayStr, dueDate);
+            if (left <= 3) return { key: 'soon', label: `임박 D-${left}`, sort: 20, days: left };
+            return { key: 'normal', label: `D-${left}`, sort: 30, days: left };
+        }
+
+        function getProgressLabel(pct) {
+            if (pct >= 100) return '완료 대기';
+            if (pct >= 70) return '마감 단계';
+            if (pct >= 35) return '진행 중';
+            if (pct > 0) return '초기 진행';
+            return '착수 대기';
+        }
+
+        function renderEnhancedProductionList(metrics = {}) {
+            const list = document.getElementById('pcProductionProgressList');
+            if (!list) return;
+            const todayStr = metrics.todayStr || getKSTDateStringSafe();
+            const items = Array.isArray(metrics.activeProductionItems) ? [...metrics.activeProductionItems] : [];
+            const decorated = items.map(order => {
+                const qty = Number(order.qty) || 0;
+                const completedQty = Math.min(Number(order.completedQty) || 0, qty);
+                const pct = percent(completedQty, qty);
+                const due = getDueState(order, todayStr);
+                const remainQty = Math.max(0, qty - completedQty);
+                return { order, qty, completedQty, pct, due, remainQty };
+            }).sort((a, b) => a.due.sort - b.due.sort || String(a.order.dueDate || '').localeCompare(String(b.order.dueDate || '')) || b.pct - a.pct);
+
+            const overdueCount = decorated.filter(item => item.due.key === 'overdue').length;
+            const todayCount = decorated.filter(item => item.due.key === 'today').length;
+            const soonCount = decorated.filter(item => item.due.key === 'soon').length;
+            const totalRemain = decorated.reduce((sum, item) => sum + item.remainQty, 0);
+
+            if (!decorated.length) {
+                list.innerHTML = `<p class='text-center text-xs text-slate-500 font-bold py-8'>진행 중인 공정 데이터가 없습니다.</p>`;
+                return;
+            }
+
+            const summary = `
+                <div class='yj-production-summary-grid'>
+                    <div class='yj-production-summary-card'><div class='yj-production-summary-label'>Overdue</div><div class='yj-production-summary-value text-red-400'>${overdueCount}건</div></div>
+                    <div class='yj-production-summary-card'><div class='yj-production-summary-label'>Today</div><div class='yj-production-summary-value text-orange-400'>${todayCount}건</div></div>
+                    <div class='yj-production-summary-card'><div class='yj-production-summary-label'>D-3</div><div class='yj-production-summary-value text-yellow-400'>${soonCount}건</div></div>
+                    <div class='yj-production-summary-card'><div class='yj-production-summary-label'>Remain</div><div class='yj-production-summary-value text-blue-400'>${totalRemain.toLocaleString()}장</div></div>
+                </div>`;
+
+            const rows = decorated.slice(0, 8).map(item => {
+                const o = item.order;
+                const inputId = `pc-in-${o.id}`;
+                const progressLabel = getProgressLabel(item.pct);
+                const dueClass = item.due.key;
+                return `
+                    <div class='yj-production-card is-${dueClass}'>
+                        <div class='flex justify-between items-start gap-3 text-xs font-bold mb-2'>
+                            <div class='min-w-0'>
+                                <div class='text-white truncate'>${o.client || '-'}</div>
+                                <div class='text-[10px] text-slate-500 mt-1 truncate'>${o.material || '-'} · 총 ${item.qty.toLocaleString()}장</div>
+                            </div>
+                            <div class='flex flex-col items-end gap-1 shrink-0'>
+                                <span class='yj-production-badge ${dueClass}'>${item.due.label}</span>
+                                <span class='yj-production-badge progress'>${progressLabel}</span>
+                            </div>
+                        </div>
+                        <div class='flex justify-between text-[10px] font-bold mb-1'>
+                            <span class='text-slate-400'>${item.completedQty.toLocaleString()} / ${item.qty.toLocaleString()}장</span>
+                            <span class='text-blue-400'>${item.pct}%</span>
+                        </div>
+                        <div class='w-full bg-[#0f1522] h-2.5 rounded-full overflow-hidden border border-[#334155]'>
+                            <div class='bg-blue-500 h-full rounded-full transition-all duration-1000 ease-out' style='width: ${item.pct}%'></div>
+                        </div>
+                        <div class='mt-2 text-[10px] text-slate-500 font-bold flex justify-between'>
+                            <span>납기: ${o.dueDate || '-'}</span>
+                            <span class='${item.remainQty > 0 ? 'text-slate-300' : 'text-green-400'}'>잔여 ${item.remainQty.toLocaleString()}장</span>
+                        </div>
+                        <div class='mt-3 flex gap-2'>
+                            <input type='text' id='${inputId}' class='flex-1 px-3 py-2 bg-[#111827] border border-[#334155] rounded-lg text-xs text-white font-bold outline-none focus:border-blue-400' placeholder='생산 수량'>
+                            <button onclick="addProgress('${o.id}', '${inputId}')" class='px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-black shadow-md transition-colors'>보고</button>
+                        </div>
+                    </div>`;
+            }).join('');
+            list.innerHTML = summary + rows;
+        }
+
+        function patchProductionCards() {
+            if (typeof window.updatePCProductionCards !== 'function') return false;
+            if (window.updatePCProductionCards.__WORK23_1A1_PATCHED__) return true;
+            const originalUpdatePCProductionCards = window.updatePCProductionCards;
+            window.updatePCProductionCards = function patchedUpdatePCProductionCards(metrics = {}) {
+                originalUpdatePCProductionCards(metrics);
+                renderEnhancedProductionList(metrics);
+            };
+            window.updatePCProductionCards.__WORK23_1A1_PATCHED__ = true;
+            console.log('✅ 작업23-1A-1 Production 진행 리스트 운영성 개선 패치 완료');
+            return true;
+        }
+
+        let attempts = 0;
+        const timer = setInterval(() => {
+            attempts += 1;
+            injectSharedStyle();
+            applyCommonKpiLayout();
+            if (patchProductionCards() || attempts >= 80) clearInterval(timer);
+        }, 250);
     })();
 
     // ───────────────────────────────────────────────
