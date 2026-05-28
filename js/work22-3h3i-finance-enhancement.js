@@ -7,6 +7,7 @@
 // 작업22-5A-2 — Dashboard KPI 카드 레이아웃 직접 보정
 // 작업22-5A-3 — PC KPI 카드 공통 overflow 보정
 // 작업23-0A-1 — 공통 UI/용어/모바일 표시 정리
+// 작업23-0A-2 — PC 상단 제목 이모티콘 중복 제거 보정
 // ═══════════════════════════════════════════════════════
 (function installYJFlowPCEnhancementPatches() {
     if (window.__YJ_FLOW_PC_ENHANCEMENT_PATCHES__) return;
@@ -23,6 +24,11 @@
     const COMMON_KPI_IDS = [
         ...MONEY_KPI_IDS,
         'pcKpiFactory', 'pcKpiPending', 'pcArRecoveryRate', 'pcArRiskLabel'
+    ];
+    const PC_TITLE_MARKERS = [
+        'LIVE Dashboard', 'Live Dashboard', 'Operations Hub',
+        'Sales Management', 'Finance Overview', 'Accounts Receivable',
+        'Production Management', 'Production', '회계 자산 현황판', '채권 현황판', '생산 공정 현황판'
     ];
 
     const krw = value => {
@@ -104,6 +110,17 @@
         });
     }
 
+    function normalizeUiLabel(text = '') {
+        return String(text)
+            .replace('회계 자산 관제탑', '회계 자산 현황판')
+            .replace('채권 현황 관제탑', '채권 현황판')
+            .replace('생산 공정 관제탑', '생산 공정 현황판');
+    }
+
+    function stripLeadingEmoji(text = '') {
+        return String(text).replace(/^\s*(?:[\u{1F300}-\u{1FAFF}]|[\u{2600}-\u{27BF}]|\uFE0F)+\s*/u, '');
+    }
+
     function patchCommonUiText() {
         document.querySelectorAll('.system-footer').forEach(footer => {
             const rows = Array.from(footer.querySelectorAll('p'));
@@ -120,15 +137,15 @@
             }
         });
 
-        const textNodes = Array.from(document.querySelectorAll('h1, h2, h3, .pc-page h1, .pc-page h2, .pc-page h3'));
-        textNodes.forEach(el => {
-            if (!el || !el.textContent) return;
-            let next = el.textContent;
-            next = next.replace('회계 자산 관제탑', '회계 자산 현황판');
-            next = next.replace('채권 현황 관제탑', '채권 현황판');
-            next = next.replace('생산 공정 관제탑', '생산 공정 현황판');
-            next = next.replace(/^\s*[📊📝💼💰🏭📜🔍📦✅⚠️🚨🔒]\s+/, '');
-            if (next !== el.textContent) el.textContent = next;
+        const labelNodes = Array.from(document.querySelectorAll('h1, h2, h3, p, span, button'));
+        labelNodes.forEach(el => {
+            if (!el || !el.textContent || el.children.length > 0) return;
+            const current = el.textContent;
+            let next = normalizeUiLabel(current);
+            const stripped = stripLeadingEmoji(next);
+            const shouldStrip = PC_TITLE_MARKERS.some(marker => stripped.includes(marker)) || /^(LIVE|Live|Sales|Finance|AR|Production|Operations|Accounts)/.test(stripped.trim());
+            if (shouldStrip) next = stripped;
+            if (next !== current) el.textContent = next;
         });
     }
 
