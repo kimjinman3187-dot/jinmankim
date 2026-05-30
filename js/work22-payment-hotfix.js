@@ -71,9 +71,20 @@
         if (window.confirmPayment.__WORK22_PAYMENT_HOTFIX__) return true;
 
         window.confirmPayment = async function confirmPaymentHotfixed(id) {
-            const orderList = Array.isArray(window.orders) ? window.orders : [];
-            const o = orderList.find(x => x.id === id);
-            if (!o) return alert('주문 데이터를 찾을 수 없습니다.');
+            if (typeof window.db === 'undefined') {
+                return alert('데이터베이스 연결이 아직 준비되지 않았습니다. 잠시 후 다시 시도하세요.');
+            }
+
+            let o = null;
+            try {
+                const orderDoc = await window.db.collection('orders').doc(id).get();
+                if (!orderDoc.exists) {
+                    return alert('주문 데이터를 찾을 수 없습니다.');
+                }
+                o = { id: orderDoc.id, ...orderDoc.data() };
+            } catch (e) {
+                return alert('주문 데이터 조회 실패: ' + e.message);
+            }
 
             const inputStr = prompt('입금된 금액을 입력하세요:\n(숫자 또는 쉼표만 입력 예: 10000 / 10,000)');
             if (inputStr === null) return;
@@ -122,9 +133,7 @@
             }
 
             try {
-                if (typeof window.db !== 'undefined') {
-                    await window.db.collection('orders').doc(id).update(updatePayload);
-                }
+                await window.db.collection('orders').doc(id).update(updatePayload);
 
                 Object.assign(o, updatePayload);
 
@@ -154,7 +163,7 @@
         };
 
         window.confirmPayment.__WORK22_PAYMENT_HOTFIX__ = true;
-        console.log('✅ 작업22-PAYMENT-HOTFIX confirmPayment 오버라이드 완료');
+        console.log('✅ 작업22-PAYMENT-HOTFIX-2 confirmPayment 주문 조회 보정 완료');
         return true;
     }
 
