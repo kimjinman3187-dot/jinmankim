@@ -574,7 +574,25 @@
             const list = document.getElementById('pcProductionProgressList');
             if (!list) return;
             const todayStr = metrics.todayStr || getKSTDateStringSafe();
-            const items = Array.isArray(metrics.activeProductionItems) ? [...metrics.activeProductionItems] : [];
+            const activeItems = Array.isArray(metrics.activeProductionItems) ? metrics.activeProductionItems : [];
+const packingFallbackItems = Array.isArray(metrics.packingWaitItems)
+    ? metrics.packingWaitItems
+    : Array.isArray(window.filteredOrders)
+        ? window.filteredOrders.filter(order =>
+            order &&
+            order.status === 'completed' &&
+            order.paymentStatus !== 'paid'
+        )
+        : [];
+
+const itemMap = new Map();
+[...activeItems, ...packingFallbackItems].forEach(order => {
+    if (order?.id && !itemMap.has(order.id)) {
+        itemMap.set(order.id, order);
+    }
+});
+
+const items = Array.from(itemMap.values());
             const decorated = items.map(order => {
                 const qty = Number(order.qty) || 0;
                 const completedQty = Math.min(Number(order.completedQty) || 0, qty);
