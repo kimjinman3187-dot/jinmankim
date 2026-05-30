@@ -153,9 +153,9 @@
                     alert(isFullyPaid ? '입금 완료 처리되었습니다.' : '부분입금 처리되었습니다.');
                 }
 
-                if (typeof window.executeSearch === 'function') window.executeSearch();
-                if (typeof window.renderAccounting === 'function') window.renderAccounting();
-                if (typeof window.renderReceivables === 'function') window.renderReceivables();
+                // PAYMENT-HOTFIX-2B: 입금 처리 후 생산공정 리스트가 사라지는 회귀를 막기 위해
+                // 전체 검색/렌더링 체인(executeSearch/renderAccounting/renderReceivables)을 강제 호출하지 않는다.
+                // Firestore onSnapshot 리스너가 데이터 변경을 감지해 기존 화면 흐름대로 갱신한다.
                 setTimeout(renderPaymentDateBadges, 150);
             } catch (e) {
                 alert('입금 처리 실패: ' + e.message);
@@ -163,7 +163,7 @@
         };
 
         window.confirmPayment.__WORK22_PAYMENT_HOTFIX__ = true;
-        console.log('✅ 작업22-PAYMENT-HOTFIX-2 confirmPayment 주문 조회 보정 완료');
+        console.log('✅ 작업22-PAYMENT-HOTFIX-2B confirmPayment 렌더링 회귀 방지 완료');
         return true;
     }
 
