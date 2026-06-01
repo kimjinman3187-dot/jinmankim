@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YJ FLOW 작업일정 체크리스트 확정반영안 v2 완료체크 정정</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 32px;
+      font-family: "Noto Sans KR", Arial, sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+      line-height: 1.6;
+    }
+    main {
+      max-width: 1040px;
+      margin: 0 auto;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 32px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      line-height: 1.25;
+    }
+    h2 {
+      margin-top: 32px;
+      padding-top: 20px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid #e2e8f0;
+      padding: 10px 12px;
+      vertical-align: top;
+      text-align: left;
+    }
+    th {
+      background: #f1f5f9;
+      font-weight: 800;
+    }
+    .meta {
+      color: #475569;
+      font-size: 14px;
+      margin: 0;
+    }
+    .status-done {
+      color: #166534;
+      font-weight: 800;
+    }
+    .status-check {
+      color: #b45309;
+      font-weight: 800;
+    }
+    .note {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-top: 16px;
+    }
+    ul {
+      margin: 10px 0 0 20px;
+      padding: 0;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>YJ FLOW 작업일정 체크리스트 확정반영안 v2 완료체크 정정</h1>
+    <p class="meta">작성일: 2026-06-01</p>
+    <p class="meta">작업명: SCHEDULE-GITHUB-INTEGRATION-001</p>
+    <p class="meta">문서 목적: Schedule Master v2의 완료 체크 상태를 정정하고 GitHub 문서 이력에 반영한다.</p>
+
+    <section class="note">
+      <strong>정정 핵심</strong>
+      <ul>
+        <li>5월 22일 작업21 성능검증은 완료 처리하지 않는다.</li>
+        <li>해당 항목 상태는 <strong>확인 필요</strong>로 유지한다.</li>
+        <li>Gene의 DevTools Console 확인 후 별도 작업으로 완료 여부를 판단한다.</li>
+      </ul>
+    </section>
+
+    <h2>완료 체크 정정표</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>일자</th>
+          <th>작업</th>
+          <th>기존 표시</th>
+          <th>정정 상태</th>
+          <th>비고</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>2026-05-22</td>
+          <td>작업21 성능검증</td>
+          <td class="status-done">완료</td>
+          <td class="status-check">확인 필요</td>
+          <td>DevTools Console 확인 전까지 완료 처리 금지</td>
+        </tr>
+        <tr>
+          <td>2026-05-29 ~ 2026-05-30</td>
+          <td>PAYMENT-HOTFIX 계열</td>
+          <td class="status-done">완료</td>
+          <td class="status-done">완료</td>
+          <td>PR #28, #29, #30, #32, #33, #34 기준 반영</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>검증 대기 항목</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>항목</th>
+          <th>현재 상태</th>
+          <th>다음 조치</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>작업21 성능검증</td>
+          <td class="status-check">확인 필요</td>
+          <td>Gene가 PC/모바일 화면 및 DevTools Console을 확인한 뒤 별도 보고</td>
+        </tr>
+        <tr>
+          <td>Console 치명 오류</td>
+          <td class="status-check">확인 필요</td>
+          <td>운영 화면에서 빨간 치명 오류 유무 확인</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>운영 코드 변경 여부</h2>
+    <p>이번 문서 반영 작업은 운영 코드 수정이 아니다. `index.html`, `js` 폴더, `firebase-shared.js`, GitHub Pages 운영 화면 코드는 수정하지 않는다.</p>
+  </main>
+</body>
+</html>
