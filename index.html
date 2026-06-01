@@ -1494,14 +1494,20 @@ if(compList) compList.innerHTML = accountingItems.map(o => {
     
 function renderFactory() {
     const list = document.getElementById('productionList');
-    if(list) list.innerHTML = filteredOrders.filter(o => o.status === 'approved').map(o => {
+    const productionItems = filteredOrders.filter(o =>
+        o.status === 'approved' ||
+        (o.status === 'completed' && o.paymentStatus !== 'paid')
+    );
+    if(list) list.innerHTML = productionItems.map(o => {
         const pct = safePercent(o.completedQty, o.qty);
+        const isPackingWait = o.status === 'completed' && o.paymentStatus !== 'paid';
+        const remainQty = Math.max(0, o.qty - (o.completedQty || 0));
         return `
-        <div class="bg-white p-5 rounded-3xl border shadow-sm border-l-4 border-l-orange-500 mb-5">
-            <div class="flex justify-between mb-1"><p class="font-black text-lg">${o.client}</p><span class="text-xs font-bold text-red-500">납기: ${o.dueDate}</span></div>
-            <p class="text-[11px] text-slate-500 mb-3 font-bold flex justify-between items-center"><span>${o.material} / 총 ${o.qty}장 (완료: ${o.completedQty || 0}장)</span><span class="text-red-500 text-xs">남은 수량: ${Math.max(0, o.qty - (o.completedQty || 0))}장</span></p>
-            <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden mb-4 border"><div class="bg-orange-500 h-full rounded-full transition-all" style="width:${pct}%"></div></div>
-            <div class="flex gap-2"><input type="text" id="in-${o.id}" class="flex-1 p-3 bg-slate-50 rounded-xl border font-bold" placeholder="생산 수량"><button onclick="addProgress('${o.id}')" class="px-6 py-3 bg-orange-600 text-white rounded-xl font-bold shadow-md shadow-orange-200">보고</button></div>
+        <div class="bg-white p-5 rounded-3xl border shadow-sm border-l-4 ${isPackingWait ? 'border-l-green-500' : 'border-l-orange-500'} mb-5">
+            <div class="flex justify-between mb-1"><p class="font-black text-lg">${o.client}</p><span class="text-xs font-bold ${isPackingWait ? 'text-green-600' : 'text-red-500'}">${isPackingWait ? '완료/포장 대기' : '납기: ' + o.dueDate}</span></div>
+            <p class="text-[11px] text-slate-500 mb-3 font-bold flex justify-between items-center"><span>${o.material} / 총 ${o.qty}장 (완료: ${o.completedQty || 0}장)</span><span class="${isPackingWait ? 'text-green-600' : 'text-red-500'} text-xs">남은 수량: ${remainQty}장</span></p>
+            <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden mb-4 border"><div class="${isPackingWait ? 'bg-green-500' : 'bg-orange-500'} h-full rounded-full transition-all" style="width:${pct}%"></div></div>
+            ${isPackingWait ? '<p class="text-[11px] text-green-700 font-black bg-green-50 border border-green-100 rounded-xl p-3">생산 완료 후 입금/포장 대기 중인 항목입니다.</p>' : `<div class="flex gap-2"><input type="text" id="in-${o.id}" class="flex-1 p-3 bg-slate-50 rounded-xl border font-bold" placeholder="생산 수량"><button onclick="addProgress('${o.id}')" class="px-6 py-3 bg-orange-600 text-white rounded-xl font-bold shadow-md shadow-orange-200">보고</button></div>`}
         </div>`;
     }).join('') || '<p class="text-center py-20 text-slate-400 font-bold">진행 중인 공정 없음</p>';
 }
