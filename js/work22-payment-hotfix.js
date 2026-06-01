@@ -40,6 +40,47 @@
         }
     };
 
+    const getSafeAuditUser = () => {
+        let sessionUser = {};
+        try {
+            sessionUser = JSON.parse(sessionStorage.getItem('yongjin_session') || '{}') || {};
+        } catch (e) {
+            sessionUser = {};
+        }
+
+        const globalUser = window.currentUser || {};
+        return {
+            name: globalUser.name || sessionUser.name || 'SYSTEM',
+            role: globalUser.role || sessionUser.role || 'system'
+        };
+    };
+
+    function installLogActionGuard() {
+        if (window.logAction?.__WORK22_CURRENT_USER_GUARD__) return true;
+        if (typeof window.logAction !== 'function') return false;
+
+        window.logAction = async function logActionGuarded(action, orderId, details) {
+            try {
+                if (typeof window.db === 'undefined') return;
+                const safeUser = getSafeAuditUser();
+                await window.db.collection('audit_logs').add({
+                    action,
+                    user: safeUser.name,
+                    role: safeUser.role,
+                    order_id: orderId,
+                    details,
+                    timestamp: Date.now()
+                });
+            } catch (e) {
+                console.warn('Audit log failed:', e);
+            }
+        };
+
+        window.logAction.__WORK22_CURRENT_USER_GUARD__ = true;
+        console.log('✅ PAYMENT-HOTFIX-2D logAction currentUser guard installed');
+        return true;
+    }
+
     function renderPaymentDateBadges() {
         const source = Array.isArray(window.filteredOrders) ? window.filteredOrders : Array.isArray(window.orders) ? window.orders : [];
         source.forEach(order => {
@@ -170,9 +211,10 @@
     let attempts = 0;
     const timer = setInterval(() => {
         attempts += 1;
+        installLogActionGuard();
         installConfirmPaymentOverride();
         renderPaymentDateBadges();
-        if (window.confirmPayment?.__WORK22_PAYMENT_HOTFIX__ && attempts >= 8) clearInterval(timer);
+        if (window.confirmPayment?.__WORK22_PAYMENT_HOTFIX__ && window.logAction?.__WORK22_CURRENT_USER_GUARD__ && attempts >= 8) clearInterval(timer);
         if (attempts >= 120) clearInterval(timer);
     }, 250);
 })();
