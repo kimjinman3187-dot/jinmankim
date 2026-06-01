@@ -570,6 +570,12 @@
             return { key: 'progress', label: '착수 대기', sort: 40 };
         }
 
+        const getProductionPrimaryLabel = order =>
+            String(order?.client || order?.workName || order?.title || order?.product || order?.memo || order?.material || '-').trim() || '-';
+
+        const getProductionSecondaryLabel = order =>
+            String(order?.material || order?.product || order?.workName || order?.title || order?.memo || '-').trim() || '-';
+
         function renderEnhancedProductionList(metrics = {}) {
             const list = document.getElementById('pcProductionProgressList');
             if (!list) return;
@@ -601,7 +607,11 @@ const items = Array.from(itemMap.values());
                 const remainQty = Math.max(0, qty - completedQty);
                 const packing = getPackingState(pct, remainQty);
                 return { order, qty, completedQty, pct, due, remainQty, packing };
-            }).sort((a, b) => a.packing.sort - b.packing.sort || a.due.sort - b.due.sort || String(a.order.dueDate || '').localeCompare(String(b.order.dueDate || '')) || b.pct - a.pct);
+            }).sort((a, b) => {
+                const aActive = a.order.status === 'approved' ? 0 : 1;
+                const bActive = b.order.status === 'approved' ? 0 : 1;
+                return aActive - bActive || a.packing.sort - b.packing.sort || a.due.sort - b.due.sort || String(a.order.dueDate || '').localeCompare(String(b.order.dueDate || '')) || b.pct - a.pct;
+            });
 
             const overdueCount = decorated.filter(item => item.due.key === 'overdue').length;
             const readyCount = decorated.filter(item => item.packing.key === 'ready').length;
@@ -627,23 +637,25 @@ const items = Array.from(itemMap.values());
                     <div class='yj-production-wait-title'>완료/포장 대기 우선 처리</div>
                     ${waitItems.slice(0, 4).map(item => `
                         <div class='yj-production-wait-row'>
-                            <span class='text-white truncate'>${item.order.client || '-'}</span>
+                            <span class='text-white truncate'>${getProductionPrimaryLabel(item.order)}</span>
                             <span class='${item.packing.key === 'ready' ? 'text-green-400' : 'text-blue-400'}'>${item.packing.label} · 잔여 ${item.remainQty.toLocaleString()}장</span>
                         </div>`).join('')}
                 </div>` : '';
 
-            const rows = decorated.slice(0, 8).map(item => {
+            const rows = decorated.map(item => {
                 const o = item.order;
                 const inputId = `pc-in-${o.id}`;
                 const dueClass = item.due.key;
                 const cardClass = item.packing.key === 'ready' ? 'ready' : item.packing.key === 'packing' ? 'packing' : dueClass;
                 const remainClass = item.remainQty <= 0 ? 'text-green-400' : item.pct >= 90 ? 'text-blue-400' : 'text-slate-300';
+                const primaryLabel = getProductionPrimaryLabel(o);
+                const secondaryLabel = getProductionSecondaryLabel(o);
                 return `
                     <div class='yj-production-card is-${cardClass}'>
                         <div class='flex justify-between items-start gap-3 text-xs font-bold mb-2'>
                             <div class='min-w-0'>
-                                <div class='text-white truncate'>${o.client || '-'}</div>
-                                <div class='text-[10px] text-slate-500 mt-1 truncate'>${o.material || '-'} · 총 ${item.qty.toLocaleString()}장</div>
+                                <div class='text-white truncate'>${primaryLabel}</div>
+                                <div class='text-[10px] text-slate-500 mt-1 truncate'>${secondaryLabel} · 총 ${item.qty.toLocaleString()}장</div>
                             </div>
                             <div class='flex flex-col items-end gap-1 shrink-0'>
                                 <span class='yj-production-badge ${dueClass}'>${item.due.label}</span>
