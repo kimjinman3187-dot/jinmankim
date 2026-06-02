@@ -90,6 +90,8 @@
         <li>PAYMENT-HOTFIX-2E/2F는 Gene 검증 통과 상태로 기록한다.</li>
         <li>HOTFIX 종료 Gate는 Gene 추가 검증 결과에 따라 통과 상태로 승격한다.</li>
         <li>작업22-3D는 PC Finance 생산 진행 확인 리스트 완료로 판정한다.</li>
+        <li>작업22-3E는 PC Finance 신규 승인 대기 리스트 완료로 판정한다.</li>
+        <li>이미지 정적 파일 404는 22-3E 기능 차단 오류가 아니며 STATIC-ASSET-404-1 후속 버그로 분리한다.</li>
       </ul>
     </section>
 
@@ -147,6 +149,13 @@
           <td class="status-done">완료</td>
           <td>Finance 탭 생산 확인 리스트, completedQty / qty 진행률, Console 검증 통과</td>
         </tr>
+        <tr>
+          <td>2026-06-02</td>
+          <td>작업22-3E / PC Finance 신규 승인 대기 리스트</td>
+          <td class="status-check">판단 대기</td>
+          <td class="status-done">완료</td>
+          <td>status === 'pending' 승인 대기 리스트, 승인/반려 버튼, Gene 검증 통과</td>
+        </tr>
       </tbody>
     </table>
 
@@ -190,6 +199,11 @@
           <td class="status-done">완료 판정</td>
           <td>22-3D는 신규 구현이 아니라 PC Finance 생산 진행 확인 리스트 검증 완료 작업으로 정리</td>
         </tr>
+        <tr>
+          <td>22-3E 재착수 가능 여부</td>
+          <td class="status-done">완료 판정</td>
+          <td>22-3E는 신규 구현이 아니라 PC Finance 신규 승인 대기 리스트 검증 완료 작업으로 정리</td>
+        </tr>
       </tbody>
     </table>
 
@@ -229,6 +243,46 @@
       </tbody>
     </table>
 
+    <h2>작업22-3E 범위 확정</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>항목</th>
+          <th>확정 내용</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>작업명</td>
+          <td>작업22-3E — PC Finance 신규 승인 대기 리스트</td>
+        </tr>
+        <tr>
+          <td>목적</td>
+          <td>Finance 화면에서 회계/관리자가 신규 승인 대기 중인 pending 주문을 확인하고 승인 또는 반려 처리 흐름을 확인한다.</td>
+        </tr>
+        <tr>
+          <td>표시 대상</td>
+          <td>status === 'pending'</td>
+        </tr>
+        <tr>
+          <td>표시 정보</td>
+          <td>납기일, 거래처명, 자재·수량, 예상 금액, 상태, 처리 버튼</td>
+        </tr>
+        <tr>
+          <td>처리 버튼</td>
+          <td>수주 승인 버튼과 반려 버튼 표시 확인. 운영 데이터에서는 클릭 금지, 테스트 데이터에서만 승인/반려 클릭 검증.</td>
+        </tr>
+        <tr>
+          <td>완료 근거</td>
+          <td>Gene 검증 통과. PC Production 리스트, 모바일 공장 탭, 입금처리, 문자 입력 차단, 초과입금 차단 유지. Reset Data 미사용.</td>
+        </tr>
+        <tr>
+          <td>Console 결과</td>
+          <td>JS 치명 오류 없음. 단, 이미지 정적 파일 404는 별도 버그 STATIC-ASSET-404-1로 분리.</td>
+        </tr>
+      </tbody>
+    </table>
+
     <h2>검증 대기 항목</h2>
     <table>
       <thead>
@@ -248,6 +302,11 @@
           <td>Console 치명 오류</td>
           <td class="status-done">통과</td>
           <td>PAYMENT-HOTFIX-2F Gene 검증 결과 빨간 치명 오류 없음</td>
+        </tr>
+        <tr>
+          <td>STATIC-ASSET-404-1</td>
+          <td class="status-check">후속 버그</td>
+          <td>이미지 정적 파일 404는 22-3E 기능 차단 오류가 아니므로 별도 작업으로 분리</td>
         </tr>
       </tbody>
     </table>
