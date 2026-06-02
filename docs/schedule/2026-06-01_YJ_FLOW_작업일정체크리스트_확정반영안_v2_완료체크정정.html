@@ -87,6 +87,8 @@
         <li>5월 22일 작업21 성능검증은 완료 처리하지 않는다.</li>
         <li>해당 항목 상태는 <strong>확인 필요</strong>로 유지한다.</li>
         <li>Gene의 DevTools Console 확인 후 별도 작업으로 완료 여부를 판단한다.</li>
+        <li>PAYMENT-HOTFIX-2E/2F는 Gene 검증 통과 상태로 기록한다.</li>
+        <li>HOTFIX 종료 Gate는 통과 후보 상태로 표시한다.</li>
       </ul>
     </section>
 
@@ -114,7 +116,71 @@
           <td>PAYMENT-HOTFIX 계열</td>
           <td class="status-done">완료</td>
           <td class="status-done">완료</td>
-          <td>PR #28, #29, #30, #32, #33, #34 기준 반영</td>
+          <td>PR #28, #29, #30, #32, #33, #34, #36 기준 반영</td>
+        </tr>
+        <tr>
+          <td>2026-06-01</td>
+          <td>Schedule Master 완료체크 정정본 docs 편입</td>
+          <td class="status-check">확인 필요</td>
+          <td class="status-done">완료</td>
+          <td>PR #35 병합 완료</td>
+        </tr>
+        <tr>
+          <td>2026-06-01</td>
+          <td>PAYMENT-HOTFIX-2E / PC Production "패치" 작업목록 표시 복구</td>
+          <td class="status-check">확인 필요</td>
+          <td class="status-done">완료</td>
+          <td>PR #34 병합 완료, Gene 검증 통과</td>
+        </tr>
+        <tr>
+          <td>2026-06-01</td>
+          <td>PAYMENT-HOTFIX-2F / 모바일 공장 탭 완료/포장 대기 항목 표시 복구</td>
+          <td class="status-check">확인 필요</td>
+          <td class="status-done">완료</td>
+          <td>PR #36 병합 완료, Gene 검증 통과</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>PAYMENT-HOTFIX 종료 Gate</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>항목</th>
+          <th>상태</th>
+          <th>근거</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>PC Production 리스트</td>
+          <td class="status-done">통과</td>
+          <td>PC Production 화면에서 "패치" 작업목록 표시 확인</td>
+        </tr>
+        <tr>
+          <td>모바일 공장 탭</td>
+          <td class="status-done">통과</td>
+          <td>진행 중 항목과 완료/포장 대기 항목 표시 확인</td>
+        </tr>
+        <tr>
+          <td>입금처리 및 입력 차단</td>
+          <td class="status-done">통과</td>
+          <td>입금처리 정상, 문자 입력 차단 및 초과입금 차단 유지</td>
+        </tr>
+        <tr>
+          <td>Console 치명 오류</td>
+          <td class="status-done">통과</td>
+          <td>Gene 검증 결과 빨간 치명 오류 없음</td>
+        </tr>
+        <tr>
+          <td>HOTFIX 종료 Gate</td>
+          <td class="status-check">통과 후보</td>
+          <td>PR #34, #35, #36 병합 및 Gene 검증 통과 기준. 최종 종료 선언은 별도 확인 후 처리</td>
+        </tr>
+        <tr>
+          <td>22-3D 재착수 가능 여부</td>
+          <td class="status-check">판단 대기</td>
+          <td>HOTFIX 종료 확정 후 별도 판단</td>
         </tr>
       </tbody>
     </table>
@@ -136,8 +202,8 @@
         </tr>
         <tr>
           <td>Console 치명 오류</td>
-          <td class="status-check">확인 필요</td>
-          <td>운영 화면에서 빨간 치명 오류 유무 확인</td>
+          <td class="status-done">통과</td>
+          <td>PAYMENT-HOTFIX-2F Gene 검증 결과 빨간 치명 오류 없음</td>
         </tr>
       </tbody>
     </table>
