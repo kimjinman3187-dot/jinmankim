@@ -821,6 +821,39 @@ const WOODS_DATA = [
     ['전체코팅/연월넛', 'image_f0567a.png', '#8B5A2B'], ['양면코팅/연월넛', 'image_f0567a.png', '#8B5A2B']
 ];
 
+const AVAILABLE_WOOD_IMAGES = new Set([]);
+const hasAvailableWoodImage = imgUrl => Boolean(imgUrl && AVAILABLE_WOOD_IMAGES.has(imgUrl));
+
+function renderWoodVisual(imgUrl, color) {
+    if (hasAvailableWoodImage(imgUrl)) {
+        return `<img src="${imgUrl}" onerror="this.removeAttribute('src'); this.style.display='none'; this.nextElementSibling.style.display='block';" class="h-[70px] object-cover rounded-lg w-full border border-slate-100"><div class="hidden w-full h-[70px] rounded-lg border shadow-inner" style="background-color: ${color};"></div>`;
+    }
+    return `<div class="w-full h-[70px] rounded-lg border shadow-inner" style="background-color: ${color};"></div>`;
+}
+
+function showWoodThumbnail(imgEl, colorEl, textEl, imgUrl, color) {
+    if (!imgEl || !colorEl) return;
+    if (textEl) textEl.classList.add('hidden');
+    colorEl.classList.add('hidden');
+
+    if (!hasAvailableWoodImage(imgUrl)) {
+        imgEl.removeAttribute('src');
+        imgEl.classList.add('hidden');
+        colorEl.style.backgroundColor = color;
+        colorEl.classList.remove('hidden');
+        return;
+    }
+
+    imgEl.onerror = function() {
+        this.removeAttribute('src');
+        this.classList.add('hidden');
+        colorEl.style.backgroundColor = color;
+        colorEl.classList.remove('hidden');
+    };
+    imgEl.src = imgUrl;
+    imgEl.classList.remove('hidden');
+}
+
 const ROLE_TABS = { sales: ['sales', 'history'], accounting: ['accounting', 'receivables', 'history'], factory: ['factory', 'history'], admin: ['sales', 'accounting', 'receivables', 'factory', 'history'] };
 const TAB_META = { sales: {label:'영업', emoji:'📝'}, accounting: {label:'회계', emoji:'💼'}, receivables: {label:'채권', emoji:'💰'}, factory: {label:'생산', emoji:'🏭'}, history: {label:'현황', emoji:'📊'} };
 
@@ -1691,7 +1724,7 @@ async function confirmPayment(id) {
 }
 
 function openWoodModal() {
-    const items = WOODS_DATA.map(([name, img, color]) => `<div class="wood-btn-wrapper" onclick="selectWood('${name}','${img}','${color}')"><img src="${img}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" class="h-[70px] object-cover rounded-lg w-full border border-slate-100"><div class="hidden w-full h-[70px] rounded-lg border shadow-inner" style="background-color: ${color};"></div><span class="text-[10px] font-black text-slate-700 mt-2 text-center break-keep">${name}</span></div>`).join('');
+    const items = WOODS_DATA.map(([name, img, color]) => `<div class="wood-btn-wrapper" onclick="selectWood('${name}','${img}','${color}')">${renderWoodVisual(img, color)}<span class="text-[10px] font-black text-slate-700 mt-2 text-center break-keep">${name}</span></div>`).join('');
     document.getElementById('modalContainer').innerHTML = `<div class="fixed inset-0 z-[100] bg-black/70 backdrop-blur-md flex items-end justify-center"><div class="bg-white w-full max-w-md p-6 rounded-t-[3rem] h-[85vh] flex flex-col shadow-2xl transition-all"><div class="flex justify-between items-center mb-6 px-2"><b class="text-xl font-black italic">MATERIAL SELECT</b><button onclick="closeWoodModal()" class="w-10 h-10 bg-slate-100 rounded-full font-black">✕</button></div><div class="flex-1 overflow-y-auto grid grid-cols-2 gap-4 pb-10 px-2">${items}</div></div></div>`;
 }
 
@@ -1713,42 +1746,18 @@ function selectWood(name, imgUrl, color) {
     const pcColor = document.getElementById('pc-woodThumbColor');
     const pcText = document.getElementById('pc-woodThumbText');
 
-    if (pcImg && pcColor && pcText) {
-        pcText.classList.add('hidden');
-        pcColor.classList.add('hidden');
-
-        pcImg.src = imgUrl;
-        pcImg.classList.remove('hidden');
-
-        pcImg.onerror = function() {
-            this.classList.add('hidden');
-            pcColor.style.backgroundColor = color;
-            pcColor.classList.remove('hidden');
-        };
-    }
+    showWoodThumbnail(pcImg, pcColor, pcText, imgUrl, color);
 
     // 모바일 썸네일 처리
     const tImg = document.getElementById('woodThumbImg');
     const tColor = document.getElementById('woodThumbColor');
     const tText = document.getElementById('woodThumbText');
 
-    if (tImg && tColor) {
-        if (tText) tText.classList.add('hidden');
-        tColor.classList.add('hidden');
-
-        tImg.src = imgUrl;
-        tImg.classList.remove('hidden');
-
-        tImg.onerror = function() {
-            this.classList.add('hidden');
-            tColor.style.backgroundColor = color;
-            tColor.classList.remove('hidden');
-        };
-    }
+    showWoodThumbnail(tImg, tColor, tText, imgUrl, color);
 
     const plate = document.getElementById('woodPlate'); 
     if (plate) { 
-        plate.style.backgroundImage = `url('${imgUrl}')`; 
+        plate.style.backgroundImage = hasAvailableWoodImage(imgUrl) ? `url('${imgUrl}')` : 'none';
         plate.style.backgroundColor = color; 
     }
 

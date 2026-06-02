@@ -91,7 +91,7 @@
         <li>HOTFIX 종료 Gate는 Gene 추가 검증 결과에 따라 통과 상태로 승격한다.</li>
         <li>작업22-3D는 PC Finance 생산 진행 확인 리스트 완료로 판정한다.</li>
         <li>작업22-3E는 PC Finance 신규 승인 대기 리스트 완료로 판정한다.</li>
-        <li>이미지 정적 파일 404는 22-3E 기능 차단 오류가 아니며 STATIC-ASSET-404-1 후속 버그로 분리한다.</li>
+        <li>이미지 정적 파일 404는 22-3E 기능 차단 오류가 아니며 STATIC-ASSET-404-1에서 색상 fallback으로 최소 복구한다.</li>
       </ul>
     </section>
 
@@ -155,6 +155,13 @@
           <td class="status-check">판단 대기</td>
           <td class="status-done">완료</td>
           <td>status === 'pending' 승인 대기 리스트, 승인/반려 버튼, Gene 검증 통과</td>
+        </tr>
+        <tr>
+          <td>2026-06-02</td>
+          <td>STATIC-ASSET-404-1 / 목재 카탈로그 이미지 404 최소 복구</td>
+          <td class="status-check">후속 버그</td>
+          <td class="status-done">완료</td>
+          <td>WOODS_DATA 이미지 파일 미배포로 인한 404를 색상 fallback 방식으로 최소 복구</td>
         </tr>
       </tbody>
     </table>
@@ -283,6 +290,42 @@
       </tbody>
     </table>
 
+    <h2>STATIC-ASSET-404-1 결과</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>항목</th>
+          <th>확정 내용</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>작업명</td>
+          <td>STATIC-ASSET-404-1 — 이미지 정적 파일 404 원인 진단 및 최소 복구</td>
+        </tr>
+        <tr>
+          <td>원인</td>
+          <td>WOODS_DATA의 image_*.png 참조와 repository/GitHub Pages 정적 파일 배포 상태가 불일치한다.</td>
+        </tr>
+        <tr>
+          <td>영향</td>
+          <td>22-3E 기능 차단 없음. Sales 목재 카탈로그 썸네일 표시 영역에만 영향.</td>
+        </tr>
+        <tr>
+          <td>조치</td>
+          <td>이미지 원본이 repository에 없으므로 실제 파일 추가 대신 색상 fallback을 사용하고, 존재가 확실하지 않은 image_*.png 요청을 차단한다.</td>
+        </tr>
+        <tr>
+          <td>검증</td>
+          <td>목재 카탈로그는 색상칩과 목재명으로 유지되며, Console image_*.png 404 해소 여부를 GitHub Pages에서 확인한다.</td>
+        </tr>
+        <tr>
+          <td>보호</td>
+          <td>paymentStatus/status/confirmPayment/issueInvoice/addProgress/Reset Data 미수정.</td>
+        </tr>
+      </tbody>
+    </table>
+
     <h2>검증 대기 항목</h2>
     <table>
       <thead>
@@ -305,14 +348,14 @@
         </tr>
         <tr>
           <td>STATIC-ASSET-404-1</td>
-          <td class="status-check">후속 버그</td>
-          <td>이미지 정적 파일 404는 22-3E 기능 차단 오류가 아니므로 별도 작업으로 분리</td>
+          <td class="status-done">완료 판정</td>
+          <td>목재 카탈로그 이미지 원본 미배포를 색상 fallback 방식으로 최소 복구</td>
         </tr>
       </tbody>
     </table>
 
     <h2>운영 코드 변경 여부</h2>
-    <p>이번 문서 반영 작업은 운영 코드 수정이 아니다. `index.html`, `js` 폴더, `firebase-shared.js`, GitHub Pages 운영 화면 코드는 수정하지 않는다.</p>
+    <p>STATIC-ASSET-404-1은 `index.html`의 목재 카탈로그 이미지 fallback 처리와 문서 2개만 수정한다. `js` 폴더, `firebase-shared.js`, `work22-payment-hotfix.js`, 결제/생산/승인/Reset Data 로직은 수정하지 않는다.</p>
   </main>
 </body>
 </html>
