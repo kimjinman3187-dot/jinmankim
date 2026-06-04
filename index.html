@@ -933,6 +933,17 @@ function isInvoiceIssued(order = {}) {
     return getInvoiceStatus(order) === 'issued';
 }
 
+function getDisplayStatusLabel(order = {}) {
+    if (order.paymentStatus === 'paid') return '완납';
+    if (order.paymentStatus === 'partial') return '부분입금';
+    if (order.invoiceStatus === 'issued' || order.invoiceIssuedAt) return '계산서발행';
+    if (order.status === 'completed') return '생산완료';
+    if (order.status === 'approved') return '생산중';
+    if (order.status === 'pending') return '승인대기';
+    if (order.status === 'rejected') return '반려';
+    return '상태미확인';
+}
+
 function getCompletedAt(order = {}) {
     if (order.completedAt) return order.completedAt;
 
@@ -1635,7 +1646,7 @@ function renderHistory() {
     const dbEl = document.getElementById('dashBoard');
     if(dbEl) dbEl.innerHTML = `<div class="grid grid-cols-2 gap-2 mb-4 text-[10px] font-black"><div class="bg-white p-3 rounded-2xl border border-yellow-200 text-yellow-700 shadow-sm">⏳ 대기: ₩${pS.toLocaleString()}</div><div class="bg-white p-3 rounded-2xl border border-blue-200 text-blue-700 shadow-sm">🏭 생산: ₩${aS.toLocaleString()}</div><div class="bg-white p-3 rounded-2xl border border-red-200 text-red-700 shadow-sm">💰 미수: ₩${uS.toLocaleString()}</div><div class="bg-white p-3 rounded-2xl border border-green-200 text-green-700 shadow-sm">✅ 완료: ₩${cS.toLocaleString()}</div></div>`;
     const hList = document.getElementById('historyList');
-    if(hList) hList.innerHTML = filteredOrders.map(o => `<div class="bg-white p-4 border rounded-2xl mb-2 text-[11px] shadow-sm"><div class="flex justify-between items-center mb-1"><span class="font-bold text-sm text-slate-800">${o.client}</span><span class="badge ${o.status==='pending'?'badge-pending':o.status==='approved'?'badge-approved':'badge-completed'}">${o.status.toUpperCase()}</span></div><div class="flex justify-between"><span class="text-slate-500 font-bold">${o.material} <br> <span class="text-blue-500 text-[10px]">출고: ${o.dueDate}</span></span><span class="text-right text-slate-900 font-black text-xs">₩${((o.price||0)*(o.qty||0)).toLocaleString()}<br>${o.paymentStatus==='paid'?'<span class="text-green-600">입금완료</span>':'<span class="text-red-500">미수</span>'}</span></div>${o.rejectReason ? `<div class="reject-reason-box mt-2">❌ 거절 사유: ${o.rejectReason}</div>` : ''}</div>`).join('');
+    if(hList) hList.innerHTML = filteredOrders.map(o => `<div class="bg-white p-4 border rounded-2xl mb-2 text-[11px] shadow-sm"><div class="flex justify-between items-center mb-1"><span class="font-bold text-sm text-slate-800">${o.client}</span><span class="badge ${o.status==='pending'?'badge-pending':o.status==='approved'?'badge-approved':'badge-completed'}">${getDisplayStatusLabel(o)}</span></div><div class="flex justify-between"><span class="text-slate-500 font-bold">${o.material} <br> <span class="text-blue-500 text-[10px]">출고: ${o.dueDate}</span></span><span class="text-right text-slate-900 font-black text-xs">₩${((o.price||0)*(o.qty||0)).toLocaleString()}<br>${o.paymentStatus==='paid'?'<span class="text-green-600">입금완료</span>':'<span class="text-red-500">미수</span>'}</span></div>${o.rejectReason ? `<div class="reject-reason-box mt-2">❌ 거절 사유: ${o.rejectReason}</div>` : ''}</div>`).join('');
 }
 
 async function updateStatus(id, s) { 
