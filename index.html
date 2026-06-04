@@ -703,6 +703,14 @@
                             <span class="text-slate-500 font-bold">총 청구액</span>
                             <span class="text-blue-400 font-black text-sm" id="detailAmount">0</span>
                         </div>
+                        <div class="flex justify-between border-b border-[#334155] pb-2">
+                            <span class="text-slate-500 font-bold">입금 상태</span>
+                            <span class="text-slate-300 font-black text-sm" id="detailPaymentStatus">-</span>
+                        </div>
+                        <div class="flex justify-between border-b border-[#334155] pb-2">
+                            <span class="text-slate-500 font-bold">잔금</span>
+                            <span class="text-amber-400 font-black text-sm" id="detailOutstandingAmount">0</span>
+                        </div>
                         <div class="border border-[#334155] rounded-xl p-4 bg-[#0f1522]">
     <div class="flex justify-between items-center mb-3">
         <span class="text-slate-500 font-bold text-xs">계산서 상태</span>
@@ -1217,7 +1225,7 @@ function updatePCFinanceInvoiceWaitList(metrics) {
             : `<button onclick="issueInvoice('${o.id}')" class="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black shadow-md transition-colors">계산서 발행</button>`;
 
         return `
-            <tr class="hover:bg-blue-500/5 transition-colors">
+            <tr class="hover:bg-blue-500/5 transition-colors cursor-pointer pc-table-row border-l-[3px] border-transparent" onclick="selectFinanceDetailRow(this, '${o.id}', event)">
                 <td class="px-4 py-3 text-slate-400">${o.dueDate || '-'}</td>
                 <td class="px-4 py-3 font-bold text-white">${o.client || '-'}</td>
                 <td class="px-4 py-3 text-slate-400">
@@ -2473,6 +2481,37 @@ function closeDrawer() {
     }
 }
 
+function getPaymentStatusLabel(order = {}) {
+    if (order.paymentStatus === 'paid') return '완납';
+    if (order.paymentStatus === 'partial') return '부분입금';
+    return '미입금';
+}
+
+function getDetailProjectText(order = {}) {
+    const orderName = order.orderName || order.title || order.workName || order.product || '';
+    const material = order.material || '-';
+    const label = orderName && orderName !== material ? `${orderName} · ${material}` : material;
+    return `${label} / ${Number(order.qty || 0).toLocaleString()}장`;
+}
+
+function selectFinanceDetailRow(element, orderId, event) {
+    if (event?.target?.closest('button, a, input, select, textarea, [data-yj-action]')) return;
+    element.classList.add('pc-table-row', 'cursor-pointer', 'border-l-[3px]', 'border-transparent');
+    selectRow(element, orderId);
+}
+
+document.addEventListener('click', function handleFinanceDetailPanelClick(event) {
+    if (event.target.closest('button, a, input, select, textarea, [data-yj-action]')) return;
+    const financeBody = event.target.closest('#pcFinanceApprovalWaitBody, #pcFinanceCollectionWaitBody');
+    if (!financeBody) return;
+    const row = event.target.closest('tr');
+    if (!row || row.querySelector('[colspan]')) return;
+    const actionTarget = row.querySelector('[data-yj-id]');
+    const orderId = actionTarget?.getAttribute('data-yj-id');
+    if (!orderId) return;
+    selectFinanceDetailRow(row, orderId, event);
+});
+
 function selectRow(element, orderId) {
     document.querySelectorAll('.pc-table-row').forEach(row => row.classList.remove('active'));
     element.classList.add('active');
@@ -2484,9 +2523,13 @@ function selectRow(element, orderId) {
     document.getElementById('activeDetailState').classList.remove('hidden');
 
     document.getElementById('detailClientName').textContent = o.client;
-    document.getElementById('detailProjectName').textContent = `${o.material} / ${o.qty}장`;
+    document.getElementById('detailProjectName').textContent = getDetailProjectText(o);
     document.getElementById('detailDate').textContent = o.dueDate || '-';
     document.getElementById('detailAmount').textContent = '₩ ' + getOrderAmount(o).toLocaleString();
+    const paymentStatusEl = document.getElementById('detailPaymentStatus');
+    const outstandingEl = document.getElementById('detailOutstandingAmount');
+    if (paymentStatusEl) paymentStatusEl.textContent = getPaymentStatusLabel(o);
+    if (outstandingEl) outstandingEl.textContent = '₩ ' + getOutstandingAmount(o).toLocaleString();
 
     const invoiceIssued = isInvoiceIssued(o);
     const invoiceStatusEl = document.getElementById('detailInvoiceStatus');
