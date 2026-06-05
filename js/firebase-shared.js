@@ -112,6 +112,19 @@ console.log('📦 firebase-shared.js 로드 완료');
         }
     };
 
+    window.yjGetProductName = function yjGetProductName(order = {}) {
+        if (typeof window.getOrderProductName === 'function') return window.getOrderProductName(order);
+        return String(
+            order.productName ||
+            order.orderName ||
+            order.title ||
+            order.workName ||
+            order.product ||
+            order.material ||
+            '-'
+        ).trim() || '-';
+    };
+
     window.yjPatchFooterVersion = function yjPatchFooterVersion() {
         const PATCH_VERSION = 'V2.0.2';
         const PATCH_DATE = '26.05.26';
@@ -192,7 +205,7 @@ console.log('📦 firebase-shared.js 로드 완료');
             const statusBadge = pct >= 100
                 ? `<span class='bg-green-500/10 text-green-400 border border-green-500/30 px-2 py-1 rounded text-[10px] font-black'>생산완료 대기</span>`
                 : `<span class='bg-orange-500/10 text-orange-400 border border-orange-500/30 px-2 py-1 rounded text-[10px] font-black'>생산중</span>`;
-            return `<tr class='hover:bg-orange-500/5 transition-colors'><td class='px-4 py-3 text-slate-400'>${o.dueDate || '-'}</td><td class='px-4 py-3 font-bold text-white'>${o.client || '-'}</td><td class='px-4 py-3 text-slate-400'>${o.material || '-'}<br><span class='text-white font-bold'>${qty.toLocaleString()}장</span></td><td class='px-4 py-3 min-w-[220px]'><div class='flex justify-between text-[10px] font-bold mb-1'><span class='text-slate-400'>${completedQty.toLocaleString()} / ${qty.toLocaleString()}장</span><span class='text-orange-400'>${pct}%</span></div><div class='w-full bg-[#0f1522] h-2.5 rounded-full overflow-hidden border border-[#334155]'><div class='bg-orange-500 h-full rounded-full transition-all duration-1000 ease-out' style='width: ${pct}%'></div></div><div class='mt-1 text-[10px] text-slate-500 font-bold'>잔여 ${remainQty.toLocaleString()}장</div></td><td class='px-4 py-3 text-center'>${statusBadge}</td></tr>`;
+            return `<tr class='hover:bg-orange-500/5 transition-colors'><td class='px-4 py-3 text-slate-400'>${o.dueDate || '-'}</td><td class='px-4 py-3 font-bold text-white'>${o.client || '-'}</td><td class='px-4 py-3 text-slate-400'><span class='text-white font-bold'>${window.yjGetProductName(o)}</span><br>${o.material || '-'}<br><span class='text-white font-bold'>${qty.toLocaleString()}장</span></td><td class='px-4 py-3 min-w-[220px]'><div class='flex justify-between text-[10px] font-bold mb-1'><span class='text-slate-400'>${completedQty.toLocaleString()} / ${qty.toLocaleString()}장</span><span class='text-orange-400'>${pct}%</span></div><div class='w-full bg-[#0f1522] h-2.5 rounded-full overflow-hidden border border-[#334155]'><div class='bg-orange-500 h-full rounded-full transition-all duration-1000 ease-out' style='width: ${pct}%'></div></div><div class='mt-1 text-[10px] text-slate-500 font-bold'>잔여 ${remainQty.toLocaleString()}장</div></td><td class='px-4 py-3 text-center'>${statusBadge}</td></tr>`;
         }).join('') || `<tr><td colspan='5' class='px-4 py-8 text-center text-slate-500 font-bold'>생산 진행 데이터가 없습니다.</td></tr>`;
     };
 
@@ -254,7 +267,7 @@ console.log('📦 firebase-shared.js 로드 완료');
             const amount = window.yjGetAmount(o);
             const approveButton = typeof window.updateStatus === 'function' ? `<button data-yj-action='approve' data-yj-id='${o.id}' class='min-w-[88px] h-10 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[12px] font-black whitespace-nowrap leading-none inline-flex items-center justify-center shadow-md transition-colors'>수주 승인</button>` : `<button disabled class='min-w-[88px] h-10 px-4 rounded-xl bg-slate-700 text-slate-400 text-[12px] font-black whitespace-nowrap leading-none inline-flex items-center justify-center cursor-not-allowed'>승인 불가</button>`;
             const rejectButton = typeof window.rejectOrder === 'function' ? `<button data-yj-action='reject' data-yj-id='${o.id}' class='min-w-[64px] h-10 px-4 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-[12px] font-black whitespace-nowrap leading-none inline-flex items-center justify-center transition-colors'>반려</button>` : '';
-            return `<tr class='hover:bg-cyan-500/5 transition-colors'><td class='px-4 py-3 text-slate-400'>${o.dueDate || '-'}</td><td class='px-4 py-3 font-bold text-white'>${o.client || '-'}</td><td class='px-4 py-3 text-slate-400'>${o.material || '-'}<br><span class='text-white font-bold'>${qty.toLocaleString()}장</span></td><td class='px-4 py-3 text-right font-black text-cyan-400'>${window.yjFormatKRW(amount)}</td><td class='px-4 py-3 text-center'><span class='bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-2 py-1 rounded text-[10px] font-black whitespace-nowrap'>승인대기</span></td><td class='px-4 py-3 text-center'><div class='flex justify-center items-center gap-2 whitespace-nowrap'>${rejectButton}${approveButton}</div></td></tr>`;
+            return `<tr class='hover:bg-cyan-500/5 transition-colors'><td class='px-4 py-3 text-slate-400'>${o.dueDate || '-'}</td><td class='px-4 py-3 font-bold text-white'>${o.client || '-'}</td><td class='px-4 py-3 text-slate-400'><span class='text-white font-bold'>${window.yjGetProductName(o)}</span><br>${o.material || '-'}<br><span class='text-white font-bold'>${qty.toLocaleString()}장</span></td><td class='px-4 py-3 text-right font-black text-cyan-400'>${window.yjFormatKRW(amount)}</td><td class='px-4 py-3 text-center'><span class='bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-2 py-1 rounded text-[10px] font-black whitespace-nowrap'>승인대기</span></td><td class='px-4 py-3 text-center'><div class='flex justify-center items-center gap-2 whitespace-nowrap'>${rejectButton}${approveButton}</div></td></tr>`;
         }).join('') || `<tr><td colspan='6' class='px-4 py-8 text-center text-slate-500 font-bold'>신규 승인 대기 데이터가 없습니다.</td></tr>`;
     }
 
@@ -339,7 +352,7 @@ console.log('📦 firebase-shared.js 로드 완료');
             const qty = Number(o.qty) || 0;
             const pct = item.total > 0 ? Math.min(100, Math.round((item.paid / item.total) * 100)) : 0;
             const paymentButton = typeof window.confirmPayment === 'function' ? `<button data-yj-action='payment' data-yj-id='${o.id}' class='min-w-[88px] h-10 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-[12px] font-black whitespace-nowrap leading-none inline-flex items-center justify-center shadow-md transition-colors'>입금 등록</button>` : `<button disabled class='min-w-[88px] h-10 px-4 rounded-xl bg-slate-700 text-slate-400 text-[12px] font-black whitespace-nowrap leading-none inline-flex items-center justify-center cursor-not-allowed'>처리 불가</button>`;
-            return `<tr class='hover:bg-amber-500/5 transition-colors'><td class='px-4 py-3 text-slate-400'>${o.payDate || o.dueDate || '-'}</td><td class='px-4 py-3 font-bold text-white'>${o.client || '-'}</td><td class='px-4 py-3 text-slate-400'>${o.material || '-'}<br><span class='text-white font-bold'>${qty.toLocaleString()}장</span></td><td class='px-4 py-3 text-right font-black text-blue-400'>${window.yjFormatKRW(item.total)}</td><td class='px-4 py-3 min-w-[190px]'><div class='flex justify-between text-[10px] font-bold mb-1'><span class='text-slate-400'>${window.yjFormatKRW(item.paid)}</span><span class='text-amber-400'>잔금 ${window.yjFormatKRW(item.remaining)}</span></div><div class='w-full bg-[#0f1522] h-2.5 rounded-full overflow-hidden border border-[#334155]'><div class='bg-amber-500 h-full rounded-full transition-all duration-1000 ease-out' style='width: ${pct}%'></div></div></td><td class='px-4 py-3 text-center'>${paymentButton}</td></tr>`;
+            return `<tr class='hover:bg-amber-500/5 transition-colors'><td class='px-4 py-3 text-slate-400'>${o.payDate || o.dueDate || '-'}</td><td class='px-4 py-3 font-bold text-white'>${o.client || '-'}</td><td class='px-4 py-3 text-slate-400'><span class='text-white font-bold'>${window.yjGetProductName(o)}</span><br>${o.material || '-'}<br><span class='text-white font-bold'>${qty.toLocaleString()}장</span></td><td class='px-4 py-3 text-right font-black text-blue-400'>${window.yjFormatKRW(item.total)}</td><td class='px-4 py-3 min-w-[190px]'><div class='flex justify-between text-[10px] font-bold mb-1'><span class='text-slate-400'>${window.yjFormatKRW(item.paid)}</span><span class='text-amber-400'>잔금 ${window.yjFormatKRW(item.remaining)}</span></div><div class='w-full bg-[#0f1522] h-2.5 rounded-full overflow-hidden border border-[#334155]'><div class='bg-amber-500 h-full rounded-full transition-all duration-1000 ease-out' style='width: ${pct}%'></div></div></td><td class='px-4 py-3 text-center'>${paymentButton}</td></tr>`;
         }).join('') || `<tr><td colspan='6' class='px-4 py-8 text-center text-slate-500 font-bold'>수금 대기 데이터가 없습니다.</td></tr>`;
     }
 
@@ -407,7 +420,7 @@ console.log('📦 firebase-shared.js 로드 완료');
             const total = window.yjGetAmount(o);
             const paid = window.yjGetPaid(o) || total;
             const paidDate = window.yjDateText(o.paymentConfirmedAt || o.paidAt || o.updatedAt || o.payDate || o.dueDate);
-            return `<tr class='hover:bg-green-500/5 transition-colors'><td class='px-4 py-3 text-slate-400'>${paidDate}</td><td class='px-4 py-3 font-bold text-white'>${o.client || '-'}</td><td class='px-4 py-3 text-slate-400'>${o.material || '-'}<br><span class='text-white font-bold'>${qty.toLocaleString()}장</span></td><td class='px-4 py-3 text-right font-black text-blue-400'>${window.yjFormatKRW(total)}</td><td class='px-4 py-3 text-right font-black text-green-400'>${window.yjFormatKRW(paid)}</td><td class='px-4 py-3 text-center'><span class='bg-green-500/10 text-green-400 border border-green-500/30 px-2 py-1 rounded text-[10px] font-black whitespace-nowrap'>입금완료</span></td></tr>`;
+            return `<tr class='hover:bg-green-500/5 transition-colors'><td class='px-4 py-3 text-slate-400'>${paidDate}</td><td class='px-4 py-3 font-bold text-white'>${o.client || '-'}</td><td class='px-4 py-3 text-slate-400'><span class='text-white font-bold'>${window.yjGetProductName(o)}</span><br>${o.material || '-'}<br><span class='text-white font-bold'>${qty.toLocaleString()}장</span></td><td class='px-4 py-3 text-right font-black text-blue-400'>${window.yjFormatKRW(total)}</td><td class='px-4 py-3 text-right font-black text-green-400'>${window.yjFormatKRW(paid)}</td><td class='px-4 py-3 text-center'><span class='bg-green-500/10 text-green-400 border border-green-500/30 px-2 py-1 rounded text-[10px] font-black whitespace-nowrap'>입금완료</span></td></tr>`;
         }).join('') || `<tr><td colspan='6' class='px-4 py-8 text-center text-slate-500 font-bold'>완료 거래 데이터가 없습니다.</td></tr>`;
     }
 

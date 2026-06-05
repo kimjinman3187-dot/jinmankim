@@ -571,10 +571,10 @@
         }
 
         const getProductionPrimaryLabel = order =>
-            String(order?.client || order?.workName || order?.title || order?.product || order?.memo || order?.material || '-').trim() || '-';
+            String(order?.productName || order?.orderName || order?.title || order?.workName || order?.product || order?.material || order?.memo || '-').trim() || '-';
 
         const getProductionSecondaryLabel = order =>
-            String(order?.material || order?.product || order?.workName || order?.title || order?.memo || '-').trim() || '-';
+            String(order?.material || order?.client || order?.memo || '-').trim() || '-';
 
         function renderEnhancedProductionList(metrics = {}) {
             const list = document.getElementById('pcProductionProgressList');
