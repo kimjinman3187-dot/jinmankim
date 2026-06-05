@@ -699,6 +699,14 @@
                             <span class="text-slate-500 font-bold shrink-0">품목</span>
                             <span class="text-slate-300 text-right font-bold" id="detailMaterialName">-</span>
                         </div>
+                        <div class="flex justify-between border-b border-[#334155] pb-2 gap-4">
+                            <span class="text-slate-500 font-bold shrink-0">&#54364;&#47732;/&#48516;&#47448;</span>
+                            <span class="text-slate-300 text-right font-bold" id="detailMaterialCategory">-</span>
+                        </div>
+                        <div class="flex justify-between border-b border-[#334155] pb-2 gap-4">
+                            <span class="text-slate-500 font-bold shrink-0">&#49353;&#49345;</span>
+                            <span class="text-slate-300 text-right font-bold" id="detailMaterialColor">-</span>
+                        </div>
                         <div class="flex justify-between border-b border-[#334155] pb-2">
                             <span class="text-slate-500 font-bold">규격</span>
                             <span class="text-slate-300 font-black text-sm" id="detailSpecText">-</span>
@@ -2518,6 +2526,23 @@ function getDetailSpecText(order = {}) {
     return thickness ? `${size} × ${thickness}` : size;
 }
 
+function parseMaterialForDisplay(material = '') {
+    const raw = String(material || '').trim();
+    if (!raw || raw === '-') {
+        return { category: '-', color: '-' };
+    }
+
+    const parts = raw.split('/').map(part => part.trim()).filter(Boolean);
+    if (parts.length < 2) {
+        return { category: raw, color: '-' };
+    }
+
+    return {
+        category: parts[0],
+        color: parts.slice(1).join(' / ')
+    };
+}
+
 function selectFinanceDetailRow(element, orderId, event) {
     if (event?.target?.closest('button, a, input, select, textarea, [data-yj-action]')) return;
     element.classList.add('pc-table-row', 'cursor-pointer', 'border-l-[3px]', 'border-transparent');
@@ -2549,10 +2574,15 @@ function selectRow(element, orderId) {
     document.getElementById('detailClientName').textContent = o.client;
     document.getElementById('detailProjectName').textContent = getDetailProjectText(o);
     const materialNameEl = document.getElementById('detailMaterialName');
+    const materialCategoryEl = document.getElementById('detailMaterialCategory');
+    const materialColorEl = document.getElementById('detailMaterialColor');
     const specTextEl = document.getElementById('detailSpecText');
     const qtyTextEl = document.getElementById('detailQtyText');
     const unitPriceEl = document.getElementById('detailUnitPrice');
+    const materialDisplay = parseMaterialForDisplay(o.material);
     if (materialNameEl) materialNameEl.textContent = o.material || '-';
+    if (materialCategoryEl) materialCategoryEl.textContent = materialDisplay.category;
+    if (materialColorEl) materialColorEl.textContent = materialDisplay.color;
     if (specTextEl) specTextEl.textContent = getDetailSpecText(o);
     if (qtyTextEl) qtyTextEl.textContent = `${Number(o.qty || 0).toLocaleString()}장`;
     if (unitPriceEl) unitPriceEl.textContent = `${Number(o.price || 0).toLocaleString()}원`;
