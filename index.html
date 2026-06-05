@@ -695,12 +695,28 @@
                     <p class="text-xs text-slate-400 font-bold mb-6" id="detailProjectName">-</p>
                     
                     <div class="space-y-3 text-xs">
+                        <div class="flex justify-between border-b border-[#334155] pb-2 gap-4">
+                            <span class="text-slate-500 font-bold shrink-0">품목</span>
+                            <span class="text-slate-300 text-right font-bold" id="detailMaterialName">-</span>
+                        </div>
+                        <div class="flex justify-between border-b border-[#334155] pb-2">
+                            <span class="text-slate-500 font-bold">규격</span>
+                            <span class="text-slate-300 font-black text-sm" id="detailSpecText">-</span>
+                        </div>
+                        <div class="flex justify-between border-b border-[#334155] pb-2">
+                            <span class="text-slate-500 font-bold">수량</span>
+                            <span class="text-slate-300 font-black text-sm" id="detailQtyText">0장</span>
+                        </div>
+                        <div class="flex justify-between border-b border-[#334155] pb-2">
+                            <span class="text-slate-500 font-bold">단가</span>
+                            <span class="text-slate-300 font-black text-sm" id="detailUnitPrice">0원</span>
+                        </div>
                         <div class="flex justify-between border-b border-[#334155] pb-2">
                             <span class="text-slate-500 font-bold">출고일(납기)</span>
                             <span class="text-slate-300" id="detailDate">-</span>
                         </div>
                         <div class="flex justify-between border-b border-[#334155] pb-2">
-                            <span class="text-slate-500 font-bold">총 청구액</span>
+                            <span class="text-slate-500 font-bold">총액</span>
                             <span class="text-blue-400 font-black text-sm" id="detailAmount">0</span>
                         </div>
                         <div class="flex justify-between border-b border-[#334155] pb-2">
@@ -2494,6 +2510,14 @@ function getDetailProjectText(order = {}) {
     return `${label} / ${Number(order.qty || 0).toLocaleString()}장`;
 }
 
+function getDetailSpecText(order = {}) {
+    const width = String(order.width || '').trim();
+    const height = String(order.height || '').trim();
+    const thickness = String(order.thickness || '').trim();
+    const size = width && height ? `${width} × ${height}` : width || height || '-';
+    return thickness ? `${size} × ${thickness}` : size;
+}
+
 function selectFinanceDetailRow(element, orderId, event) {
     if (event?.target?.closest('button, a, input, select, textarea, [data-yj-action]')) return;
     element.classList.add('pc-table-row', 'cursor-pointer', 'border-l-[3px]', 'border-transparent');
@@ -2524,6 +2548,14 @@ function selectRow(element, orderId) {
 
     document.getElementById('detailClientName').textContent = o.client;
     document.getElementById('detailProjectName').textContent = getDetailProjectText(o);
+    const materialNameEl = document.getElementById('detailMaterialName');
+    const specTextEl = document.getElementById('detailSpecText');
+    const qtyTextEl = document.getElementById('detailQtyText');
+    const unitPriceEl = document.getElementById('detailUnitPrice');
+    if (materialNameEl) materialNameEl.textContent = o.material || '-';
+    if (specTextEl) specTextEl.textContent = getDetailSpecText(o);
+    if (qtyTextEl) qtyTextEl.textContent = `${Number(o.qty || 0).toLocaleString()}장`;
+    if (unitPriceEl) unitPriceEl.textContent = `${Number(o.price || 0).toLocaleString()}원`;
     document.getElementById('detailDate').textContent = o.dueDate || '-';
     document.getElementById('detailAmount').textContent = '₩ ' + getOrderAmount(o).toLocaleString();
     const paymentStatusEl = document.getElementById('detailPaymentStatus');
