@@ -373,6 +373,15 @@
                         </div>
                     </div>
                 </div>
+                <div id="pcTopProductSalesCard" class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg mb-6 relative z-10">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest">TOP 품목 매출</h3>
+                        <span class="text-[10px] font-black text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-1 rounded">수주 기준</span>
+                    </div>
+                    <div id="pcTopProductSalesList" class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                        <p class="text-xs text-slate-500 font-bold col-span-full text-center py-4">품목 매출 데이터가 없습니다.</p>
+                    </div>
+                </div>
                 <div class="bg-[#1e293b] border border-[#334155] rounded-xl flex flex-col flex-1 min-h-[500px] shadow-2xl relative z-10">
                     <div class="p-4 flex justify-between items-center border-b border-[#334155]">
                         <h2 class="font-bold text-white">최근 수주/공정 통합 리스트</h2>
@@ -1084,6 +1093,68 @@ const debtAmount = debtItems.reduce((sum, o) => sum + getOutstandingAmount(o), 0
     packingWaitItems,
     avgLeadTime
     };
+}
+
+function getTopProductSalesItems(data = filteredOrders, limit = 5) {
+    const map = new Map();
+
+    data.forEach(o => {
+        const price = Number(o.price) || 0;
+        const qty = Number(o.qty) || 0;
+        const productName = getOrderProductName(o);
+
+        if (price <= 0 || qty <= 0) return;
+        if (o.status === 'rejected') return;
+        if (!productName || productName === '-') return;
+
+        if (!map.has(productName)) {
+            map.set(productName, { productName, amount: 0, qty: 0, count: 0 });
+        }
+
+        const item = map.get(productName);
+        item.amount += price * qty;
+        item.qty += qty;
+        item.count += 1;
+    });
+
+    return Array.from(map.values())
+        .sort((a, b) => b.amount - a.amount || b.qty - a.qty || a.productName.localeCompare(b.productName))
+        .slice(0, limit);
+}
+
+function escapeDashboardText(value = '') {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function updateTopProductSalesCard(data = filteredOrders) {
+    const list = document.getElementById('pcTopProductSalesList');
+    if (!list) return;
+
+    const items = getTopProductSalesItems(data, 5);
+    if (!items.length) {
+        list.innerHTML = '<p class="text-xs text-slate-500 font-bold col-span-full text-center py-4">품목 매출 데이터가 없습니다.</p>';
+        return;
+    }
+
+    list.innerHTML = items.map((item, idx) => {
+        const productName = escapeDashboardText(item.productName);
+        return `
+        <div class="bg-[#0f1522] border border-[#334155] rounded-xl p-4 min-w-0">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-[10px] text-blue-400 font-black">${idx + 1}위</span>
+                <span class="text-[10px] text-slate-500 font-bold">${item.count.toLocaleString()}건</span>
+            </div>
+            <p class="text-white text-xs font-black truncate mb-2" title="${productName}">${productName}</p>
+            <p class="text-blue-400 text-lg font-black leading-tight">${formatKRW(item.amount)}</p>
+            <p class="text-[10px] text-slate-500 font-bold mt-1">${item.qty.toLocaleString()}장</p>
+        </div>
+    `;
+    }).join('');
 }
 // --- [작업 21] Finance / AR / Production 카드 실데이터 렌더링 ---
 function updatePCSubDashboards() {
@@ -2147,6 +2218,7 @@ function updateCharts() {
 
 // --- [메인 테이블 렌더링] ---
 function renderPCTable() {
+    updateTopProductSalesCard(filteredOrders);
     let pS=0, aS=0, uS=0, cS=0; let aCnt=0, pCnt=0;
     filteredOrders.forEach(o => { const t = (o.price||0) * (o.qty||0); if(o.status==='pending') { pS+=t; pCnt++; } else if(o.status==='approved') { aS+=t; aCnt++; } else if(o.status==='completed' && o.paymentStatus==='unpaid') uS+=t; else if(o.status==='completed' && o.paymentStatus==='paid') cS+=t; });
     const pcKpiDebt = document.getElementById('pcKpiDebt'); if(pcKpiDebt) pcKpiDebt.innerText = (uS / 100000000).toFixed(1) + '억';
