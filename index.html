@@ -391,6 +391,15 @@
                         <p class="text-xs text-slate-500 font-bold col-span-full text-center py-4">품목 미수금 데이터가 없습니다.</p>
                     </div>
                 </div>
+                <div id="pcMonthlyTopProductCard" class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg mb-6 relative z-10">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest">월별 TOP 품목</h3>
+                        <span id="pcMonthlyTopProductMeta" class="text-[10px] font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded">기준월 -</span>
+                    </div>
+                    <div id="pcMonthlyTopProductList" class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                        <p class="text-xs text-slate-500 font-bold col-span-full text-center py-4">월별 품목 데이터가 없습니다.</p>
+                    </div>
+                </div>
                 <div class="bg-[#1e293b] border border-[#334155] rounded-xl flex flex-col flex-1 min-h-[500px] shadow-2xl relative z-10">
                     <div class="p-4 flex justify-between items-center border-b border-[#334155]">
                         <h2 class="font-bold text-white">최근 수주/공정 통합 리스트</h2>
@@ -1217,6 +1226,91 @@ function updateTopProductReceivableCard(data = filteredOrders) {
             </div>
             <p class="text-white text-xs font-black truncate mb-2" title="${productName}">${productName}</p>
             <p class="text-amber-400 text-lg font-black leading-tight">${formatKRW(item.amount)}</p>
+            <p class="text-[10px] text-slate-500 font-bold mt-1">${item.qty.toLocaleString()}장</p>
+        </div>
+    `;
+    }).join('');
+}
+
+function getOrderMonthKey(order = {}) {
+    const dueDate = String(order.dueDate || '').trim();
+    if (/^\d{4}-\d{2}/.test(dueDate)) return dueDate.slice(0, 7);
+
+    const createdAt = order.createdAt;
+    let date = null;
+
+    if (createdAt?.toDate) date = createdAt.toDate();
+    else if (typeof createdAt === 'number') date = new Date(createdAt);
+    else if (createdAt?.seconds) date = new Date(createdAt.seconds * 1000);
+    else if (typeof createdAt === 'string' && createdAt.trim()) date = new Date(createdAt);
+
+    if (!date || Number.isNaN(date.getTime())) return '';
+    return date.toISOString().slice(0, 7);
+}
+
+function getMonthlyTopProductItems(data = filteredOrders, limit = 5) {
+    const rows = data.map(o => {
+        const price = Number(o.price) || 0;
+        const qty = Number(o.qty) || 0;
+        const productName = getOrderProductName(o);
+        const monthKey = getOrderMonthKey(o);
+
+        return { order: o, price, qty, productName, monthKey };
+    }).filter(item =>
+        item.price > 0 &&
+        item.qty > 0 &&
+        item.order.status !== 'rejected' &&
+        item.productName &&
+        item.productName !== '-' &&
+        item.monthKey
+    );
+
+    const latestMonth = rows.reduce((latest, item) => item.monthKey > latest ? item.monthKey : latest, '');
+    if (!latestMonth) return { monthKey: '', items: [] };
+
+    const map = new Map();
+    rows.filter(item => item.monthKey === latestMonth).forEach(item => {
+        if (!map.has(item.productName)) {
+            map.set(item.productName, { productName: item.productName, amount: 0, qty: 0, count: 0 });
+        }
+
+        const target = map.get(item.productName);
+        target.amount += item.price * item.qty;
+        target.qty += item.qty;
+        target.count += 1;
+    });
+
+    return {
+        monthKey: latestMonth,
+        items: Array.from(map.values())
+            .sort((a, b) => b.amount - a.amount || b.qty - a.qty || a.productName.localeCompare(b.productName))
+            .slice(0, limit)
+    };
+}
+
+function updateMonthlyTopProductCard(data = filteredOrders) {
+    const list = document.getElementById('pcMonthlyTopProductList');
+    const meta = document.getElementById('pcMonthlyTopProductMeta');
+    if (!list) return;
+
+    const result = getMonthlyTopProductItems(data, 5);
+    if (meta) meta.textContent = result.monthKey ? `기준월 ${result.monthKey}` : '기준월 -';
+
+    if (!result.items.length) {
+        list.innerHTML = '<p class="text-xs text-slate-500 font-bold col-span-full text-center py-4">월별 품목 데이터가 없습니다.</p>';
+        return;
+    }
+
+    list.innerHTML = result.items.map((item, idx) => {
+        const productName = escapeDashboardText(item.productName);
+        return `
+        <div class="bg-[#0f1522] border border-[#334155] rounded-xl p-4 min-w-0">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-[10px] text-emerald-400 font-black">${idx + 1}위</span>
+                <span class="text-[10px] text-slate-500 font-bold">${item.count.toLocaleString()}건</span>
+            </div>
+            <p class="text-white text-xs font-black truncate mb-2" title="${productName}">${productName}</p>
+            <p class="text-emerald-400 text-lg font-black leading-tight">${formatKRW(item.amount)}</p>
             <p class="text-[10px] text-slate-500 font-bold mt-1">${item.qty.toLocaleString()}장</p>
         </div>
     `;
@@ -2286,6 +2380,7 @@ function updateCharts() {
 function renderPCTable() {
     updateTopProductSalesCard(filteredOrders);
     updateTopProductReceivableCard(filteredOrders);
+    updateMonthlyTopProductCard(filteredOrders);
     let pS=0, aS=0, uS=0, cS=0; let aCnt=0, pCnt=0;
     filteredOrders.forEach(o => { const t = (o.price||0) * (o.qty||0); if(o.status==='pending') { pS+=t; pCnt++; } else if(o.status==='approved') { aS+=t; aCnt++; } else if(o.status==='completed' && o.paymentStatus==='unpaid') uS+=t; else if(o.status==='completed' && o.paymentStatus==='paid') cS+=t; });
     const pcKpiDebt = document.getElementById('pcKpiDebt'); if(pcKpiDebt) pcKpiDebt.innerText = (uS / 100000000).toFixed(1) + '억';
