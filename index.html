@@ -382,6 +382,15 @@
                         <p class="text-xs text-slate-500 font-bold col-span-full text-center py-4">품목 매출 데이터가 없습니다.</p>
                     </div>
                 </div>
+                <div id="pcTopProductReceivableCard" class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg mb-6 relative z-10">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest">TOP 품목 미수금</h3>
+                        <span class="text-[10px] font-black text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded">계산서 발행 기준</span>
+                    </div>
+                    <div id="pcTopProductReceivableList" class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                        <p class="text-xs text-slate-500 font-bold col-span-full text-center py-4">품목 미수금 데이터가 없습니다.</p>
+                    </div>
+                </div>
                 <div class="bg-[#1e293b] border border-[#334155] rounded-xl flex flex-col flex-1 min-h-[500px] shadow-2xl relative z-10">
                     <div class="p-4 flex justify-between items-center border-b border-[#334155]">
                         <h2 class="font-bold text-white">최근 수주/공정 통합 리스트</h2>
@@ -1151,6 +1160,63 @@ function updateTopProductSalesCard(data = filteredOrders) {
             </div>
             <p class="text-white text-xs font-black truncate mb-2" title="${productName}">${productName}</p>
             <p class="text-blue-400 text-lg font-black leading-tight">${formatKRW(item.amount)}</p>
+            <p class="text-[10px] text-slate-500 font-bold mt-1">${item.qty.toLocaleString()}장</p>
+        </div>
+    `;
+    }).join('');
+}
+
+function getTopProductReceivableItems(data = filteredOrders, limit = 5) {
+    const map = new Map();
+
+    data.forEach(o => {
+        const price = Number(o.price) || 0;
+        const qty = Number(o.qty) || 0;
+        const productName = getOrderProductName(o);
+        const outstanding = getOutstandingAmount(o);
+
+        if (price <= 0 || qty <= 0) return;
+        if (o.status === 'rejected' || o.status === 'pending') return;
+        if (o.paymentStatus === 'paid') return;
+        if (!isInvoiceIssued(o)) return;
+        if (outstanding <= 0) return;
+        if (!productName || productName === '-') return;
+
+        if (!map.has(productName)) {
+            map.set(productName, { productName, amount: 0, qty: 0, count: 0 });
+        }
+
+        const item = map.get(productName);
+        item.amount += outstanding;
+        item.qty += qty;
+        item.count += 1;
+    });
+
+    return Array.from(map.values())
+        .sort((a, b) => b.amount - a.amount || b.qty - a.qty || a.productName.localeCompare(b.productName))
+        .slice(0, limit);
+}
+
+function updateTopProductReceivableCard(data = filteredOrders) {
+    const list = document.getElementById('pcTopProductReceivableList');
+    if (!list) return;
+
+    const items = getTopProductReceivableItems(data, 5);
+    if (!items.length) {
+        list.innerHTML = '<p class="text-xs text-slate-500 font-bold col-span-full text-center py-4">품목 미수금 데이터가 없습니다.</p>';
+        return;
+    }
+
+    list.innerHTML = items.map((item, idx) => {
+        const productName = escapeDashboardText(item.productName);
+        return `
+        <div class="bg-[#0f1522] border border-[#334155] rounded-xl p-4 min-w-0">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-[10px] text-amber-400 font-black">${idx + 1}위</span>
+                <span class="text-[10px] text-slate-500 font-bold">${item.count.toLocaleString()}건</span>
+            </div>
+            <p class="text-white text-xs font-black truncate mb-2" title="${productName}">${productName}</p>
+            <p class="text-amber-400 text-lg font-black leading-tight">${formatKRW(item.amount)}</p>
             <p class="text-[10px] text-slate-500 font-bold mt-1">${item.qty.toLocaleString()}장</p>
         </div>
     `;
@@ -2219,6 +2285,7 @@ function updateCharts() {
 // --- [메인 테이블 렌더링] ---
 function renderPCTable() {
     updateTopProductSalesCard(filteredOrders);
+    updateTopProductReceivableCard(filteredOrders);
     let pS=0, aS=0, uS=0, cS=0; let aCnt=0, pCnt=0;
     filteredOrders.forEach(o => { const t = (o.price||0) * (o.qty||0); if(o.status==='pending') { pS+=t; pCnt++; } else if(o.status==='approved') { aS+=t; aCnt++; } else if(o.status==='completed' && o.paymentStatus==='unpaid') uS+=t; else if(o.status==='completed' && o.paymentStatus==='paid') cS+=t; });
     const pcKpiDebt = document.getElementById('pcKpiDebt'); if(pcKpiDebt) pcKpiDebt.innerText = (uS / 100000000).toFixed(1) + '억';
