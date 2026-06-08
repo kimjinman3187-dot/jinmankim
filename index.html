@@ -140,9 +140,20 @@
         <div class="w-[54%] flex items-center justify-center">
             <div class="w-[430px] p-[52px] rounded-[28px] bg-white/5 border border-white/10 backdrop-blur-xl shadow-2xl">
                 <h2 class="text-white text-[34px] font-extrabold mb-8">로그인</h2>
-                <button onclick="pcAdminBypassLogin()" class="w-full h-[62px] bg-white rounded-2xl font-bold text-slate-800 flex items-center justify-center gap-3 hover:-translate-y-0.5 transition-transform shadow-lg">
+                <button id="pcAdminBypassBtn" type="button" onclick="pcAdminBypassLogin()" style="display:none" aria-hidden="true" class="w-full h-[62px] bg-white rounded-2xl font-bold text-slate-800 hidden items-center justify-center gap-3 hover:-translate-y-0.5 transition-transform shadow-lg">
                     PC 권한으로 접속 (마스터)
                 </button>
+                <div class="role-grid" id="pcRoleGrid"><p class="col-span-2 text-center text-xs text-slate-300 py-10">사용자 목록을 불러오는 중...</p></div>
+                <div class="pin-dots">
+                    <div class="pin-dot" id="pcPd0"></div><div class="pin-dot" id="pcPd1"></div><div class="pin-dot" id="pcPd2"></div><div class="pin-dot" id="pcPd3"></div>
+                </div>
+                <div id="pcKeypadArea" class="keypad">
+                    <button class="kp-btn" onclick="kp('1')">1</button><button class="kp-btn" onclick="kp('2')">2</button><button class="kp-btn" onclick="kp('3')">3</button>
+                    <button class="kp-btn" onclick="kp('4')">4</button><button class="kp-btn" onclick="kp('5')">5</button><button class="kp-btn" onclick="kp('6')">6</button>
+                    <button class="kp-btn" onclick="kp('7')">7</button><button class="kp-btn" onclick="kp('8')">8</button><button class="kp-btn" onclick="kp('9')">9</button>
+                    <div class="kp-btn invisible"></div><button class="kp-btn" onclick="kp('0')">0</button><button class="kp-btn del" onclick="kpDel()">삭제</button>
+                </div>
+                <div id="pcPinErr" class="text-center text-[10px] text-red-300 mt-3 min-h-[15px] font-bold"></div>
             </div>
         </div>
     </div>
@@ -850,6 +861,14 @@
 let orders = []; 
 let filteredOrders = []; 
 let currentUser = null; 
+const AUTH_DEV_MODE = (() => {
+    try {
+        const params = new URLSearchParams(window.location.search || '');
+        return ['localhost', '127.0.0.1'].includes(window.location.hostname) && params.get('devAuth') === '1';
+    } catch (e) {
+        return false;
+    }
+})();
 
 (() => {
     const fallbackUsers = [
@@ -859,8 +878,13 @@ let currentUser = null;
         { id: 'factory-local', name: '공장', role: 'factory', pin: '3333', status: 'active', sort_index: 4 }
     ];
 
+    window.AUTH_DEV_MODE = AUTH_DEV_MODE;
+    window.AUTH_LOCAL_FALLBACK_USERS = fallbackUsers;
+
     if (typeof USERS === 'undefined') {
-        window.USERS = fallbackUsers;
+        window.USERS = AUTH_DEV_MODE ? fallbackUsers : [];
+    } else if (AUTH_DEV_MODE && Array.isArray(USERS) && USERS.length === 0) {
+        USERS = fallbackUsers;
     }
 })();
     
@@ -1620,10 +1644,11 @@ window.onload = async function() {
 };
     
 async function syncUsers() {
+    let fetchedUsers = [];
     try { 
         if(typeof db !== 'undefined') { 
             const snapshot = await db.collection('users').where('status', '==', 'active').orderBy('sort_index', 'asc').get(); 
-            const fetchedUsers = snapshot.docs.map(doc => { 
+            fetchedUsers = snapshot.docs.map(doc => {
                 const d = doc.data(); 
                 if(d.role === 'ccounting') d.role = 'accounting'; 
                 return { id: doc.id, ...d }; 
@@ -1634,41 +1659,98 @@ async function syncUsers() {
             }
         } 
     } catch(e) { 
-        console.warn('Users sync failed. Local fallback users will be used:', e); 
+        console.warn('Users sync failed. Login is disabled unless dev auth fallback is explicitly enabled:', e);
+    }
+
+    if (!fetchedUsers.length) {
+        if (AUTH_DEV_MODE && Array.isArray(window.AUTH_LOCAL_FALLBACK_USERS)) {
+            USERS = window.AUTH_LOCAL_FALLBACK_USERS;
+            console.warn('DEV AUTH MODE: local fallback PIN users are enabled.');
+        } else {
+            USERS = [];
+        }
     }
     
-    const grid = document.getElementById('roleGrid'); 
-    if (grid && Array.isArray(USERS)) { 
-        grid.innerHTML = USERS.map(u => `<button class="role-sel-btn" id="rsb-${u.id}" onclick="chooseUser('${u.id}')">${u.name}</button>`).join(''); 
+    const authEmptyMessage = '<p class="col-span-2 text-center text-xs text-slate-300 py-10">운영 사용자 목록을 불러오지 못했습니다.</p>';
+    const mobileGrid = document.getElementById('roleGrid');
+    const pcGrid = document.getElementById('pcRoleGrid');
+    if (mobileGrid && Array.isArray(USERS)) {
+        mobileGrid.innerHTML = USERS.length
+            ? USERS.map(u => `<button class="role-sel-btn" id="rsb-${u.id}" onclick="chooseUser('${u.id}')">${u.name}</button>`).join('')
+            : authEmptyMessage;
+    }
+    if (pcGrid && Array.isArray(USERS)) {
+        pcGrid.innerHTML = USERS.length
+            ? USERS.map(u => `<button class="role-sel-btn" id="pc-rsb-${u.id}" onclick="chooseUser('${u.id}')">${u.name}</button>`).join('')
+            : authEmptyMessage;
+    }
+
+    const bypassBtn = document.getElementById('pcAdminBypassBtn');
+    if (bypassBtn && AUTH_DEV_MODE) {
+        bypassBtn.style.display = '';
+        bypassBtn.classList.remove('hidden');
+        bypassBtn.setAttribute('aria-hidden', 'false');
     }
 
     if (chosenUserId) checkLockoutStatus();
 }
 
-function checkLockoutStatus() {
-    const user = USERS.find(u => u.id === chosenUserId); if (!user) return false; const now = Date.now(); const lockoutUntil = user.lockoutUntil || 0;
-    if (lockoutUntil > now) { const remaining = Math.ceil((lockoutUntil - now) / 60000); document.getElementById('pinErr').textContent = `⚠️ 보안 잠금: ${remaining}분 후 재시도 가능`; document.getElementById('keypadArea').style.opacity = '0.2'; document.getElementById('keypadArea').style.pointerEvents = 'none'; return true; }
-    document.getElementById('keypadArea').style.opacity = '1'; document.getElementById('keypadArea').style.pointerEvents = 'auto'; return false;
+function setAuthError(message = '') {
+    ['pinErr', 'pcPinErr'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = message;
+    });
 }
 
-function chooseUser(uid) { chosenUserId = uid; pinBuffer = ''; updateDots(); document.getElementById('pinErr').textContent = ''; document.querySelectorAll('.role-sel-btn').forEach(b => b.classList.remove('chosen')); document.getElementById('rsb-' + uid).classList.add('chosen'); checkLockoutStatus(); }
+function setKeypadDisabled(disabled) {
+    ['keypadArea', 'pcKeypadArea'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.style.opacity = disabled ? '0.2' : '1';
+        el.style.pointerEvents = disabled ? 'none' : 'auto';
+    });
+}
+
+function checkLockoutStatus() {
+    const user = USERS.find(u => u.id === chosenUserId); if (!user) return false; const now = Date.now(); const lockoutUntil = user.lockoutUntil || 0;
+    if (lockoutUntil > now) { const remaining = Math.ceil((lockoutUntil - now) / 60000); setAuthError(`⚠️ 보안 잠금: ${remaining}분 후 재시도 가능`); setKeypadDisabled(true); return true; }
+    setKeypadDisabled(false); return false;
+}
+
+function chooseUser(uid) { chosenUserId = uid; pinBuffer = ''; updateDots(); setAuthError(''); document.querySelectorAll('.role-sel-btn').forEach(b => b.classList.remove('chosen')); ['rsb-' + uid, 'pc-rsb-' + uid].forEach(id => { const btn = document.getElementById(id); if (btn) btn.classList.add('chosen'); }); checkLockoutStatus(); }
 function kp(digit) { if (!chosenUserId || pinBuffer.length >= 4 || checkLockoutStatus()) return; pinBuffer += digit; updateDots(); if (pinBuffer.length === 4) setTimeout(tryLogin, 150); }
 function kpDel() { pinBuffer = pinBuffer.slice(0, -1); updateDots(); }
-function updateDots() { for (let i = 0; i < 4; i++) { document.getElementById('pd' + i).className = 'pin-dot' + (i < pinBuffer.length ? ' on' : ''); } }
+function updateDots() { for (let i = 0; i < 4; i++) { ['pd' + i, 'pcPd' + i].forEach(id => { const dot = document.getElementById(id); if (dot) dot.className = 'pin-dot' + (i < pinBuffer.length ? ' on' : ''); }); } }
 
 async function tryLogin() {
-    const user = USERS.find(u => u.id === chosenUserId); const attempts = (user.attempts || 0) + 1; const limit = user.role === 'admin' ? 5 : 3;
+    const user = USERS.find(u => u.id === chosenUserId);
+    if (!user) {
+        pinBuffer = '';
+        updateDots();
+        setAuthError('사용자 목록을 먼저 불러와야 합니다.');
+        return;
+    }
+    const attempts = (user.attempts || 0) + 1; const limit = user.role === 'admin' ? 5 : 3;
     if (pinBuffer === user.pin) {
         if(typeof db !== 'undefined') await db.collection('users').doc(user.id).update({ attempts: 0, lockoutUntil: 0 });
         currentUser = user; sessionStorage.setItem('yongjin_session', JSON.stringify(currentUser)); await logAction('LOGIN_SUCCESS', 'SYSTEM', { method: 'PIN' });
         processLoginSuccess();
     } else {
         if (attempts >= limit) { const unlockTime = Date.now() + (LOCKOUT_MINUTES * 60 * 1000); if(typeof db !== 'undefined') await db.collection('users').doc(user.id).update({ attempts: attempts, lockoutUntil: unlockTime }); await syncUsers(); } 
-        else { if(typeof db !== 'undefined') await db.collection('users').doc(user.id).update({ attempts: attempts }); document.getElementById('pinErr').textContent = `❌ PIN 불일치 (${attempts}/${limit})`; pinBuffer = ''; updateDots(); }
+        else { if(typeof db !== 'undefined') await db.collection('users').doc(user.id).update({ attempts: attempts }); setAuthError(`❌ PIN 불일치 (${attempts}/${limit})`); pinBuffer = ''; updateDots(); }
     }
 }
 
-function pcAdminBypassLogin() { const user = USERS.find(u => u.role === 'admin') || USERS[0]; currentUser = user; sessionStorage.setItem('yongjin_session', JSON.stringify(currentUser)); logAction('LOGIN_SUCCESS', 'SYSTEM', { method: 'SSO_BYPASS' }); processLoginSuccess(); }
+function pcAdminBypassLogin() {
+    if (!AUTH_DEV_MODE) {
+        console.warn('Admin bypass login is disabled in production.');
+        return false;
+    }
+    const user = USERS.find(u => u.role === 'admin') || USERS[0];
+    if (!user) return false;
+    currentUser = user; sessionStorage.setItem('yongjin_session', JSON.stringify(currentUser)); logAction('LOGIN_SUCCESS', 'SYSTEM', { method: 'DEV_BYPASS' }); processLoginSuccess();
+    return true;
+}
 
 function processLoginSuccess() {
     const mobLogin = document.getElementById('loginMobile'); if (mobLogin) mobLogin.style.display = 'none';
@@ -2999,6 +3081,11 @@ window.addEventListener('load', () => {
 
         try {
             currentUser = JSON.parse(savedSession);
+            if (!AUTH_DEV_MODE && String(currentUser?.id || '').endsWith('-local')) {
+                currentUser = null;
+                sessionStorage.removeItem('yongjin_session');
+                return;
+            }
             processLoginSuccess();
 
             if (savedTab) {
