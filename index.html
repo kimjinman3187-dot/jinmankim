@@ -955,8 +955,13 @@ function showWoodThumbnail(imgEl, colorEl, textEl, imgUrl, color) {
     imgEl.classList.remove('hidden');
 }
 
-const ROLE_TABS = { sales: ['sales', 'history'], accounting: ['accounting', 'receivables', 'history'], factory: ['factory', 'history'], admin: ['sales', 'accounting', 'receivables', 'factory', 'history'] };
+const ROLE_TABS = { sales: ['sales', 'receivables', 'history'], accounting: ['accounting', 'receivables', 'history'], factory: ['factory', 'history'], admin: ['sales', 'accounting', 'receivables', 'factory', 'history'] };
 const TAB_META = { sales: {label:'영업', emoji:'📝'}, accounting: {label:'회계', emoji:'💼'}, receivables: {label:'채권', emoji:'💰'}, factory: {label:'생산', emoji:'🏭'}, history: {label:'현황', emoji:'📊'} };
+const PC_ROLE_TABS = { sales: ['dashboard', 'sales', 'receivables'], accounting: ['dashboard', 'accounting', 'receivables'], factory: ['factory'], admin: ['dashboard', 'sales', 'accounting', 'receivables', 'factory'] };
+function getAllowedMobileTabs(role = currentUser?.role) { return ROLE_TABS[role] || ROLE_TABS.sales; }
+function getAllowedPCTabs(role = currentUser?.role) { return PC_ROLE_TABS[role] || PC_ROLE_TABS.sales; }
+function getDefaultMobileTab(role = currentUser?.role) { return getAllowedMobileTabs(role)[0] || 'history'; }
+function getDefaultPCTab(role = currentUser?.role) { return getAllowedPCTabs(role)[0] || 'dashboard'; }
 
 function toggleFilterDrawer() { const drawer = document.getElementById('filterDrawer'); const content = document.getElementById('drawerContent'); if (drawer.classList.contains('hidden')) { drawer.classList.remove('hidden'); setTimeout(() => content.classList.add('show'), 10); } else { content.classList.remove('show'); setTimeout(() => drawer.classList.add('hidden'), 300); } }
 function setFilterStatus(status) { currentFilterStatus = status; document.querySelectorAll('#filterStatusGroup .status-chip').forEach(btn => { const btnText = btn.innerText; const isTarget = (status === 'all' && btnText === '전체') || (status === 'pending' && btnText === '승인대기') || (status === 'approved' && btnText === '생산중') || (status === 'completed' && btnText === '생산완료'); btn.classList.toggle('active', isTarget); }); }
@@ -1766,7 +1771,24 @@ function processLoginSuccess() {
         const clearBtn = document.getElementById('clearBtn'); if(clearBtn) clearBtn.style.display = ''; 
         const pcClearBtn = document.getElementById('pcClearBtn'); if(pcClearBtn) pcClearBtn.style.display = ''; 
     }
-    initTabs(); startOrdersListener(); checkNotiBanner(); startNotiPoller();
+    applyPCRoleAccess();
+    initTabs();
+    if (window.innerWidth > 768) switchPCTab(getDefaultPCTab());
+    startOrdersListener(); checkNotiBanner(); startNotiPoller();
+}
+
+function applyPCRoleAccess() {
+    const allowedTabs = getAllowedPCTabs();
+    ['dashboard', 'sales', 'accounting', 'receivables', 'factory'].forEach(tab => {
+        const tabEl = document.getElementById('pc-tab-' + tab);
+        if (tabEl) tabEl.classList.toggle('hidden', !allowedTabs.includes(tab));
+    });
+
+    const pcClearBtn = document.getElementById('pcClearBtn');
+    if (pcClearBtn) pcClearBtn.style.display = currentUser?.role === 'admin' ? '' : 'none';
+
+    const clearBtn = document.getElementById('clearBtn');
+    if (clearBtn) clearBtn.style.display = currentUser?.role === 'admin' ? '' : 'none';
 }
 
 async function renderAdminMonitor() {
@@ -1782,12 +1804,16 @@ async function renderAdminMonitor() {
 async function forceUnlock(uid) { if(confirm('잠금을 해제하시겠습니까?')) { await db.collection('users').doc(uid).update({ attempts: 0, lockoutUntil: 0 }); await logAction('ADMIN_FORCE_UNLOCK', 'SYSTEM', { target_uid: uid }); alert('잠금 해제 완료'); renderAdminMonitor(); } }
 
 function initTabs() {
-    const tabs = ROLE_TABS[currentUser.role] || ROLE_TABS['sales']; const wrap = document.getElementById('roleTabsWrap');
+    const tabs = getAllowedMobileTabs(); const wrap = document.getElementById('roleTabsWrap');
     if(wrap) { wrap.style.gridTemplateColumns = `repeat(${tabs.length}, 1fr)`; wrap.innerHTML = tabs.map(t => `<button onclick="switchTab('${t}')" id="role-${t}" class="py-2 text-[10px] font-black bg-slate-100 rounded-lg active:scale-95 transition-all">${TAB_META[t].emoji} ${TAB_META[t].label}</button>`).join(''); }
-    switchTab(tabs[0]);
+    switchTab(getDefaultMobileTab());
 }
 
 function switchTab(tabId, pushHistory = true) {
+    const allowedTabs = getAllowedMobileTabs();
+    if (!allowedTabs.includes(tabId)) {
+        tabId = getDefaultMobileTab();
+    }
     document.querySelectorAll('#roleTabsWrap button').forEach(b => b.classList.remove('active-role'));
     const btn = document.getElementById('role-' + tabId); if(btn) btn.classList.add('active-role');
     ['sales', 'accounting', 'factory', 'receivables', 'history'].forEach(s => { const el = document.getElementById('section-' + s); if(el) el.classList.add('hidden'); });
@@ -2574,6 +2600,11 @@ function renderPCTable() {
 
 // --- [PC 탭 전환 로직] ---
 function switchPCTab(tabId) {
+    const allowedTabs = getAllowedPCTabs();
+    if (!allowedTabs.includes(tabId)) {
+        tabId = getDefaultPCTab();
+    }
+
     document.querySelectorAll('.pc-tab-btn').forEach(btn => {
         btn.classList.remove('bg-[#1e293b]', 'text-blue-400');
         btn.classList.add('text-slate-400', 'hover:bg-[#1e293b]', 'hover:text-white');
