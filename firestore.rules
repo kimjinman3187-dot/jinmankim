@@ -1,0 +1,196 @@
+rules_version = '2';
+
+// WORK22-6N-A DESIGN DRAFT ONLY
+// DO NOT DEPLOY WITHOUT MANUAL FIREBASE CONSOLE REVIEW
+//
+// Purpose:
+// - This is a review draft for role-based Firestore Rules based on the current
+//   YongjinFLOW frontend access model.
+// - Do not deploy this file as-is. The current app uses Firebase Anonymous Auth
+//   and app-level PIN/session logic, and does not appear to use Firebase custom
+//   claims.
+//
+// Important limitation:
+// - Firestore Rules can only trust server-verifiable identity data.
+// - Frontend sessionStorage role values and PIN selections are not trustworthy
+//   in Rules.
+// - Without custom claims, Rules must look up users/{uid}. This requires every
+//   authenticated Firebase uid to map to exactly one users document whose id is
+//   request.auth.uid, or to another reviewed mapping document.
+//
+// TODO before any production deployment:
+// - Confirm the Firebase Auth uid for each operational user.
+// - Confirm whether users document IDs are Firebase Auth uid values.
+// - If current users IDs are not auth uid values, create an approved uid mapping
+//   strategy before deploying Rules.
+// - Decide whether PIN values should remain readable by clients. Prefer moving
+//   PIN verification out of client-readable Firestore before production Rules.
+// - Confirm exact collection names. Current code writes audit logs to
+//   audit_logs; the work request also mentions auditLogs.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function hasUserDoc() {
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function currentUser() {
+      return userDoc().data;
+    }
+
+    function currentRole() {
+      return hasUserDoc() ? currentUser().role : null;
+    }
+
+    function currentStatus() {
+      return hasUserDoc() && currentUser().keys().hasAny(['status'])
+        ? currentUser().status
+        : 'active';
+    }
+
+    function activeUser() {
+      return hasUserDoc() && currentStatus() == 'active';
+    }
+
+    function roleIn(roles) {
+      return activeUser() && currentRole() in roles;
+    }
+
+    function isAdmin() {
+      return roleIn(['admin']);
+    }
+
+    function isSalesOwner(orderData) {
+      return roleIn(['sales']) && orderData.reportedBy == currentUser().name;
+    }
+
+    function canReadOrder(orderData) {
+      return isAdmin()
+        || roleIn(['accounting'])
+        || isSalesOwner(orderData)
+        || (
+          roleIn(['factory'])
+          && orderData.status in ['approved', 'completed']
+        );
+    }
+
+    function canCreateOrder() {
+      return roleIn(['admin', 'sales', 'accounting']);
+    }
+
+    function isSalesEditableTransition(beforeData, afterData) {
+      return roleIn(['admin', 'sales', 'accounting'])
+        // Sales/accounting edits need a final field-level review before deploy.
+        // This draft intentionally keeps this broad so reviewers can compare it
+        // with the current app write payloads.
+        && afterData.keys().hasAll(beforeData.keys());
+    }
+
+    function isFinanceEditableTransition(beforeData, afterData) {
+      return roleIn(['admin', 'accounting'])
+        && (
+          afterData.diff(beforeData).affectedKeys().hasOnly([
+            'status',
+            'rejectReason',
+            'invoiceStatus',
+            'invoiceIssuedAt',
+            'updatedAt'
+          ])
+        );
+    }
+
+    function isArEditableTransition(beforeData, afterData) {
+      return roleIn(['admin', 'sales', 'accounting'])
+        && (
+          afterData.diff(beforeData).affectedKeys().hasOnly([
+            'paidAmount',
+            'paymentStatus',
+            'updatedAt'
+          ])
+        );
+    }
+
+    function isProductionEditableTransition(beforeData, afterData) {
+      return roleIn(['admin', 'factory'])
+        && (
+          afterData.diff(beforeData).affectedKeys().hasOnly([
+            'completedQty',
+            'status',
+            'completedAt',
+            'updatedAt'
+          ])
+        );
+    }
+
+    match /users/{userId} {
+      // Current app reads users to build the PIN login user list. This exposes
+      // operational user metadata and possibly PIN-related fields, so it must be
+      // reviewed before production deployment.
+      allow read: if signedIn();
+
+      // Allow each active mapped user to clear their own lockout counters after
+      // successful PIN login. Admin can manage user operational status.
+      allow update: if activeUser() && userId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'attempts',
+          'lockoutUntil'
+        ]);
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin();
+    }
+
+    match /orders/{orderId} {
+      allow read: if signedIn() && canReadOrder(resource.data);
+
+      allow create: if canCreateOrder()
+        && request.resource.data.reportedBy == currentUser().name
+        && request.resource.data.status == 'pending';
+
+      allow update: if signedIn()
+        && canReadOrder(resource.data)
+        && (
+          isSalesEditableTransition(resource.data, request.resource.data)
+          || isFinanceEditableTransition(resource.data, request.resource.data)
+          || isArEditableTransition(resource.data, request.resource.data)
+          || isProductionEditableTransition(resource.data, request.resource.data)
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if activeUser()
+        && request.resource.data.user == currentUser().name
+        && request.resource.data.role == currentRole();
+      allow update, delete: if false;
+    }
+
+    match /auditLogs/{logId} {
+      // Compatibility draft only if the collection is renamed later.
+      allow read: if isAdmin();
+      allow create: if activeUser()
+        && request.resource.data.user == currentUser().name
+        && request.resource.data.role == currentRole();
+      allow update, delete: if false;
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if activeUser()
+        && currentRole() in resource.data.target_roles;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
