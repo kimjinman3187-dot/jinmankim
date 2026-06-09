@@ -966,7 +966,7 @@ const ACCESS_MATRIX = {
     },
     accounting: {
         view: ['live', 'sales', 'finance', 'ar', 'production', 'history', 'dashboard'],
-        write: ['finance', 'ar']
+        write: ['sales', 'finance', 'ar']
     },
     factory: {
         view: ['live', 'production', 'history'],
@@ -1064,6 +1064,14 @@ function toggleFilterDrawer() { const drawer = document.getElementById('filterDr
 function setFilterStatus(status) { currentFilterStatus = status; document.querySelectorAll('#filterStatusGroup .status-chip').forEach(btn => { const btnText = btn.innerText; const isTarget = (status === 'all' && btnText === '전체') || (status === 'pending' && btnText === '승인대기') || (status === 'approved' && btnText === '생산중') || (status === 'completed' && btnText === '생산완료'); btn.classList.toggle('active', isTarget); }); }
 function setPaymentFilter(type) { currentPaymentFilter = type; document.querySelectorAll('.pay-chip').forEach(btn => { const btnText = btn.innerText; const isTarget = (type === 'all' && btnText === '전체') || (type === 'unpaid' && btnText === '미수금'); btn.classList.toggle('active', isTarget); }); }
 function resetFilters() { document.getElementById('filterStartDate').value = ''; document.getElementById('filterEndDate').value = ''; setFilterStatus('all'); setPaymentFilter('all'); startOrdersListener(); toggleFilterDrawer(); }
+
+function sortOrdersByCreatedAtDesc(items = []) {
+    return [...items].sort((a, b) => {
+        const av = Number(a.createdAt?.seconds ? a.createdAt.seconds * 1000 : a.createdAt) || 0;
+        const bv = Number(b.createdAt?.seconds ? b.createdAt.seconds * 1000 : b.createdAt) || 0;
+        return bv - av;
+    });
+}
 
 async function applyComplexFilter() {
     toggleFilterDrawer(); const start = document.getElementById('filterStartDate').value; const end = document.getElementById('filterEndDate').value;
@@ -2046,8 +2054,17 @@ function startOrdersListener(customQuery = null) {
 
     let query;
     if (customQuery) { query = customQuery; } 
-    else { const baseRef = db.collection('orders'); if (currentUser.role === 'sales') { query = baseRef.where('reportedBy', '==', currentUser.name).orderBy('createdAt', 'desc').limit(100); } else if (currentUser.role === 'factory') { query = baseRef.where('status', 'in', ['approved', 'completed']).orderBy('createdAt', 'desc').limit(150); } else { query = baseRef.orderBy('createdAt', 'desc').limit(300); } }
-    ordersListenerUnsubscribe = query.onSnapshot(snap => { orders = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); executeSearch(); }, error => { console.error("Orders Listener Error:", error); });
+    else {
+        const baseRef = db.collection('orders');
+        if (currentUser.role === 'sales') {
+            query = baseRef.where('reportedBy', '==', currentUser.name).limit(100);
+        } else if (currentUser.role === 'factory') {
+            query = baseRef.where('status', 'in', ['approved', 'completed']).limit(150);
+        } else {
+            query = baseRef.orderBy('createdAt', 'desc').limit(300);
+        }
+    }
+    ordersListenerUnsubscribe = query.onSnapshot(snap => { orders = sortOrdersByCreatedAtDesc(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))); executeSearch(); }, error => { console.error("Orders Listener Error:", error); });
 }
 
 function renderAccounting() {
