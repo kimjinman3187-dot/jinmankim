@@ -955,13 +955,110 @@ function showWoodThumbnail(imgEl, colorEl, textEl, imgUrl, color) {
     imgEl.classList.remove('hidden');
 }
 
-const ROLE_TABS = { sales: ['sales', 'receivables', 'history'], accounting: ['accounting', 'receivables', 'history'], factory: ['factory', 'history'], admin: ['sales', 'accounting', 'receivables', 'factory', 'history'] };
+const ACCESS_MATRIX = {
+    admin: {
+        view: ['live', 'sales', 'finance', 'ar', 'production', 'history', 'dashboard', 'reset', 'admin'],
+        write: ['sales', 'finance', 'ar', 'production', 'reset', 'admin']
+    },
+    sales: {
+        view: ['live', 'sales', 'ar', 'production', 'history', 'dashboard'],
+        write: ['sales', 'ar']
+    },
+    accounting: {
+        view: ['live', 'sales', 'finance', 'ar', 'production', 'history', 'dashboard'],
+        write: ['finance', 'ar']
+    },
+    factory: {
+        view: ['live', 'production', 'history'],
+        write: ['production']
+    }
+};
+
+const TAB_ACCESS_AREA = {
+    sales: 'sales',
+    accounting: 'finance',
+    receivables: 'ar',
+    factory: 'production',
+    history: 'history',
+    dashboard: 'dashboard'
+};
+
+const ROLE_TABS = {
+    sales: ['sales', 'receivables', 'factory', 'history'],
+    accounting: ['sales', 'accounting', 'receivables', 'factory', 'history'],
+    factory: ['factory', 'history'],
+    admin: ['sales', 'accounting', 'receivables', 'factory', 'history']
+};
 const TAB_META = { sales: {label:'영업', emoji:'📝'}, accounting: {label:'회계', emoji:'💼'}, receivables: {label:'채권', emoji:'💰'}, factory: {label:'생산', emoji:'🏭'}, history: {label:'현황', emoji:'📊'} };
-const PC_ROLE_TABS = { sales: ['dashboard', 'sales', 'receivables'], accounting: ['dashboard', 'accounting', 'receivables'], factory: ['factory'], admin: ['dashboard', 'sales', 'accounting', 'receivables', 'factory'] };
+const PC_ROLE_TABS = {
+    sales: ['dashboard', 'sales', 'receivables', 'factory'],
+    accounting: ['dashboard', 'sales', 'accounting', 'receivables', 'factory'],
+    factory: ['factory'],
+    admin: ['dashboard', 'sales', 'accounting', 'receivables', 'factory']
+};
+const ROLE_DEFAULT_PC_TAB = { admin: 'dashboard', sales: 'dashboard', accounting: 'accounting', factory: 'factory' };
+const HASH_TAB_ALIASES = {
+    '#live': 'dashboard',
+    '#dashboard': 'dashboard',
+    '#sales': 'sales',
+    '#finance': 'accounting',
+    '#accounting': 'accounting',
+    '#ar': 'receivables',
+    '#receivables': 'receivables',
+    '#production': 'factory',
+    '#factory': 'factory',
+    '#history': 'history',
+    '#reset': 'reset'
+};
 function getAllowedMobileTabs(role = currentUser?.role) { return ROLE_TABS[role] || ROLE_TABS.sales; }
 function getAllowedPCTabs(role = currentUser?.role) { return PC_ROLE_TABS[role] || PC_ROLE_TABS.sales; }
 function getDefaultMobileTab(role = currentUser?.role) { return getAllowedMobileTabs(role)[0] || 'history'; }
-function getDefaultPCTab(role = currentUser?.role) { return getAllowedPCTabs(role)[0] || 'dashboard'; }
+function getDefaultPCTab(role = currentUser?.role) {
+    const preferred = ROLE_DEFAULT_PC_TAB[role];
+    const allowedTabs = getAllowedPCTabs(role);
+    return allowedTabs.includes(preferred) ? preferred : (allowedTabs[0] || 'dashboard');
+}
+function normalizeRole(role = currentUser?.role) { return ACCESS_MATRIX[role] ? role : 'sales'; }
+function getAccessAreaForTab(tabId) { return TAB_ACCESS_AREA[tabId] || tabId; }
+function canView(area, role = currentUser?.role) { return ACCESS_MATRIX[normalizeRole(role)].view.includes(area); }
+function canWrite(area, role = currentUser?.role) { return ACCESS_MATRIX[normalizeRole(role)].write.includes(area); }
+function isUserActive(user = currentUser) { return (user?.status || 'active') === 'active'; }
+function denyAccess(message = '권한이 없습니다.') { alert(message); return false; }
+function requireView(area, message = '이 화면에 접근할 권한이 없습니다.') { return canView(area) || denyAccess(message); }
+function requireWrite(area, message = '이 작업을 수행할 권한이 없습니다.') { return canWrite(area) || denyAccess(message); }
+function clearSavedSession() {
+    currentUser = null;
+    sessionStorage.removeItem('yongjin_session');
+    sessionStorage.removeItem('active_tab');
+}
+function handleInactiveUser(user = currentUser) {
+    if (isUserActive(user)) return false;
+    clearSavedSession();
+    alert('사용이 중지된 계정입니다. 관리자에게 문의하세요.');
+    location.reload();
+    return true;
+}
+function getHashTargetTab() { return HASH_TAB_ALIASES[String(location.hash || '').toLowerCase()] || null; }
+function enforceCurrentHashAccess() {
+    if (!currentUser) return;
+    const targetTab = getHashTargetTab();
+    if (!targetTab) return;
+    if (targetTab === 'reset') {
+        if (!canWrite('reset')) history.replaceState({ tab: getDefaultPCTab() }, '', '#' + getDefaultPCTab());
+        return;
+    }
+    const area = getAccessAreaForTab(targetTab);
+    if (!canView(area)) {
+        const fallback = window.innerWidth > 768 ? getDefaultPCTab() : getDefaultMobileTab();
+        history.replaceState({ tab: fallback }, '', '#' + fallback);
+        if (window.innerWidth > 768) switchPCTab(fallback, false);
+        else switchTab(fallback, false);
+    } else if (window.innerWidth > 768 && getAllowedPCTabs().includes(targetTab)) {
+        switchPCTab(targetTab, false);
+    } else if (window.innerWidth <= 768 && getAllowedMobileTabs().includes(targetTab)) {
+        switchTab(targetTab, false);
+    }
+}
 
 function toggleFilterDrawer() { const drawer = document.getElementById('filterDrawer'); const content = document.getElementById('drawerContent'); if (drawer.classList.contains('hidden')) { drawer.classList.remove('hidden'); setTimeout(() => content.classList.add('show'), 10); } else { content.classList.remove('show'); setTimeout(() => drawer.classList.add('hidden'), 300); } }
 function setFilterStatus(status) { currentFilterStatus = status; document.querySelectorAll('#filterStatusGroup .status-chip').forEach(btn => { const btnText = btn.innerText; const isTarget = (status === 'all' && btnText === '전체') || (status === 'pending' && btnText === '승인대기') || (status === 'approved' && btnText === '생산중') || (status === 'completed' && btnText === '생산완료'); btn.classList.toggle('active', isTarget); }); }
@@ -1513,6 +1610,7 @@ function updatePCARCards(metrics) {
 }
 
 function updatePCProductionCards(metrics) {
+    const canEditProduction = canWrite('production');
     setText('pcProductionActiveCount', metrics.activeProductionItems.length);
     setText('pcProductionPackingCount', metrics.packingWaitItems.length);
     setText('pcProductionTodayDoneCount', metrics.todayDoneItems.length);
@@ -1553,13 +1651,13 @@ function updatePCProductionCards(metrics) {
                             id="${inputId}" 
                             class="flex-1 px-3 py-2 bg-[#111827] border border-[#334155] rounded-lg text-xs text-white font-bold outline-none focus:border-blue-400" 
                             placeholder="생산 수량"
+                            ${canEditProduction ? '' : 'disabled'}
                         >
-                        <button 
-                            onclick="addProgress('${o.id}', '${inputId}')" 
-                            class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-black shadow-md transition-colors"
-                        >
-                            보고
-                        </button>
+                        ${
+                            canEditProduction
+                                ? `<button onclick="addProgress('${o.id}', '${inputId}')" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-black shadow-md transition-colors">보고</button>`
+                                : `<button disabled class="px-4 py-2 bg-slate-700 text-slate-500 rounded-lg text-xs font-black cursor-not-allowed">조회</button>`
+                        }
                     </div>
                 </div>
             `;
@@ -1572,6 +1670,7 @@ function updatePCProductionCards(metrics) {
 }
 
 function updatePCFinanceInvoiceWaitList(metrics) {
+    const canEditFinance = canWrite('finance');
     const tbody = document.getElementById('pcFinanceInvoiceWaitBody');
     const meta = document.getElementById('pcFinanceInvoiceWaitMeta');
 
@@ -1598,7 +1697,9 @@ function updatePCFinanceInvoiceWaitList(metrics) {
 
         const actionButton = invoiceIssued
             ? `<button disabled class="px-3 py-2 rounded-lg bg-green-500/10 text-green-400 border border-green-500/30 text-[10px] font-black cursor-not-allowed">발행 완료</button>`
-            : `<button onclick="issueInvoice('${o.id}')" class="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black shadow-md transition-colors">계산서 발행</button>`;
+            : canEditFinance
+                ? `<button onclick="issueInvoice('${o.id}')" class="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black shadow-md transition-colors">계산서 발행</button>`
+                : `<button disabled class="px-3 py-2 rounded-lg bg-slate-700 text-slate-500 text-[10px] font-black cursor-not-allowed">조회 전용</button>`;
 
         return `
             <tr class="hover:bg-blue-500/5 transition-colors cursor-pointer pc-table-row border-l-[3px] border-transparent" onclick="selectFinanceDetailRow(this, '${o.id}', event)">
@@ -1652,12 +1753,12 @@ async function syncUsers() {
     let fetchedUsers = [];
     try { 
         if(typeof db !== 'undefined') { 
-            const snapshot = await db.collection('users').where('status', '==', 'active').orderBy('sort_index', 'asc').get(); 
+            const snapshot = await db.collection('users').orderBy('sort_index', 'asc').get(); 
             fetchedUsers = snapshot.docs.map(doc => {
                 const d = doc.data(); 
                 if(d.role === 'ccounting') d.role = 'accounting'; 
                 return { id: doc.id, ...d }; 
-            });
+            }).filter(user => (user.status || 'active') === 'active');
 
             if (fetchedUsers.length > 0) {
                 USERS = fetchedUsers;
@@ -1688,6 +1789,11 @@ async function syncUsers() {
         pcGrid.innerHTML = USERS.length
             ? USERS.map(u => `<button class="role-sel-btn" id="pc-rsb-${u.id}" onclick="chooseUser('${u.id}')">${u.name}</button>`).join('')
             : authEmptyMessage;
+    }
+
+    if (currentUser && USERS.length && !USERS.some(u => u.id === currentUser.id && isUserActive(u))) {
+        handleInactiveUser({ ...currentUser, status: 'suspended' });
+        return;
     }
 
     const bypassBtn = document.getElementById('pcAdminBypassBtn');
@@ -1735,6 +1841,12 @@ async function tryLogin() {
         setAuthError('사용자 목록을 먼저 불러와야 합니다.');
         return;
     }
+    if (!isUserActive(user)) {
+        pinBuffer = '';
+        updateDots();
+        setAuthError('사용이 중지된 계정입니다. 관리자에게 문의하세요.');
+        return;
+    }
     const attempts = (user.attempts || 0) + 1; const limit = user.role === 'admin' ? 5 : 3;
     if (pinBuffer === user.pin) {
         if(typeof db !== 'undefined') await db.collection('users').doc(user.id).update({ attempts: 0, lockoutUntil: 0 });
@@ -1753,11 +1865,13 @@ function pcAdminBypassLogin() {
     }
     const user = USERS.find(u => u.role === 'admin') || USERS[0];
     if (!user) return false;
+    if (!isUserActive(user)) return false;
     currentUser = user; sessionStorage.setItem('yongjin_session', JSON.stringify(currentUser)); logAction('LOGIN_SUCCESS', 'SYSTEM', { method: 'DEV_BYPASS' }); processLoginSuccess();
     return true;
 }
 
 function processLoginSuccess() {
+    if (handleInactiveUser(currentUser)) return;
     const mobLogin = document.getElementById('loginMobile'); if (mobLogin) mobLogin.style.display = 'none';
     const pcLogin = document.getElementById('loginPC'); 
     if (pcLogin) { pcLogin.style.display = 'none'; pcLogin.remove(); }
@@ -1773,7 +1887,8 @@ function processLoginSuccess() {
     }
     applyPCRoleAccess();
     initTabs();
-    if (window.innerWidth > 768) switchPCTab(getDefaultPCTab());
+    enforceCurrentHashAccess();
+    if (window.innerWidth > 768 && !getHashTargetTab()) switchPCTab(getDefaultPCTab());
     startOrdersListener(); checkNotiBanner(); startNotiPoller();
 }
 
@@ -1789,6 +1904,9 @@ function applyPCRoleAccess() {
 
     const clearBtn = document.getElementById('clearBtn');
     if (clearBtn) clearBtn.style.display = currentUser?.role === 'admin' ? '' : 'none';
+
+    const adminMonitor = document.getElementById('adminUserMonitor');
+    if (adminMonitor && currentUser?.role !== 'admin') adminMonitor.classList.add('hidden');
 }
 
 async function renderAdminMonitor() {
@@ -1801,17 +1919,18 @@ async function renderAdminMonitor() {
     }
 }
 
-async function forceUnlock(uid) { if(confirm('잠금을 해제하시겠습니까?')) { await db.collection('users').doc(uid).update({ attempts: 0, lockoutUntil: 0 }); await logAction('ADMIN_FORCE_UNLOCK', 'SYSTEM', { target_uid: uid }); alert('잠금 해제 완료'); renderAdminMonitor(); } }
+async function forceUnlock(uid) { if(!requireWrite('admin', '관리자만 처리할 수 있습니다.')) return; if(confirm('잠금을 해제하시겠습니까?')) { await db.collection('users').doc(uid).update({ attempts: 0, lockoutUntil: 0 }); await logAction('ADMIN_FORCE_UNLOCK', 'SYSTEM', { target_uid: uid }); alert('잠금 해제 완료'); renderAdminMonitor(); } }
 
 function initTabs() {
     const tabs = getAllowedMobileTabs(); const wrap = document.getElementById('roleTabsWrap');
     if(wrap) { wrap.style.gridTemplateColumns = `repeat(${tabs.length}, 1fr)`; wrap.innerHTML = tabs.map(t => `<button onclick="switchTab('${t}')" id="role-${t}" class="py-2 text-[10px] font-black bg-slate-100 rounded-lg active:scale-95 transition-all">${TAB_META[t].emoji} ${TAB_META[t].label}</button>`).join(''); }
-    switchTab(getDefaultMobileTab());
+    if (!getHashTargetTab()) switchTab(getDefaultMobileTab());
 }
 
 function switchTab(tabId, pushHistory = true) {
     const allowedTabs = getAllowedMobileTabs();
-    if (!allowedTabs.includes(tabId)) {
+    const area = getAccessAreaForTab(tabId);
+    if (!allowedTabs.includes(tabId) || !canView(area)) {
         tabId = getDefaultMobileTab();
     }
     document.querySelectorAll('#roleTabsWrap button').forEach(b => b.classList.remove('active-role'));
@@ -1826,9 +1945,14 @@ function switchTab(tabId, pushHistory = true) {
 }
 
 window.addEventListener('popstate', function(event) {
-    if (event.state && event.state.tab) { switchTab(event.state.tab, false); } 
+    if (event.state && event.state.tab) {
+        if (window.innerWidth > 768) switchPCTab(event.state.tab, false);
+        else switchTab(event.state.tab, false);
+    } 
     else if (currentUser) { const savedTab = sessionStorage.getItem('active_tab') || 'history'; try { history.pushState({ tab: savedTab }, '', '#' + savedTab); } catch(e){} }
 });
+
+window.addEventListener('hashchange', enforceCurrentHashAccess);
 
   function executeSearch() {
     const input = document.getElementById('globalSearchInput'); 
@@ -1927,6 +2051,8 @@ function startOrdersListener(customQuery = null) {
 }
 
 function renderAccounting() {
+    const canEditFinance = canWrite('finance');
+    const canEditAR = canWrite('ar');
     const list = document.getElementById('accountingList');
     if(list) list.innerHTML = filteredOrders.filter(o => o.status === 'pending').map(o => `
         <div class="bg-white p-5 rounded-3xl border border-blue-200 mb-4 shadow-sm relative overflow-hidden">
@@ -1934,7 +2060,11 @@ function renderAccounting() {
             <div class="flex justify-between mb-1"><p class="font-black text-lg pl-2">${o.client}</p><span class="badge badge-pending whitespace-nowrap min-w-max text-center">승인대기</span></div>
             <p class="text-[10px] text-red-500 font-bold mb-2 pl-2">납기 요청: ${o.dueDate}</p>
             <div class="text-xs text-slate-500 pl-2">자재: ${o.material} | 금액: ₩${((o.price||0)*(o.qty||0)).toLocaleString()}</div>
-            <div class="flex gap-2 mt-4 ml-2"><button onclick="rejectOrder('${o.id}')" class="flex-1 py-3 bg-red-50 text-red-600 rounded-xl font-bold border border-red-100">거절</button><button onclick="updateStatus('${o.id}', 'approved')" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-100">수주 승인</button></div>
+            <div class="flex gap-2 mt-4 ml-2">${
+                canEditFinance
+                    ? `<button onclick="rejectOrder('${o.id}')" class="flex-1 py-3 bg-red-50 text-red-600 rounded-xl font-bold border border-red-100">거절</button><button onclick="updateStatus('${o.id}', 'approved')" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-100">수주 승인</button>`
+                    : `<button disabled class="flex-1 py-3 bg-slate-100 text-slate-400 rounded-xl font-bold border border-slate-200 cursor-not-allowed">조회 전용</button>`
+            }</div>
         </div>`).join('') || '<p class="text-center py-20 text-slate-400">대기 중인 수주가 없습니다.</p>';
 
     const factoryList = document.getElementById('accountingFactoryList');
@@ -1989,17 +2119,22 @@ if(compList) compList.innerHTML = accountingItems.map(o => {
             ${
                 invoiceIssued
                     ? `<button disabled class="py-3 bg-green-100 text-green-700 rounded-xl font-bold text-xs border border-green-200">🧾 발행 완료</button>`
-                    : `<button onclick="issueInvoice('${o.id}')" class="py-3 bg-slate-800 text-white rounded-xl font-bold text-xs shadow-md active:scale-95 transition-all">🧾 계산서 발행</button>`
+                    : canEditFinance
+                        ? `<button onclick="issueInvoice('${o.id}')" class="py-3 bg-slate-800 text-white rounded-xl font-bold text-xs shadow-md active:scale-95 transition-all">🧾 계산서 발행</button>`
+                        : `<button disabled class="py-3 bg-slate-100 text-slate-400 rounded-xl font-bold text-xs border border-slate-200 cursor-not-allowed">조회 전용</button>`
             }
-            <button onclick="confirmPayment('${o.id}')" class="py-3 bg-amber-500 text-white rounded-xl font-bold text-xs shadow-md active:scale-95 transition-all">
-                💵 입금 처리
-            </button>
+            ${
+                canEditAR
+                    ? `<button onclick="confirmPayment('${o.id}')" class="py-3 bg-amber-500 text-white rounded-xl font-bold text-xs shadow-md active:scale-95 transition-all">💵 입금 처리</button>`
+                    : `<button disabled class="py-3 bg-slate-100 text-slate-400 rounded-xl font-bold text-xs border border-slate-200 cursor-not-allowed">조회 전용</button>`
+            }
         </div>
     </div>`;
 }).join('') || '<p class="text-center text-slate-400 py-10 text-xs font-bold font-black">수금 대기 항목이 없습니다. ✨</p>'; 
 }
     
 function renderFactory() {
+    const canEditProduction = canWrite('production');
     const list = document.getElementById('productionList');
     const productionItems = filteredOrders.filter(o =>
         o.status === 'approved' ||
@@ -2016,12 +2151,13 @@ function renderFactory() {
             <p class="text-[13px] text-slate-800 mb-1 font-black">${productName}</p>
             <p class="text-[11px] text-slate-500 mb-3 font-bold flex justify-between items-center"><span>${o.material} / 총 ${o.qty}장 (완료: ${o.completedQty || 0}장)</span><span class="${isPackingWait ? 'text-green-600' : 'text-red-500'} text-xs">남은 수량: ${remainQty}장</span></p>
             <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden mb-4 border"><div class="${isPackingWait ? 'bg-green-500' : 'bg-orange-500'} h-full rounded-full transition-all" style="width:${pct}%"></div></div>
-            ${isPackingWait ? '<p class="text-[11px] text-green-700 font-black bg-green-50 border border-green-100 rounded-xl p-3">생산 완료 후 입금/포장 대기 중인 항목입니다.</p>' : `<div class="flex gap-2"><input type="text" id="in-${o.id}" class="flex-1 p-3 bg-slate-50 rounded-xl border font-bold" placeholder="생산 수량"><button onclick="addProgress('${o.id}')" class="px-6 py-3 bg-orange-600 text-white rounded-xl font-bold shadow-md shadow-orange-200">보고</button></div>`}
+            ${isPackingWait ? '<p class="text-[11px] text-green-700 font-black bg-green-50 border border-green-100 rounded-xl p-3">생산 완료 후 입금/포장 대기 중인 항목입니다.</p>' : canEditProduction ? `<div class="flex gap-2"><input type="text" id="in-${o.id}" class="flex-1 p-3 bg-slate-50 rounded-xl border font-bold" placeholder="생산 수량"><button onclick="addProgress('${o.id}')" class="px-6 py-3 bg-orange-600 text-white rounded-xl font-bold shadow-md shadow-orange-200">보고</button></div>` : `<div class="flex gap-2"><input type="text" disabled class="flex-1 p-3 bg-slate-100 rounded-xl border font-bold text-slate-400" placeholder="조회 전용"><button disabled class="px-6 py-3 bg-slate-200 text-slate-400 rounded-xl font-bold cursor-not-allowed">조회</button></div>`}
         </div>`;
     }).join('') || '<p class="text-center py-20 text-slate-400 font-bold">진행 중인 공정 없음</p>';
 }
 
 async function addProgress(id, inputId = null) { 
+    if (!requireWrite('production', '생산 수정 권한이 없습니다.')) return;
     const o = orders.find(x => x.id === id);
     const inputEl = document.getElementById(inputId || 'in-' + id);
 
@@ -2076,6 +2212,7 @@ async function addProgress(id, inputId = null) {
 }
     
 function renderReceivables() {
+    const canEditAR = canWrite('ar');
     const debtItems = filteredOrders.filter(o => o.paymentStatus !== 'paid' && (o.status === 'completed' || o.status === 'approved'));
     const totalDebt = debtItems.reduce((acc, o) => { const total = (o.price || 0) * (o.qty || 0); const paid = o.paidAmount || 0; return acc + (total - paid); }, 0);
     const bannerWrap = document.getElementById('receivableBannerWrap');
@@ -2100,7 +2237,11 @@ function renderReceivables() {
                 <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden mb-2"><div class="bg-blue-500 h-full transition-all" style="width: ${pct}%"></div></div>
                 <div class="flex justify-between items-center border-t border-slate-100 pt-2"><span class="text-red-500 font-bold text-sm">잔금 (미수금)</span><span class="text-lg font-black text-red-600">₩${remaining.toLocaleString()}</span></div>
             </div>
-            <button onclick="confirmPayment('${o.id}')" class="w-full mt-3 py-4 bg-amber-500 text-white rounded-2xl font-black shadow-lg active:scale-95 transition-transform">💵 입금액 추가 등록 및 결제</button>
+            ${
+                canEditAR
+                    ? `<button onclick="confirmPayment('${o.id}')" class="w-full mt-3 py-4 bg-amber-500 text-white rounded-2xl font-black shadow-lg active:scale-95 transition-transform">💵 입금액 추가 등록 및 결제</button>`
+                    : `<button disabled class="w-full mt-3 py-4 bg-slate-200 text-slate-400 rounded-2xl font-black cursor-not-allowed">조회 전용</button>`
+            }
         </div>`;
     }).join('') || '<p class="text-center py-20 text-slate-400 font-bold">남은 미수금이 없습니다. 🎉</p>';
 }
@@ -2115,18 +2256,24 @@ function renderHistory() {
 }
 
 async function updateStatus(id, s) { 
+    const requiredArea = s === 'completed' ? 'production' : 'finance';
+    if (!requireWrite(requiredArea, '상태 변경 권한이 없습니다.')) return;
     const o = orders.find(x => x.id === id); const validTransitions = { 'pending': ['approved', 'rejected'], 'approved': ['completed', 'rejected'], 'completed': [], 'rejected': [] };
     if (!validTransitions[o.status] || !validTransitions[o.status].includes(s)) { return alert(`❌ 상태 전이 오류: 이미 완료되거나 거절된 주문입니다. (${o.status} → ${s})`); }
     if(confirm('상태를 변경하시겠습니까?')) { if(typeof db !== 'undefined') await db.collection('orders').doc(id).update({ status: s }); await logAction('ORDER_STATUS_CHANGED', id, { old_status: o.status, new_status: s }); } 
 }
 
 async function rejectOrder(id) {
+    const o = orders.find(x => x.id === id);
+    const requiredArea = o?.status === 'approved' ? 'production' : 'finance';
+    if (!requireWrite(requiredArea, '거절 처리 권한이 없습니다.')) return;
     const reason = prompt('거절 사유를 입력하세요:'); if (!reason) return;
-    const o = orders.find(x => x.id === id); if (o.status !== 'pending' && o.status !== 'approved') { return alert('❌ 거절할 수 없는 상태입니다.'); }
+    if (o.status !== 'pending' && o.status !== 'approved') { return alert('❌ 거절할 수 없는 상태입니다.'); }
     if(typeof db !== 'undefined') await db.collection('orders').doc(id).update({ status: 'rejected', rejectReason: reason }); await logAction('ORDER_REJECTED', id, { reason: reason });
 }
 
     async function issueInvoice(id) {
+    if (!requireWrite('finance', 'Finance 수정 권한이 없습니다.')) return;
     const o = orders.find(x => x.id === id);
     if (!o) return alert('주문 데이터를 찾을 수 없습니다.');
 
@@ -2184,6 +2331,7 @@ executeSearch();
 }  
     
 async function confirmPayment(id) {
+    if (!requireWrite('ar', 'AR 수정 권한이 없습니다.')) return;
     const o = orders.find(x => x.id === id); if (!o) return;
     const inputStr = prompt('입금된 금액을 입력하세요:\n(숫자만 입력)'); if (!inputStr) return; 
     const amount = parseInt(inputStr.replace(/[^0-9]/g, '')); if (isNaN(amount) || amount <= 0) return alert('올바른 금액을 입력하세요.');
@@ -2243,7 +2391,7 @@ function selectWood(name, imgUrl, color) {
 function exportExcel() { const rows = filteredOrders.map(o => [o.client, getOrderProductName(o), o.material, o.qty, o.price, ((o.price||0) * (o.qty||0)), o.status, o.dueDate, o.payDate]); const ws = XLSX.utils.aoa_to_sheet([['업체명', '상품명', '목재', '수량', '단가', '합계', '상태', '납기', '입금기한'], ...rows]); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "YONGJIN"); XLSX.writeFile(wb, `용진기업_현황_${new Date().toLocaleDateString()}.xlsx`); }
 function exportReceivablesCSV() { const unpaid = filteredOrders.filter(o => o.status === 'completed' && o.paymentStatus === 'unpaid'); if (!unpaid.length) return alert('미수금 데이터가 없습니다.'); const wb = XLSX.utils.book_new(); const header = [['업체명', '상품명', '목재', '가로(mm)', '세로(mm)', '두께', '수량', '단가', '합계금액', '출고일', '입금예정일']]; const rows = unpaid.map(o => [ o.client, getOrderProductName(o), o.material, Number(o.width)||0, Number(o.height)||0, o.thickness||'-', o.qty, o.price, (o.price||0) * (o.qty||0), o.dueDate||'-', o.payDate||'-' ]); const total = unpaid.reduce((s,o) => s + ((o.price||0) * (o.qty||0)), 0); rows.push(['', '', '', '', '', '', '', '합계', total, '', '']); const ws = XLSX.utils.aoa_to_sheet([...header, ...rows]); ws['!cols'] = [{wch:18},{wch:24},{wch:22},{wch:10},{wch:10},{wch:8},{wch:8},{wch:12},{wch:14},{wch:12},{wch:12}]; XLSX.utils.book_append_sheet(wb, ws, '미수금현황'); XLSX.writeFile(wb, `용진기업_미수금_${new Date().toISOString().slice(0,7).replace('-','년') + '월'}.xlsx`); }
 
-async function clearAllData() { if (currentUser.role !== 'admin') return alert('관리자만 초기화할 수 있습니다.'); if (!confirm('⚠️ 모든 데이터를 초기화합니까?\n되돌릴 수 없습니다.')) return; if (prompt('확인을 위해 "초기화" 를 입력하세요:') !== '초기화') return alert('취소됐습니다.'); for (const o of orders) { if(typeof db !== 'undefined') await db.collection('orders').doc(o.id).delete(); } orders = []; filteredOrders = []; renderHistory(); alert('초기화 완료'); }
+async function clearAllData() { if (!requireWrite('reset', '관리자만 초기화할 수 있습니다.')) return; if (!confirm('⚠️ 모든 데이터를 초기화합니까?\n되돌릴 수 없습니다.')) return; if (prompt('확인을 위해 "초기화" 를 입력하세요:') !== '초기화') return alert('취소됐습니다.'); for (const o of orders) { if(typeof db !== 'undefined') await db.collection('orders').doc(o.id).delete(); } orders = []; filteredOrders = []; renderHistory(); alert('초기화 완료'); }
 
 function showToast(type, icon, title, msg) { const id = 'toast-' + Date.now(); const el = document.createElement('div'); el.className = `toast ${type}`; el.id = id; el.innerHTML = `<div class="toast-icon">${icon}</div><div class="toast-body"><div class="toast-title">${title}</div><div class="toast-msg">${msg}</div></div><button class="toast-close" onclick="dismissToast('${id}')">✕</button>`; document.getElementById('toastWrap').appendChild(el); setTimeout(() => dismissToast(id), 5000); }
 function dismissToast(id) { const el = document.getElementById(id); if(el) { el.classList.add('out'); setTimeout(() => el.remove(), 300); } }
@@ -2599,9 +2747,10 @@ function renderPCTable() {
 }
 
 // --- [PC 탭 전환 로직] ---
-function switchPCTab(tabId) {
+function switchPCTab(tabId, pushHistory = true) {
     const allowedTabs = getAllowedPCTabs();
-    if (!allowedTabs.includes(tabId)) {
+    const area = getAccessAreaForTab(tabId);
+    if (!allowedTabs.includes(tabId) || !canView(area)) {
         tabId = getDefaultPCTab();
     }
 
@@ -2638,9 +2787,15 @@ function switchPCTab(tabId) {
     if (['dashboard', 'factory', 'accounting', 'receivables'].includes(tabId)) {
     setTimeout(executeSearch, 100);
     }
+
+    sessionStorage.setItem('active_tab', tabId);
+    if (pushHistory) {
+        try { history.pushState({ tab: tabId }, '', '#' + tabId); } catch(e) { }
+    }
 }
     
 async function handleReport() {
+    if (!requireWrite('sales', 'Sales 수정 권한이 없습니다.')) return;
     if (isSubmitting) return;
 
     const client = document.getElementById('clientName')?.value.trim() || '';
@@ -2800,6 +2955,7 @@ async function handleReport() {
 }
 
 async function handleReportPC() {
+    if (!requireWrite('sales', 'Sales 수정 권한이 없습니다.')) return;
     if (isSubmitting) return;
 
     const client = document.getElementById('pc-clientName')?.value.trim() || '';
@@ -3058,6 +3214,7 @@ function selectRow(element, orderId) {
     if (outstandingEl) outstandingEl.textContent = '₩ ' + getOutstandingAmount(o).toLocaleString();
 
     const invoiceIssued = isInvoiceIssued(o);
+    const canEditFinance = canWrite('finance');
     const invoiceStatusEl = document.getElementById('detailInvoiceStatus');
     const invoiceActionEl = document.getElementById('detailInvoiceAction');
 
@@ -3075,10 +3232,16 @@ function selectRow(element, orderId) {
                     🧾 계산서 발행 완료
                 </button>
             `;
-        } else if (o.status === 'completed') {
+        } else if (o.status === 'completed' && canEditFinance) {
             invoiceActionEl.innerHTML = `
                 <button onclick="issueInvoice('${o.id}')" class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black shadow-lg transition-colors">
                     🧾 계산서 발행 처리
+                </button>
+            `;
+        } else if (o.status === 'completed') {
+            invoiceActionEl.innerHTML = `
+                <button disabled class="w-full py-3 rounded-xl bg-slate-800 text-slate-500 border border-[#334155] text-xs font-black cursor-not-allowed">
+                    조회 전용
                 </button>
             `;
         } else {
@@ -3121,7 +3284,8 @@ window.addEventListener('load', () => {
 
             if (savedTab) {
                 setTimeout(() => {
-                    switchTab(savedTab, false);
+                    if (window.innerWidth > 768) switchPCTab(savedTab, false);
+                    else switchTab(savedTab, false);
                 }, 150);
             }
         } catch (e) {
