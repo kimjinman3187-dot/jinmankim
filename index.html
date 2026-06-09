@@ -2057,14 +2057,14 @@ function startOrdersListener(customQuery = null) {
     else {
         const baseRef = db.collection('orders');
         if (currentUser.role === 'sales') {
-            query = baseRef.where('reportedBy', '==', currentUser.name).limit(100);
+            query = baseRef.where('reportedBy', '==', currentUser.name).orderBy('createdAt', 'desc').limit(100);
         } else if (currentUser.role === 'factory') {
-            query = baseRef.where('status', 'in', ['approved', 'completed']).limit(150);
+            query = baseRef.where('status', 'in', ['approved', 'completed']).orderBy('createdAt', 'desc').limit(150);
         } else {
             query = baseRef.orderBy('createdAt', 'desc').limit(300);
         }
     }
-    ordersListenerUnsubscribe = query.onSnapshot(snap => { orders = sortOrdersByCreatedAtDesc(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))); executeSearch(); }, error => { console.error("Orders Listener Error:", error); });
+    ordersListenerUnsubscribe = query.onSnapshot(snap => { orders = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); executeSearch(); }, error => { console.error("Orders Listener Error:", error); });
 }
 
 function renderAccounting() {
