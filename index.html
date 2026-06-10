@@ -154,8 +154,8 @@
                     <div class="kp-btn invisible"></div><button class="kp-btn" onclick="kp('0')">0</button><button class="kp-btn del" onclick="kpDel()">삭제</button>
                 </div>
                 <div id="pcPinErr" class="text-center text-[10px] text-red-300 mt-3 min-h-[15px] font-bold"></div>
-                <button type="button" onclick="testGoogleLoginForUid()" class="w-full mt-5 h-12 rounded-2xl border border-white/20 bg-white/10 text-white text-xs font-black hover:bg-white/15 transition-colors">
-                    Google로 테스트 로그인
+                <button type="button" onclick="loginWithGoogle()" class="w-full mt-5 h-12 rounded-2xl border border-white/20 bg-white/10 text-white text-xs font-black hover:bg-white/15 transition-colors">
+                    Google로 로그인
                 </button>
                 <div id="pcGoogleLoginTestResult" class="mt-3 text-[10px] leading-5 text-slate-300 break-all min-h-[20px]"></div>
             </div>
@@ -894,6 +894,9 @@ const AUTH_DEV_MODE = (() => {
     
 let chosenUserId = null; 
 let pinBuffer = ''; 
+let googleAuthRestoreStarted = false;
+let googleLoginProcessing = false;
+let anonymousPinBootstrapStarted = false;
 let selectedWoodStr = '목재를 선택하세요';
 let notiPoller = null;
 let ordersListenerUnsubscribe = null; 
@@ -1734,24 +1737,71 @@ window.onload = async function() {
     
     if (window.FirebaseShared) { 
         FirebaseShared.initializeFirebase(); 
-        FirebaseShared.signInAnonymously().then(() => { 
-            let attempt = 0;
-            const waitForFirebase = setInterval(() => {
-                if (typeof db !== 'undefined') {
-                    clearInterval(waitForFirebase);
-                    syncUsers(); 
-                } else if (attempt++ > 30) {
-                    clearInterval(waitForFirebase);
-                    console.warn('⚠️ Firebase DB 초기화 타임아웃 — 로컬 모드로 강제 전환');
-                    syncUsers();
-                }
-            }, 100);
-        }); 
+        if (!startGoogleAuthStateRestore()) startAnonymousPinBootstrap();
     } else { 
         console.warn('⚠️ window.FirebaseShared 객체 없음 — js/firebase-shared.js 로드 실패');
         syncUsers(); 
     }
 };
+
+function waitForFirebaseAndSyncUsers() {
+    let attempt = 0;
+    const waitForFirebase = setInterval(() => {
+        if (typeof db !== 'undefined') {
+            clearInterval(waitForFirebase);
+            syncUsers();
+        } else if (attempt++ > 30) {
+            clearInterval(waitForFirebase);
+            console.warn('⚠️ Firebase DB 초기화 타임아웃 — 로컬 모드로 강제 전환');
+            syncUsers();
+        }
+    }, 100);
+}
+
+function startAnonymousPinBootstrap() {
+    if (anonymousPinBootstrapStarted) return;
+    anonymousPinBootstrapStarted = true;
+    if (window.FirebaseShared?.signInAnonymously) {
+        FirebaseShared.signInAnonymously().then(waitForFirebaseAndSyncUsers);
+    } else {
+        waitForFirebaseAndSyncUsers();
+    }
+}
+
+function isGoogleAuthUser(authUser) {
+    return Boolean(authUser && !authUser.isAnonymous && (authUser.providerData || []).some(p => p?.providerId === 'google.com'));
+}
+
+function renderGoogleLoginResult(lines) {
+    const resultEl = document.getElementById('pcGoogleLoginTestResult');
+    if (resultEl) resultEl.innerHTML = lines.filter(Boolean).join('<br>');
+}
+
+function startGoogleAuthStateRestore() {
+    const authInstance = window.auth || window.FirebaseShared?.getAuth?.();
+    if (!authInstance?.onAuthStateChanged || googleAuthRestoreStarted) return false;
+    googleAuthRestoreStarted = true;
+    authInstance.onAuthStateChanged(async authUser => {
+        if (currentUser || googleLoginProcessing) return;
+        if (isGoogleAuthUser(authUser)) {
+            try {
+                await loadCurrentUserFromAuthUser(authUser);
+                processLoginSuccess();
+            } catch (error) {
+                console.error('WORK22-6N-K3 Google auth restore failed:', {
+                    code: error?.code,
+                    message: error?.message
+                });
+                currentUser = null;
+                try { await authInstance.signOut(); } catch (signOutError) { console.warn('Google signOut after restore failure failed:', signOutError); }
+                startAnonymousPinBootstrap();
+            }
+            return;
+        }
+        startAnonymousPinBootstrap();
+    });
+    return true;
+}
     
 async function syncUsers() {
     let fetchedUsers = [];
@@ -1874,6 +1924,73 @@ function pcAdminBypassLogin() {
     return true;
 }
 
+async function loadCurrentUserFromAuthUser(authUser) {
+    if (!authUser?.uid) throw new Error('Google Auth user is missing uid.');
+    if (!window.db?.collection) throw new Error('Firestore SDK is not initialized.');
+
+    const uid = authUser.uid;
+    const userDoc = await db.collection('users').doc(uid).get();
+    if (!userDoc.exists) throw new Error('users/{uid} 문서 없음');
+
+    const userData = userDoc.data() || {};
+    const status = userData.status || 'active';
+    const role = userData.role;
+    if (status !== 'active') throw new Error('사용 중지된 계정입니다.');
+    if (!role || !ACCESS_MATRIX[role]) throw new Error('권한 설정 오류입니다.');
+    if (userData.auth_uid && userData.auth_uid !== uid) throw new Error('auth_uid가 Firebase UID와 일치하지 않습니다.');
+
+    currentUser = {
+        id: uid,
+        auth_uid: uid,
+        legacyUserId: userData.legacyUserId || '',
+        name: userData.name || authUser.displayName || authUser.email || 'Google User',
+        role,
+        status,
+        email: authUser.email || userData.email || '',
+        provider: 'google'
+    };
+
+    return currentUser;
+}
+
+async function loginWithGoogle() {
+    const authInstance = window.auth || window.FirebaseShared?.getAuth?.();
+    try {
+        if (!window.firebase?.auth) throw new Error('Firebase Auth SDK is not loaded.');
+        if (!authInstance) throw new Error('Firebase Auth is not initialized.');
+        googleLoginProcessing = true;
+
+        const provider = new firebase.auth.GoogleAuthProvider();
+        const result = await authInstance.signInWithPopup(provider);
+        await loadCurrentUserFromAuthUser(result.user);
+
+        renderGoogleLoginResult([
+            `uid: ${currentUser.auth_uid}`,
+            `email: ${currentUser.email}`,
+            'users/{uid} exists: true',
+            `legacyUserId: ${currentUser.legacyUserId || '-'}`,
+            `name: ${currentUser.name}`,
+            `role: ${currentUser.role}`,
+            `status: ${currentUser.status}`,
+            `auth_uid: ${currentUser.auth_uid}`
+        ]);
+        processLoginSuccess();
+        return currentUser;
+    } catch (error) {
+        console.error('WORK22-6N-K3 Google operational login failed:', {
+            code: error?.code,
+            message: error?.message
+        });
+        currentUser = null;
+        renderGoogleLoginResult([`Google 로그인 실패: ${error?.message || '콘솔 확인'}`]);
+        alert('Google 로그인 실패: 콘솔 확인');
+        try { if (authInstance?.currentUser && !authInstance.currentUser.isAnonymous) await authInstance.signOut(); } catch (signOutError) { console.warn('Google signOut after login failure failed:', signOutError); }
+        return null;
+    } finally {
+        googleLoginProcessing = false;
+    }
+}
+
 async function testGoogleLoginForUid() {
     const resultEl = document.getElementById('pcGoogleLoginTestResult');
     try {
@@ -1881,6 +1998,7 @@ async function testGoogleLoginForUid() {
         const authInstance = window.auth || window.FirebaseShared?.getAuth?.();
         if (!authInstance) throw new Error('Firebase Auth is not initialized.');
         if (!window.db?.collection) throw new Error('Firestore SDK is not initialized.');
+        googleLoginProcessing = true;
 
         const provider = new firebase.auth.GoogleAuthProvider();
         const result = await authInstance.signInWithPopup(provider);
@@ -1926,6 +2044,8 @@ async function testGoogleLoginForUid() {
         if (resultEl) resultEl.textContent = 'users/{uid} read 실패: 콘솔 확인';
         alert('Google 로그인 또는 users/{uid} read 실패: 콘솔 확인');
         return null;
+    } finally {
+        googleLoginProcessing = false;
     }
 }
 
@@ -2478,7 +2598,7 @@ function startNotiPoller() {
     });
 }
 
-function logout() { if(confirm('로그아웃 하시겠습니까?')) { sessionStorage.removeItem('yongjin_session'); if (notiPoller) { notiPoller(); notiPoller = null; } if (ordersListenerUnsubscribe) { ordersListenerUnsubscribe(); ordersListenerUnsubscribe = null; } location.reload(); } }
+async function logout() { if(confirm('로그아웃 하시겠습니까?')) { try { if (window.auth?.currentUser && !window.auth.currentUser.isAnonymous) await window.auth.signOut(); } catch(e) { console.warn('Google signOut failed:', e); } sessionStorage.removeItem('yongjin_session'); if (notiPoller) { notiPoller(); notiPoller = null; } if (ordersListenerUnsubscribe) { ordersListenerUnsubscribe(); ordersListenerUnsubscribe = null; } location.reload(); } }
 
 // --- [차트 전역 변수 및 초기화] ---
 let productionBarChartInstance = null;
@@ -3323,6 +3443,8 @@ window.addEventListener('load', () => {
             setTimeout(processLoadEvent, 500);
             return;
         }
+
+        if (currentUser?.provider === 'google' || isGoogleAuthUser(window.auth?.currentUser)) return;
 
         const savedSession = sessionStorage.getItem('yongjin_session');
         const savedTab = sessionStorage.getItem('active_tab');
