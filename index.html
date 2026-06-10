@@ -1880,25 +1880,51 @@ async function testGoogleLoginForUid() {
         if (!window.firebase?.auth) throw new Error('Firebase Auth SDK is not loaded.');
         const authInstance = window.auth || window.FirebaseShared?.getAuth?.();
         if (!authInstance) throw new Error('Firebase Auth is not initialized.');
+        if (!window.db?.collection) throw new Error('Firestore SDK is not initialized.');
 
         const provider = new firebase.auth.GoogleAuthProvider();
         const result = await authInstance.signInWithPopup(provider);
         const user = result.user;
         const email = user?.email || '-';
         const uid = user?.uid || '-';
+        const userDoc = await db.collection('users').doc(uid).get();
+        const userData = userDoc.exists ? userDoc.data() : null;
+        const readResult = {
+            uid,
+            email,
+            exists: userDoc.exists,
+            legacyUserId: userData?.legacyUserId || '-',
+            name: userData?.name || '-',
+            role: userData?.role || '-',
+            status: userData?.status || '-',
+            auth_uid: userData?.auth_uid || '-'
+        };
 
-        console.log('WORK22-6N-IB Google Login UID test:', { email, uid });
-        if (resultEl) resultEl.innerHTML = `email: ${email}<br>uid: ${uid}`;
-        alert(`Google 로그인 성공\nemail: ${email}\nuid: ${uid}`);
+        console.log('WORK22-6N-K0 Google Login users/{uid} read test:', readResult);
+        if (resultEl) {
+            resultEl.innerHTML = [
+                `uid: ${uid}`,
+                `email: ${email}`,
+                `users/{uid} exists: ${userDoc.exists}`,
+                `legacyUserId: ${readResult.legacyUserId}`,
+                `name: ${readResult.name}`,
+                `role: ${readResult.role}`,
+                `status: ${readResult.status}`,
+                `auth_uid: ${readResult.auth_uid}`
+            ].join('<br>');
+        }
+        alert(userDoc.exists
+            ? `Google 로그인 및 users/{uid} read 성공\nemail: ${email}\nuid: ${uid}\nrole: ${readResult.role}\nstatus: ${readResult.status}`
+            : `Google 로그인 성공\nuid: ${uid}\nusers/{uid} 문서 없음`);
 
-        return { email, uid };
+        return readResult;
     } catch (error) {
-        console.error('WORK22-6N-IB Google Login failed:', {
+        console.error('WORK22-6N-K0 Google Login users/{uid} read failed:', {
             code: error?.code,
             message: error?.message
         });
-        if (resultEl) resultEl.textContent = 'Google 로그인 실패: 콘솔 확인';
-        alert('Google 로그인 실패: 콘솔 확인');
+        if (resultEl) resultEl.textContent = 'users/{uid} read 실패: 콘솔 확인';
+        alert('Google 로그인 또는 users/{uid} read 실패: 콘솔 확인');
         return null;
     }
 }
