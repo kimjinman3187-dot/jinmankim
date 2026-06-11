@@ -308,10 +308,13 @@ console.log('📦 firebase-shared.js 로드 완료');
         }
     }
     window.addEventListener('yj:auth-ready', () => window.yjStartFinanceListenersWhenReady?.(startPendingOrdersListener));
+    let attempts = 0;
+    const maxAttempts = 120;
     const timer = setInterval(() => {
+        attempts += 1;
         injectFinanceApprovalSection();
         startPendingOrdersListener();
-        if (document.getElementById('pcFinanceApprovalWaitBody') && window.yjCanStartFinanceListeners?.()) {
+        if (document.getElementById('pcFinanceApprovalWaitBody') || attempts >= maxAttempts) {
             console.log('✅ 작업22-3E PC Finance 신규 승인 대기 리스트 패치 완료');
             clearInterval(timer);
         }
@@ -398,12 +401,15 @@ console.log('📦 firebase-shared.js 로드 완료');
         }
     }
     window.addEventListener('yj:auth-ready', () => window.yjStartFinanceListenersWhenReady?.(startCollectionOrdersListener));
+    let attempts = 0;
+    const maxAttempts = 120;
     const timer = setInterval(() => {
+        attempts += 1;
         injectCollectionSection();
         window.yjPatchFooterVersion();
         startCollectionOrdersListener();
         renderCollectionWaitList();
-        if (document.getElementById('pcFinanceCollectionWaitBody') && window.yjCanStartFinanceListeners?.()) {
+        if (document.getElementById('pcFinanceCollectionWaitBody') || attempts >= maxAttempts) {
             console.log('✅ 작업22-3F PC Finance 수금 대기 리스트 패치 완료');
             clearInterval(timer);
         }
@@ -471,12 +477,15 @@ console.log('📦 firebase-shared.js 로드 완료');
         }
     }
     window.addEventListener('yj:auth-ready', () => window.yjStartFinanceListenersWhenReady?.(startCompletedOrdersListener));
+    let attempts = 0;
+    const maxAttempts = 120;
     const timer = setInterval(() => {
+        attempts += 1;
         injectCompletedSection();
         window.yjPatchFooterVersion();
         startCompletedOrdersListener();
         renderCompletedList();
-        if (document.getElementById('pcFinanceCompletedBody') && window.yjCanStartFinanceListeners?.()) {
+        if (document.getElementById('pcFinanceCompletedBody') || attempts >= maxAttempts) {
             console.log('✅ 작업22-3G PC Finance 완료 거래 리스트 패치 완료');
             clearInterval(timer);
         }
