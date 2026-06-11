@@ -2051,6 +2051,18 @@ async function testGoogleLoginForUid() {
 
 function processLoginSuccess() {
     if (handleInactiveUser(currentUser)) return;
+    try {
+        window.currentUser = currentUser;
+        window.dispatchEvent(new CustomEvent('yj:auth-ready', {
+            detail: {
+                role: currentUser?.role || '',
+                status: currentUser?.status || '',
+                provider: currentUser?.provider || 'pin'
+            }
+        }));
+    } catch (error) {
+        console.warn('Auth ready event dispatch failed:', error);
+    }
     const mobLogin = document.getElementById('loginMobile'); if (mobLogin) mobLogin.style.display = 'none';
     const pcLogin = document.getElementById('loginPC'); 
     if (pcLogin) { pcLogin.style.display = 'none'; pcLogin.remove(); }

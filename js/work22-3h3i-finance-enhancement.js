@@ -435,16 +435,22 @@
         }
 
         function startFinanceSummaryListener() {
-            if (financeSummaryUnsubscribe || !window.db) return;
+            if (financeSummaryUnsubscribe || !window.yjCanStartFinanceListeners?.()) return;
             try {
                 financeSummaryUnsubscribe = window.db.collection('orders').limit(300).onSnapshot(snapshot => {
                     financeSummaryOrdersCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     refreshFinancePeriodView();
-                }, error => console.error('작업22-3J Finance 기간 필터 요약 카드 로드 실패:', error));
+                }, error => {
+                    console.error('작업22-3J Finance 기간 필터 요약 카드 로드 실패:', error);
+                    financeSummaryUnsubscribe = null;
+                });
             } catch (error) {
                 console.error('작업22-3J Finance 기간 필터 요약 리스너 시작 실패:', error);
+                financeSummaryUnsubscribe = null;
             }
         }
+
+        window.addEventListener('yj:auth-ready', () => window.yjStartFinanceListenersWhenReady?.(startFinanceSummaryListener));
 
         document.addEventListener('change', event => {
             if (event.target && event.target.id === 'globalDateFilter') refreshFinancePeriodView();
