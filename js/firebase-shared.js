@@ -74,6 +74,27 @@ console.log('📦 firebase-shared.js 로드 완료');
     if (window.__YJ_FINANCE_PATCH_UTILS__) return;
     window.__YJ_FINANCE_PATCH_UTILS__ = true;
 
+    window.yjGetCurrentUser = function yjGetCurrentUser() {
+        try {
+            if (typeof currentUser !== 'undefined' && currentUser) return currentUser;
+        } catch (e) { }
+        return window.currentUser || null;
+    };
+
+    window.yjCanStartFinanceListeners = function yjCanStartFinanceListeners() {
+        const user = window.yjGetCurrentUser();
+        return Boolean(
+            window.db &&
+            user &&
+            user.status === 'active' &&
+            ['admin', 'accounting'].includes(user.role)
+        );
+    };
+
+    window.yjStartFinanceListenersWhenReady = function yjStartFinanceListenersWhenReady(startFn) {
+        if (typeof startFn === 'function' && window.yjCanStartFinanceListeners()) startFn();
+    };
+
     window.yjGetAmount = function yjGetAmount(order = {}) {
         if (typeof window.getOrderAmount === 'function') return window.getOrderAmount(order);
         return (Number(order.price) || 0) * (Number(order.qty) || 0);
@@ -272,20 +293,25 @@ console.log('📦 firebase-shared.js 로드 완료');
     }
 
     function startPendingOrdersListener() {
-        if (pendingOrdersUnsubscribe || !window.db) return;
+        if (pendingOrdersUnsubscribe || !window.yjCanStartFinanceListeners?.()) return;
         try {
             pendingOrdersUnsubscribe = window.db.collection('orders').where('status', '==', 'pending').orderBy('createdAt', 'desc').limit(100).onSnapshot(snapshot => {
                 pendingOrdersCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderFinanceApprovalWaitList();
-            }, error => console.error('작업22-3E 신규 승인 대기 리스트 로드 실패:', error));
+            }, error => {
+                console.error('작업22-3E 신규 승인 대기 리스트 로드 실패:', error);
+                pendingOrdersUnsubscribe = null;
+            });
         } catch (error) {
             console.error('작업22-3E 신규 승인 대기 리스너 시작 실패:', error);
+            pendingOrdersUnsubscribe = null;
         }
     }
+    window.addEventListener('yj:auth-ready', () => window.yjStartFinanceListenersWhenReady?.(startPendingOrdersListener));
     const timer = setInterval(() => {
         injectFinanceApprovalSection();
         startPendingOrdersListener();
-        if (document.getElementById('pcFinanceApprovalWaitBody') && window.db) {
+        if (document.getElementById('pcFinanceApprovalWaitBody') && window.yjCanStartFinanceListeners?.()) {
             console.log('✅ 작업22-3E PC Finance 신규 승인 대기 리스트 패치 완료');
             clearInterval(timer);
         }
@@ -357,22 +383,27 @@ console.log('📦 firebase-shared.js 로드 완료');
     }
 
     function startCollectionOrdersListener() {
-        if (collectionOrdersUnsubscribe || !window.db) return;
+        if (collectionOrdersUnsubscribe || !window.yjCanStartFinanceListeners?.()) return;
         try {
             collectionOrdersUnsubscribe = window.db.collection('orders').where('status', 'in', ['approved', 'completed']).orderBy('createdAt', 'desc').limit(150).onSnapshot(snapshot => {
                 collectionOrdersCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderCollectionWaitList();
-            }, error => console.error('작업22-3F 수금 대기 리스트 로드 실패:', error));
+            }, error => {
+                console.error('작업22-3F 수금 대기 리스트 로드 실패:', error);
+                collectionOrdersUnsubscribe = null;
+            });
         } catch (error) {
             console.error('작업22-3F 수금 대기 리스너 시작 실패:', error);
+            collectionOrdersUnsubscribe = null;
         }
     }
+    window.addEventListener('yj:auth-ready', () => window.yjStartFinanceListenersWhenReady?.(startCollectionOrdersListener));
     const timer = setInterval(() => {
         injectCollectionSection();
         window.yjPatchFooterVersion();
         startCollectionOrdersListener();
         renderCollectionWaitList();
-        if (document.getElementById('pcFinanceCollectionWaitBody') && window.db) {
+        if (document.getElementById('pcFinanceCollectionWaitBody') && window.yjCanStartFinanceListeners?.()) {
             console.log('✅ 작업22-3F PC Finance 수금 대기 리스트 패치 완료');
             clearInterval(timer);
         }
@@ -425,22 +456,27 @@ console.log('📦 firebase-shared.js 로드 완료');
     }
 
     function startCompletedOrdersListener() {
-        if (completedOrdersUnsubscribe || !window.db) return;
+        if (completedOrdersUnsubscribe || !window.yjCanStartFinanceListeners?.()) return;
         try {
             completedOrdersUnsubscribe = window.db.collection('orders').where('paymentStatus', '==', 'paid').limit(100).onSnapshot(snapshot => {
                 completedOrdersCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderCompletedList();
-            }, error => console.error('작업22-3G 완료 거래 리스트 로드 실패:', error));
+            }, error => {
+                console.error('작업22-3G 완료 거래 리스트 로드 실패:', error);
+                completedOrdersUnsubscribe = null;
+            });
         } catch (error) {
             console.error('작업22-3G 완료 거래 리스너 시작 실패:', error);
+            completedOrdersUnsubscribe = null;
         }
     }
+    window.addEventListener('yj:auth-ready', () => window.yjStartFinanceListenersWhenReady?.(startCompletedOrdersListener));
     const timer = setInterval(() => {
         injectCompletedSection();
         window.yjPatchFooterVersion();
         startCompletedOrdersListener();
         renderCompletedList();
-        if (document.getElementById('pcFinanceCompletedBody') && window.db) {
+        if (document.getElementById('pcFinanceCompletedBody') && window.yjCanStartFinanceListeners?.()) {
             console.log('✅ 작업22-3G PC Finance 완료 거래 리스트 패치 완료');
             clearInterval(timer);
         }
