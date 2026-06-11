@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YJ Flow — Master Schedule v3</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Noto+Sans+KR:wght@300;400;700;900&display=swap');
+
+:root {
+  --bg:        #080d14;
+  --surface:   #0d1520;
+  --border:    #1a2840;
+  --border-hi: #1e3a5f;
+  --text:      #c8d8ec;
+  --muted:     #4a6280;
+  --dim:       #2a3f58;
+
+  --done:      #22d3a0;
+  --done-bg:   rgba(34,211,160,.08);
+  --done-bd:   rgba(34,211,160,.18);
+
+  --active:    #38bdf8;
+  --active-bg: rgba(56,189,248,.08);
+  --active-bd: rgba(56,189,248,.20);
+
+  --sched:     #a78bfa;
+  --sched-bg:  rgba(167,139,250,.07);
+  --sched-bd:  rgba(167,139,250,.18);
+
+  --hold:      #475569;
+  --hold-bg:   rgba(71,85,105,.07);
+  --hold-bd:   rgba(71,85,105,.20);
+
+  --warn:      #f59e0b;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 0 0 80px;
+}
+
+/* ─── HEADER ─── */
+.masthead {
+  border-bottom: 1px solid var(--border);
+  padding: 36px 32px 28px;
+  position: sticky;
+  top: 0;
+  background: rgba(8,13,20,.95);
+  backdrop-filter: blur(12px);
+  z-index: 100;
+}
+.masthead-inner {
+  max-width: 900px;
+  margin: 0 auto;
+}
+.masthead-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.brand {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  color: var(--active);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.masthead h1 {
+  font-size: clamp(18px, 3.5vw, 26px);
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+.masthead-sub {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 5px;
+  letter-spacing: 0.5px;
+}
+
+/* stats pill row */
+.stats-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.stat-pill {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.stat-pill.done   { color: var(--done);   background: var(--done-bg);   border-color: var(--done-bd); }
+.stat-pill.active { color: var(--active); background: var(--active-bg); border-color: var(--active-bd); }
+.stat-pill.sched  { color: var(--sched);  background: var(--sched-bg);  border-color: var(--sched-bd); }
+.stat-pill.hold   { color: var(--hold);   background: var(--hold-bg);   border-color: var(--hold-bd); }
+
+/* gate banner */
+.gate-banner {
+  max-width: 900px;
+  margin: 24px auto 0;
+  padding: 14px 20px;
+  border: 1px solid var(--border-hi);
+  border-left: 3px solid var(--active);
+  background: var(--active-bg);
+  border-radius: 6px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--active);
+  line-height: 1.7;
+  letter-spacing: 0.2px;
+}
+.gate-banner strong {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+/* ─── MAIN CONTENT ─── */
+.main {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 32px 20px 0;
+}
+
+/* ─── SECTION ─── */
+.section {
+  margin-bottom: 40px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.section-header {
+  padding: 18px 24px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.section-title-wrap {}
+.section-num {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+.section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.2px;
+}
+.section-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.section-badge {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: 1px solid;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.section-badge.done   { color: var(--done);   background: var(--done-bg);   border-color: var(--done-bd); }
+.section-badge.active { color: var(--active); background: var(--active-bg); border-color: var(--active-bd); }
+.section-badge.hold   { color: var(--hold);   background: var(--hold-bg);   border-color: var(--hold-bd); }
+
+/* ─── ITEM ─── */
+.item-list { padding: 8px 0; }
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 24px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+  cursor: pointer;
+  user-select: none;
+}
+.item:last-child { border-bottom: none; }
+.item:hover:not(.item-hold) { background: rgba(255,255,255,.025); }
+
+.item-hold {
+  cursor: default;
+  opacity: 0.55;
+}
+
+/* checkbox */
+.cb-wrap {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border: 1.5px solid var(--dim);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  position: relative;
+}
+.cb-wrap.checked {
+  background: var(--done);
+  border-color: var(--done);
+}
+.cb-wrap.checked::after {
+  content: '';
+  width: 10px;
+  height: 6px;
+  border-left: 2px solid #000;
+  border-bottom: 2px solid #000;
+  transform: rotate(-45deg) translateY(-1px);
+  display: block;
+}
+.cb-wrap.active-item {
+  border-color: var(--active);
+  background: var(--active-bg);
+}
+.cb-wrap.active-item::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: var(--active);
+  border-radius: 2px;
+  display: block;
+  animation: pulse-dot 1.4s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.7); }
+}
+.cb-wrap.hold-cb {
+  border-color: var(--dim);
+  background: transparent;
+  cursor: not-allowed;
+}
+.cb-wrap.hold-cb::after {
+  content: '—';
+  font-size: 10px;
+  color: var(--dim);
+  font-weight: 700;
+}
+
+/* item body */
+.item-body { flex: 1; min-width: 0; }
+.item-id {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.item-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.4;
+}
+.item.done-item .item-name {
+  color: var(--muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--dim);
+}
+.item-note {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: var(--hold);
+  margin-top: 3px;
+  letter-spacing: 0.3px;
+}
+.item-hold-reason {
+  font-size: 10px;
+  color: #374151;
+  margin-top: 3px;
+}
+
+/* item right */
+.item-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.status-tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.tag-done   { color: var(--done);   background: var(--done-bg);   border-color: var(--done-bd); }
+.tag-active { color: var(--active); background: var(--active-bg); border-color: var(--active-bd); }
+.tag-sched  { color: var(--sched);  background: var(--sched-bg);  border-color: var(--sched-bd); }
+.tag-hold   { color: var(--hold);   background: var(--hold-bg);   border-color: var(--hold-bd); }
+
+.pr-tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 8px;
+  font-weight: 600;
+  color: var(--active);
+  padding: 2px 7px;
+  border: 1px solid var(--active-bd);
+  border-radius: 6px;
+  background: var(--active-bg);
+}
+
+/* progress bar */
+.progress-wrap {
+  max-width: 900px;
+  margin: 24px auto 0;
+  padding: 0 20px;
+}
+.progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.progress-track {
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--done), var(--active));
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+/* footer */
+.footer {
+  max-width: 900px;
+  margin: 48px auto 0;
+  padding: 20px;
+  border-top: 1px solid var(--border);
+}
+.warn-box {
+  padding: 14px 18px;
+  background: rgba(245,158,11,.06);
+  border: 1px solid rgba(245,158,11,.2);
+  border-left: 3px solid var(--warn);
+  border-radius: 6px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: rgba(245,158,11,.8);
+  line-height: 2;
+  letter-spacing: 0.3px;
+}
+.warn-box strong {
+  display: block;
+  font-size: 8px;
+  letter-spacing: 2.5px;
+  color: var(--warn);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+/* responsive */
+@media (max-width: 600px) {
+  .masthead { padding: 20px 16px 16px; }
+  .section-header { padding: 14px 16px; }
+  .item { padding: 10px 16px; gap: 10px; }
+  .main { padding: 20px 12px 0; }
+  .progress-wrap { padding: 0 12px; }
+  .gate-banner { margin: 16px auto 0; }
+  .item-id { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<header>
+  <div class="masthead">
+    <div class="masthead-inner">
+      <div class="masthead-top">
+        <div>
+          <div class="brand">YJ Flow</div>
+          <h1>Master Schedule v4</h1>
+          <div class="masthead-sub">기준일: 2026-06-11 &nbsp;|&nbsp; WORK22-6N-K3 PASS / Google Login 최소 운영 로그인 완료 / Auth 운영체계 실제 진행 반영</div>
+        </div>
+        <div id="overall-stat" style="text-align:right; flex-shrink:0;">
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:9px; color:var(--muted); letter-spacing:1.5px; margin-bottom:4px; text-transform:uppercase;">전체 진척</div>
+          <div id="pct-label" style="font-family:'IBM Plex Mono',monospace; font-size:22px; font-weight:700; color:#fff;">—</div>
+        </div>
+      </div>
+
+      <div class="stats-row" id="stats-row">
+        <div class="stat-pill done"   id="cnt-done">완료 0</div>
+        <div class="stat-pill active" id="cnt-active">진행중 0</div>
+        <div class="stat-pill sched"  id="cnt-sched">예정 0</div>
+        <div class="stat-pill hold"   id="cnt-hold">보류 0</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="max-width:900px; margin:0 auto; padding:0 20px;">
+    <div class="progress-wrap" style="margin:0; padding:12px 0 0;">
+      <div class="progress-label">
+        <span>OVERALL PROGRESS</span>
+        <span id="prog-frac">—</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="prog-fill" style="width:0%"></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="max-width:900px; margin:0 auto; padding:0 20px;">
+    <div class="gate-banner">
+      <strong>운영 원칙</strong>
+      현재 일정은 기능 개발 일정이 아니라 운영 전환형 마스터 스케줄이다.
+      데이터 자산화 2단계와 Auth 운영체계가 병렬 진행된 실제 이력을 반영한다.
+      향후 Auth 작업은 Google Login 최소 운영 로그인 완료 기준에서 PIN/sessionStorage/Rules 전환 순서로 관리한다.
+    </div>
+  </div>
+</header>
+
+<!-- ═══ MAIN ═══ -->
+<main class="main" id="main"></main>
+
+<!-- ═══ FOOTER ═══ -->
+<footer class="footer">
+  <div class="warn-box">
+    <strong>⚠ 운영 주의사항</strong>
+    Delete Branch — PR 병합 완료 후 자동 제안되는 Delete Branch는 클릭하지 않는다. 브랜치는 참조 보존을 위해 유지한다.<br>
+    Reset Data — 관리자 패널의 초기화 버튼은 운영 데이터를 영구 삭제한다. 절대 사용하지 않는다.<br>
+    Firestore Rules — 운영 규칙 변경은 이 일정표에서 즉시 착수하지 않는다.<br>
+    Auth 구현 — Google Login 최소 운영 로그인은 WORK22-6N-K3에서 완료됨. 이후 PIN/sessionStorage/Rules 전환은 별도 승인 전 착수 금지.
+  </div>
+</footer>
+
+<!-- ═══ DATA & LOGIC ═══ -->
+<script>
+const SCHEDULE = [
+  {
+    id: "work22-core",
+    num: "01",
+    title: "WORK22 완료 구간",
+    sub: "PC Finance 기능 개발 Phase 3 계열 완료",
+    badgeClass: "done",
+    badgeText: "COMPLETED",
+    items: [
+      { id:"22-3C", name:"PC Finance 청구 대기 리스트 구현 및 병합",          status:"완료", pr:null },
+      { id:"22-3D", name:"PC Finance 생산 진행 확인 리스트 구현 및 병합",     status:"완료", pr:null },
+      { id:"22-3E", name:"PC Finance 신규 승인 대기 리스트 구현 및 병합",     status:"완료", pr:null },
+      { id:"22-3F", name:"PC Finance 수금 대기 리스트 구현 및 병합",          status:"완료", pr:"#42" },
+      { id:"22-3G", name:"PC Finance 탭 통합 QA 및 회귀 테스트",              status:"완료", pr:null },
+      { id:"22-3H", name:"PC Finance Closeout 및 main 병합 완료",             status:"완료", pr:null },
+      { id:"22-3I", name:"PC Finance 운영 안정화 검증",                       status:"완료", pr:null },
+    ]
+  },
+  {
+    id: "data-asset-1",
+    num: "02",
+    title: "데이터 자산화 1단계 완료 구간",
+    sub: "productName 필드 구조화 및 운영 연동 완료 (22-4A ~ 22-4M)",
+    badgeClass: "done",
+    badgeText: "COMPLETED",
+    items: [
+      { id:"22-4A", name:"productName 필드 구조 조사 및 설계",                status:"완료", pr:null },
+      { id:"22-4C", name:"productName 입력 — 모바일 UI 구현",                 status:"완료", pr:null },
+      { id:"22-4D", name:"productName PC 표시 및 필터 연동",                  status:"완료", pr:null },
+      { id:"22-4F", name:"productName 데이터 자산화 QA",                      status:"완료", pr:null },
+      { id:"22-4G", name:"productName Closeout 및 main 병합",                 status:"완료", pr:null },
+      { id:"22-4H", name:"운영 데이터 검증 (실데이터 확인)",                  status:"완료", pr:null },
+      { id:"22-4I", name:"PC 대시보드 productName 반영 확인",                 status:"완료", pr:null },
+      { id:"22-4J", name:"모바일 productName 완전 연동 확인",                 status:"완료", pr:null },
+      { id:"22-4K", name:"검색 / 필터 productName 연동 확인",                 status:"완료", pr:null },
+      { id:"22-4L", name:"엑셀 내보내기 productName 반영 확인",               status:"완료", pr:null },
+      { id:"22-4M", name:"1단계 전체 Closeout 및 운영 SOP 작성",              status:"완료", pr:null },
+    ]
+  },
+  {
+    id: "data-asset-2",
+    num: "03",
+    title: "데이터 자산화 2단계 진행 구간",
+    sub: "Dashboard 지표 설계 및 구현 — 22-5 계열",
+    badgeClass: "active",
+    badgeText: "IN PROGRESS",
+    items: [
+      { id:"22-5",  name:"데이터 자산화 2단계 범위 정의",                     status:"완료",  pr:null },
+      { id:"22-5A", name:"productName 기반 Dashboard 후보 지표 설계",         status:"완료",  pr:null },
+      { id:"22-5B", name:"TOP 품목 매출 Dashboard 구현 범위 확정",            status:"완료",  pr:null },
+      { id:"22-5C", name:"TOP 품목 매출 Dashboard 최소 구현",                 status:"완료",  pr:null },
+      { id:"22-5D", name:"TOP 품목 매출 Dashboard Closeout 및 자산화",        status:"완료",  pr:null },
+      { id:"22-5E", name:"품목별 미수금 Dashboard 범위 정의",                 status:"진행중",pr:null },
+      { id:"22-5F", name:"품목별 미수금 Dashboard 구현 범위 확정",            status:"예정",  pr:null },
+      { id:"22-5G", name:"품목별 미수금 Dashboard 최소 구현",                 status:"예정",  pr:null },
+      { id:"22-5H", name:"월별 TOP 품목 Dashboard 범위 정의",                 status:"예정",  pr:null },
+      { id:"22-5I", name:"거래처별 품목 매출 Dashboard 범위 정의",            status:"예정",  pr:null },
+      { id:"22-5J", name:"데이터 자산화 2단계 Closeout",                      status:"예정",  pr:null },
+    ]
+  },
+  {
+    id: "auth-backlog",
+    num: "04",
+    title: "Auth 운영체계 실제 진행 구간",
+    sub: "Google Login 최소 운영 로그인 완료 / PIN·sessionStorage·Rules 전환 후속 관리",
+    badgeClass: "active",
+    badgeText: "IN PROGRESS",
+    items: [
+      { id:"22-6H",     name:"Auth 운영체계 설계 및 계정 정책 흐름 정리",          status:"완료",   pr:null },
+      { id:"22-6N-K0",  name:"Google Login 후 users/{uid} read 검증",             status:"완료",   pr:null },
+      { id:"22-6N-K1",  name:"currentUser/sessionStorage/PIN 구조 제거 설계",      status:"완료",   pr:null },
+      { id:"22-6N-K2",  name:"Google Login 운영 로그인 최소 구현 설계",            status:"완료",   pr:null },
+      { id:"22-6N-K3",  name:"Google Login 최소 운영 로그인 구현 및 검증",         status:"완료",   pr:"#67" },
+      { id:"22-6N-K3B", name:"Firestore users/{uid} 운영 계정 문서 생성/정정",     status:"완료",   pr:null },
+      { id:"22-6N-K3C", name:"Finance permission-denied 원인 분리 조사",          status:"완료",   pr:null },
+      { id:"22-6N-K3D", name:"Finance 리스너 생명주기 수정",                       status:"완료",   pr:"#68" },
+      { id:"22-6N-K3E", name:"K3 완료 자산화 및 신규 채팅방 인계문 작성",          status:"완료",   pr:null },
+      { id:"22-6N-K4",  name:"PIN/sessionStorage/Anonymous 병행 구조 정리 설계",   status:"진행중", pr:null },
+      { id:"22-6N-K4A", name:"모바일 factory PIN 보조 잠금 정책 설계",            status:"예정",   pr:null },
+      { id:"22-6N-K4B", name:"Firestore Rules Google UID 기반 전환 설계",         status:"예정",   pr:null },
+    ]
+  },
+  {
+    id: "hold-zone",
+    num: "05",
+    title: "보류 작업 구간",
+    sub: "운영 안정화 및 데이터 자산화 우선 — 의도적 보류",
+    badgeClass: "hold",
+    badgeText: "ON HOLD",
+    items: [
+      { id:"22-3J", name:"PC 생산 공정 고도화",                               status:"보류",  pr:null,
+        holdReason:"운영 안정화 우선 — 재착수 시점 미정" },
+      { id:"DEV-1", name:"PC 관리자용 모바일 프리뷰 기능",                    status:"보류",  pr:null,
+        holdReason:"운영 안정화 우선 / 필요성 재검토 필요" },
+    ]
+  }
+];
+
+// localStorage key
+const LS_KEY = "yj_v3_checks";
+
+// load saved state
+function loadChecks() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch { return {}; }
+}
+function saveChecks(obj) {
+  localStorage.setItem(LS_KEY, JSON.stringify(obj));
+}
+
+let checks = loadChecks();
+
+// status helpers
+function tagClass(s) {
+  if (s === '완료')  return 'tag-done';
+  if (s === '진행중') return 'tag-active';
+  if (s === '예정')  return 'tag-sched';
+  return 'tag-hold';
+}
+function tagText(s) {
+  if (s === '완료')  return 'DONE';
+  if (s === '진행중') return 'ACTIVE';
+  if (s === '예정')  return 'PLANNED';
+  return 'HOLD';
+}
+function cbClass(item, isChecked) {
+  if (item.status === '보류') return 'cb-wrap hold-cb';
+  if (isChecked || item.status === '완료') return 'cb-wrap checked';
+  if (item.status === '진행중') return 'cb-wrap active-item';
+  return 'cb-wrap';
+}
+
+// render
+function render() {
+  const main = document.getElementById('main');
+  main.innerHTML = '';
+
+  SCHEDULE.forEach((section, si) => {
+    const sEl = document.createElement('div');
+    sEl.className = 'section';
+    sEl.innerHTML = `
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <div class="section-num">PHASE ${section.num}</div>
+          <div class="section-title">${section.title}</div>
+          <div class="section-sub">${section.sub}</div>
+        </div>
+        <div class="section-badge ${section.badgeClass}">${section.badgeText}</div>
+      </div>
+      <div class="item-list" id="list-${section.id}"></div>
+    `;
+    main.appendChild(sEl);
+
+    const listEl = sEl.querySelector(`#list-${section.id}`);
+    section.items.forEach((item, ii) => {
+      const key = `${section.id}__${item.id}`;
+      const isHold = item.status === '보류';
+      // completed = explicitly checked OR status is '완료'
+      const isChecked = !isHold && (checks[key] === true || item.status === '완료');
+      const isDone = isChecked || item.status === '완료';
+
+      const iEl = document.createElement('div');
+      iEl.className = 'item' + (isHold ? ' item-hold' : '') + (isDone && item.status === '완료' ? ' done-item' : '');
+      iEl.dataset.key = key;
+      iEl.dataset.hold = isHold ? '1' : '0';
+      iEl.dataset.forced = (item.status === '완료') ? '1' : '0'; // forced done
+
+      iEl.innerHTML = `
+        <div class="${cbClass(item, isChecked)}" id="cb-${key}"></div>
+        <div class="item-body">
+          <div class="item-id">${item.id}</div>
+          <div class="item-name">${item.name}${item.holdReason ? `<div class="item-note">HOLD: ${item.holdReason}</div>` : ''}</div>
+        </div>
+        <div class="item-right">
+          ${item.pr ? `<span class="pr-tag">${item.pr}</span>` : ''}
+          <span class="status-tag ${tagClass(item.status)}">${tagText(item.status)}</span>
+        </div>
+      `;
+
+      // click handler — only for non-hold, non-forced items
+      if (!isHold && item.status !== '완료') {
+        iEl.addEventListener('click', () => {
+          const k = iEl.dataset.key;
+          checks[k] = !checks[k];
+          saveChecks(checks);
+          render();
+          updateStats();
+        });
+      }
+
+      listEl.appendChild(iEl);
+    });
+  });
+}
+
+function updateStats() {
+  let total = 0, done = 0, active = 0, sched = 0, hold = 0;
+  SCHEDULE.forEach(sec => {
+    sec.items.forEach(item => {
+      total++;
+      const key = `${sec.id}__${item.id}`;
+      const isChecked = checks[key] === true || item.status === '완료';
+      if (item.status === '보류')  { hold++; }
+      else if (isChecked)          { done++; }
+      else if (item.status === '진행중') { active++; }
+      else { sched++; }
+    });
+  });
+
+  const nonHold = total - hold;
+  const pct = nonHold > 0 ? Math.round((done / nonHold) * 100) : 0;
+
+  document.getElementById('cnt-done').textContent   = `완료 ${done}`;
+  document.getElementById('cnt-active').textContent = `진행중 ${active}`;
+  document.getElementById('cnt-sched').textContent  = `예정 ${sched}`;
+  document.getElementById('cnt-hold').textContent   = `보류 ${hold}`;
+  document.getElementById('pct-label').textContent  = pct + '%';
+  document.getElementById('prog-fill').style.width  = pct + '%';
+  document.getElementById('prog-frac').textContent  = `${done} / ${nonHold}`;
+}
+
+// init
+render();
+updateStats();
+</script>
+</body>
+</html>
