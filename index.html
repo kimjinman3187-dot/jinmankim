@@ -100,6 +100,15 @@
     <div class="login-card">
         <div class="text-center font-black text-blue-900 text-lg mb-1 italic uppercase tracking-tighter">Yongjin ENT.</div>
         <div id="securityStatus" class="text-center text-[9px] text-slate-400 font-bold mb-5 uppercase tracking-[0.2em]">Authority Required</div>
+        <div class="rounded-2xl border border-blue-200 bg-blue-50/80 p-3 mb-4">
+            <div class="text-[10px] font-black text-blue-700 uppercase tracking-[0.16em] mb-2">Google 로그인</div>
+            <button type="button" onclick="loginWithGoogle()" class="w-full h-12 rounded-2xl border border-blue-200 bg-blue-900 text-white text-xs font-black hover:bg-blue-800 transition-colors shadow-md">
+                공장 Google 계정으로 로그인
+            </button>
+            <p class="mt-2 text-[10px] leading-4 text-slate-500 font-bold">factory-device-01 계정은 Google 로그인 전용입니다.</p>
+            <div id="mobileGoogleLoginTestResult" class="mt-2 text-[10px] leading-5 text-slate-500 break-all min-h-[18px]"></div>
+        </div>
+        <div class="text-[10px] font-black text-slate-500 uppercase tracking-[0.16em] mb-3">PIN 로그인(예비)</div>
         <div class="role-grid" id="roleGrid"><p class="col-span-2 text-center text-xs text-slate-300 py-10">데이터 연결 중...</p></div>
         <div class="pin-dots">
             <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div><div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
@@ -111,10 +120,6 @@
             <div class="kp-btn invisible"></div><button class="kp-btn" onclick="kp('0')">0</button><button class="kp-btn del" onclick="kpDel()">⌫</button>
         </div>
         <div id="pinErr" class="text-center text-[10px] text-red-600 mt-3 min-h-[15px] font-bold"></div>
-        <button type="button" onclick="loginWithGoogle()" class="w-full mt-4 h-12 rounded-2xl border border-blue-200 bg-blue-900 text-white text-xs font-black hover:bg-blue-800 transition-colors shadow-md">
-            Google로 로그인
-        </button>
-        <div id="mobileGoogleLoginTestResult" class="mt-3 text-[10px] leading-5 text-slate-500 break-all min-h-[20px]"></div>
     </div>
     <div class="system-footer" style="color: rgba(255,255,255,0.3);">
         <p>: 26.05.15 / v2.0.1</p>
@@ -1810,6 +1815,25 @@ function startGoogleAuthStateRestore() {
     return true;
 }
     
+function getPinLoginUsers() {
+    return (Array.isArray(USERS) ? USERS : []).filter(user =>
+        (user.status || 'active') === 'active' &&
+        user.account_type !== 'device' &&
+        typeof user.pin === 'string' &&
+        user.pin.trim().length > 0
+    );
+}
+
+function canUsePinLogin(user) {
+    return Boolean(
+        user &&
+        (user.status || 'active') === 'active' &&
+        user.account_type !== 'device' &&
+        typeof user.pin === 'string' &&
+        user.pin.trim().length > 0
+    );
+}
+
 async function syncUsers() {
     let fetchedUsers = [];
     try { 
@@ -1841,14 +1865,15 @@ async function syncUsers() {
     const authEmptyMessage = '<p class="col-span-2 text-center text-xs text-slate-300 py-10">운영 사용자 목록을 불러오지 못했습니다.</p>';
     const mobileGrid = document.getElementById('roleGrid');
     const pcGrid = document.getElementById('pcRoleGrid');
+    const pinLoginUsers = getPinLoginUsers();
     if (mobileGrid && Array.isArray(USERS)) {
-        mobileGrid.innerHTML = USERS.length
-            ? USERS.map(u => `<button class="role-sel-btn" id="rsb-${u.id}" onclick="chooseUser('${u.id}')">${u.name}</button>`).join('')
+        mobileGrid.innerHTML = pinLoginUsers.length
+            ? pinLoginUsers.map(u => `<button class="role-sel-btn" id="rsb-${u.id}" onclick="chooseUser('${u.id}')">${u.name}</button>`).join('')
             : authEmptyMessage;
     }
     if (pcGrid && Array.isArray(USERS)) {
-        pcGrid.innerHTML = USERS.length
-            ? USERS.map(u => `<button class="role-sel-btn" id="pc-rsb-${u.id}" onclick="chooseUser('${u.id}')">${u.name}</button>`).join('')
+        pcGrid.innerHTML = pinLoginUsers.length
+            ? pinLoginUsers.map(u => `<button class="role-sel-btn" id="pc-rsb-${u.id}" onclick="chooseUser('${u.id}')">${u.name}</button>`).join('')
             : authEmptyMessage;
     }
 
@@ -1889,7 +1914,24 @@ function checkLockoutStatus() {
     setKeypadDisabled(false); return false;
 }
 
-function chooseUser(uid) { chosenUserId = uid; pinBuffer = ''; updateDots(); setAuthError(''); document.querySelectorAll('.role-sel-btn').forEach(b => b.classList.remove('chosen')); ['rsb-' + uid, 'pc-rsb-' + uid].forEach(id => { const btn = document.getElementById(id); if (btn) btn.classList.add('chosen'); }); checkLockoutStatus(); }
+function chooseUser(uid) {
+    const user = USERS.find(u => u.id === uid);
+    if (!canUsePinLogin(user)) {
+        chosenUserId = null;
+        pinBuffer = '';
+        updateDots();
+        setAuthError('이 계정은 Google 로그인 전용입니다.');
+        document.querySelectorAll('.role-sel-btn').forEach(b => b.classList.remove('chosen'));
+        return;
+    }
+    chosenUserId = uid;
+    pinBuffer = '';
+    updateDots();
+    setAuthError('');
+    document.querySelectorAll('.role-sel-btn').forEach(b => b.classList.remove('chosen'));
+    ['rsb-' + uid, 'pc-rsb-' + uid].forEach(id => { const btn = document.getElementById(id); if (btn) btn.classList.add('chosen'); });
+    checkLockoutStatus();
+}
 function kp(digit) { if (!chosenUserId || pinBuffer.length >= 4 || checkLockoutStatus()) return; pinBuffer += digit; updateDots(); if (pinBuffer.length === 4) setTimeout(tryLogin, 150); }
 function kpDel() { pinBuffer = pinBuffer.slice(0, -1); updateDots(); }
 function updateDots() { for (let i = 0; i < 4; i++) { ['pd' + i, 'pcPd' + i].forEach(id => { const dot = document.getElementById(id); if (dot) dot.className = 'pin-dot' + (i < pinBuffer.length ? ' on' : ''); }); } }
@@ -1906,6 +1948,13 @@ async function tryLogin() {
         pinBuffer = '';
         updateDots();
         setAuthError('사용이 중지된 계정입니다. 관리자에게 문의하세요.');
+        return;
+    }
+    if (!canUsePinLogin(user)) {
+        chosenUserId = null;
+        pinBuffer = '';
+        updateDots();
+        setAuthError('이 계정은 Google 로그인 전용입니다.');
         return;
     }
     const attempts = (user.attempts || 0) + 1; const limit = user.role === 'admin' ? 5 : 3;
