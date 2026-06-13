@@ -180,6 +180,7 @@
                 <h1 class="text-sm font-black text-slate-900 italic">YJ Flow</h1>
                 <div class="flex items-center gap-2">
                     <span id="displayUser" class="text-xs font-black text-blue-700 underline"></span>
+                    <button onclick="switchGoogleAccount()" class="text-[9px] font-black text-blue-600 bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded-lg transition-colors">Google 계정전환</button>
                     <button onclick="logout()" class="text-[9px] font-black text-slate-400 bg-slate-100 hover:bg-red-100 hover:text-red-500 px-2 py-1 rounded-lg transition-colors">로그아웃</button>
                 </div>
             </div>
@@ -345,6 +346,7 @@
                 <button onclick="requestNotificationPermission()" class="hover:text-blue-400 transition-colors text-xl">🔔</button>
                 <div class="flex items-center gap-2 ml-2">
                     <span id="pcDisplayUser" class="text-sm font-bold text-blue-400 bg-[#1e293b] px-3 py-1.5 rounded-lg border border-[#334155]">관리자</span>
+                    <button onclick="switchGoogleAccount()" class="text-[10px] font-black text-blue-300 bg-[#1e293b] px-3 py-1.5 rounded-lg border border-[#334155] hover:border-blue-400 transition-all">Google 계정전환</button>
                     <button onclick="logout()" class="p-1.5 bg-[#1e293b] hover:bg-red-500/20 border border-[#334155] hover:border-red-500/50 rounded-lg text-slate-400 hover:text-red-400 transition-all shadow-sm" title="시스템 로그아웃">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -985,7 +987,7 @@ const ACCESS_MATRIX = {
         write: ['finance', 'ar']
     },
     factory: {
-        view: ['live', 'production', 'history'],
+        view: ['production'],
         write: ['production']
     }
 };
@@ -1002,7 +1004,7 @@ const TAB_ACCESS_AREA = {
 const ROLE_TABS = {
     sales: ['sales', 'receivables', 'factory', 'history'],
     accounting: ['sales', 'accounting', 'receivables', 'factory', 'history'],
-    factory: ['factory', 'history'],
+    factory: ['factory'],
     admin: ['sales', 'accounting', 'receivables', 'factory', 'history']
 };
 const TAB_META = { sales: {label:'영업', emoji:'📝'}, accounting: {label:'회계', emoji:'💼'}, receivables: {label:'채권', emoji:'💰'}, factory: {label:'생산', emoji:'🏭'}, history: {label:'현황', emoji:'📊'} };
@@ -2003,7 +2005,9 @@ async function loadCurrentUserFromAuthUser(authUser) {
         role,
         status,
         email: authUser.email || userData.email || '',
-        provider: 'google'
+        provider: 'google',
+        account_type: userData.account_type || '',
+        device_id: userData.device_id || ''
     };
 
     return currentUser;
@@ -2017,6 +2021,7 @@ async function loginWithGoogle() {
         googleLoginProcessing = true;
 
         const provider = new firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
         const result = await authInstance.signInWithPopup(provider);
         await loadCurrentUserFromAuthUser(result.user);
 
@@ -2028,6 +2033,9 @@ async function loginWithGoogle() {
             `name: ${currentUser.name}`,
             `role: ${currentUser.role}`,
             `status: ${currentUser.status}`,
+            `account_type: ${currentUser.account_type || '-'}`,
+            `device_id: ${currentUser.device_id || '-'}`,
+            `provider: ${currentUser.provider || '-'}`,
             `auth_uid: ${currentUser.auth_uid}`
         ]);
         processLoginSuccess();
@@ -2105,6 +2113,12 @@ async function testGoogleLoginForUid() {
     }
 }
 
+function getCurrentUserDisplayText() {
+    if (!currentUser) return '';
+    const provider = currentUser.provider === 'google' ? 'Google' : 'PIN';
+    return `${currentUser.name} · ${currentUser.role} · ${provider}`;
+}
+
 function processLoginSuccess() {
     if (handleInactiveUser(currentUser)) return;
     try {
@@ -2126,8 +2140,8 @@ function processLoginSuccess() {
     if (window.innerWidth > 768) { const appPC = document.getElementById('appPC'); if (appPC) { appPC.classList.remove('hidden'); appPC.style.display = 'flex'; } } 
     else { const appMob = document.getElementById('appMobile'); if (appMob) { appMob.classList.remove('hidden'); appMob.style.display = 'flex'; } }
     
-    document.getElementById('displayUser').textContent = currentUser.name; 
-    const pcDisplay = document.getElementById('pcDisplayUser'); if(pcDisplay) pcDisplay.textContent = currentUser.name + ' (' + currentUser.role + ')';
+    document.getElementById('displayUser').textContent = getCurrentUserDisplayText();
+    const pcDisplay = document.getElementById('pcDisplayUser'); if(pcDisplay) pcDisplay.textContent = getCurrentUserDisplayText();
     if (currentUser.role === 'admin') { 
         const clearBtn = document.getElementById('clearBtn'); if(clearBtn) clearBtn.style.display = ''; 
         const pcClearBtn = document.getElementById('pcClearBtn'); if(pcClearBtn) pcClearBtn.style.display = ''; 
@@ -2666,7 +2680,21 @@ function startNotiPoller() {
     });
 }
 
-async function logout() { if(confirm('로그아웃 하시겠습니까?')) { try { if (window.auth?.currentUser && !window.auth.currentUser.isAnonymous) await window.auth.signOut(); } catch(e) { console.warn('Google signOut failed:', e); } sessionStorage.removeItem('yongjin_session'); if (notiPoller) { notiPoller(); notiPoller = null; } if (ordersListenerUnsubscribe) { ordersListenerUnsubscribe(); ordersListenerUnsubscribe = null; } location.reload(); } }
+async function switchGoogleAccount() {
+    try {
+        if (window.auth?.currentUser && !window.auth.currentUser.isAnonymous) await window.auth.signOut();
+    } catch(e) {
+        console.warn('Google account switch signOut failed:', e);
+    }
+    currentUser = null;
+    sessionStorage.removeItem('yongjin_session');
+    sessionStorage.removeItem('active_tab');
+    if (notiPoller) { notiPoller(); notiPoller = null; }
+    if (ordersListenerUnsubscribe) { ordersListenerUnsubscribe(); ordersListenerUnsubscribe = null; }
+    location.reload();
+}
+
+async function logout() { if(confirm('로그아웃 하시겠습니까?')) { try { if (window.auth?.currentUser && !window.auth.currentUser.isAnonymous) await window.auth.signOut(); } catch(e) { console.warn('Google signOut failed:', e); } currentUser = null; sessionStorage.removeItem('yongjin_session'); sessionStorage.removeItem('active_tab'); if (notiPoller) { notiPoller(); notiPoller = null; } if (ordersListenerUnsubscribe) { ordersListenerUnsubscribe(); ordersListenerUnsubscribe = null; } location.reload(); } }
 
 // --- [차트 전역 변수 및 초기화] ---
 let productionBarChartInstance = null;
