@@ -2104,7 +2104,10 @@ function handleAdminInviteCodePreview() {
     const allowedDomain = String(document.getElementById('inviteAllowedDomainInput')?.value || '').trim() || '-';
     const message = document.getElementById('inviteCodeAdminMessage');
     if (!message) return;
-    message.innerHTML = `발급 준비값: role=${role}, max_uses=${maxUses}, expires_at=${expiresAt}, allowed_domain=${allowedDomain}<br>실제 초대코드 생성은 K5D-2/K5E에서 구현합니다. Firestore write는 수행하지 않았습니다.`;
+    message.style.whiteSpace = 'pre-line';
+    message.textContent =
+        `발급 준비값: role=${role}, max_uses=${maxUses}, expires_at=${expiresAt}, allowed_domain=${allowedDomain}\n` +
+        '실제 초대코드 생성은 K5D-2/K5E에서 구현합니다. Firestore write는 수행하지 않았습니다.';
 }
 
 async function loadCurrentUserFromAuthUser(authUser) {
