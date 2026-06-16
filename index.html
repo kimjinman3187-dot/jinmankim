@@ -172,6 +172,23 @@
     </div>
 </div>
 
+<!-- WORK22-6N-K5C-0 미승인 Google 사용자 차단/승인대기 게이트 -->
+<div id="googleApprovalGate" style="display:none; position:fixed; inset:0; z-index:100000; flex-direction:column; align-items:center; justify-content:center; padding:24px; background:linear-gradient(160deg,#0f2554 0%,#1e3a8a 100%); color:#fff; text-align:center;">
+    <div style="width:100%; max-width:380px; max-height:calc(100dvh - 48px); overflow-y:auto; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); border-radius:24px; padding:28px 22px;">
+        <div style="font-size:34px; margin-bottom:10px;">🔒</div>
+        <div id="gateTitle" style="font-size:16px; font-weight:900; margin-bottom:12px;">승인 대기 중인 Google 계정입니다</div>
+        <div id="gateMessage" style="font-size:12px; line-height:1.7; color:#cbd5e1; margin-bottom:18px;"></div>
+        <div style="text-align:left; font-family:'IBM Plex Mono',monospace; font-size:11px; color:#e2e8f0; background:rgba(0,0,0,0.25); border-radius:12px; padding:14px 16px; margin-bottom:20px; word-break:break-all;">
+            <div>email: <span id="gateEmail">-</span></div>
+            <div>uid: <span id="gateUid">-</span></div>
+            <div>provider: google</div>
+            <div>상태: <span id="gateStatus">승인대기</span></div>
+        </div>
+        <button type="button" onclick="switchGoogleAccount()" style="width:100%; height:46px; margin-bottom:10px; border-radius:14px; border:1px solid rgba(255,255,255,0.25); background:rgba(255,255,255,0.12); color:#fff; font-size:13px; font-weight:800; cursor:pointer;">Google 계정전환</button>
+        <button type="button" onclick="logout()" style="width:100%; height:46px; border-radius:14px; border:1px solid rgba(255,255,255,0.15); background:transparent; color:#cbd5e1; font-size:13px; font-weight:800; cursor:pointer;">로그아웃</button>
+    </div>
+</div>
+
 <div id="appMobile" class="mobile-ui hidden flex-col w-full min-h-screen bg-[#f1f5f9]">
     <nav class="bg-white border-b sticky top-0 z-50 px-4 py-3 shadow-sm">
         <div class="max-w-md mx-auto space-y-3">
@@ -1807,6 +1824,11 @@ function startGoogleAuthStateRestore() {
                     message: error?.message
                 });
                 currentUser = null;
+                if (error?.gateReason) {
+                    // 미승인/비활성/승인대기: signOut/PIN fallback 대신 승인대기 화면 표시(세션 유지로 계정전환 가능)
+                    showApprovalGate(error.gateReason, authUser);
+                    return;
+                }
                 try { await authInstance.signOut(); } catch (signOutError) { console.warn('Google signOut after restore failure failed:', signOutError); }
                 startAnonymousPinBootstrap();
             }
@@ -1982,19 +2004,66 @@ function pcAdminBypassLogin() {
     return true;
 }
 
+// WORK22-6N-K5C-0 미승인/비활성/승인대기 Google 사용자 차단 게이트
+let googleGateActive = false;
+// hash 직접 접근(#factory 등) 시에도 운영 화면이 노출되지 않도록 게이트 재적용
+window.addEventListener('hashchange', () => { if (googleGateActive) reassertGate(); });
+
+function makeGateError(reason, message) {
+    const e = new Error(message || reason);
+    e.gateReason = reason;
+    return e;
+}
+
+function reassertGate() {
+    if (!googleGateActive) return;
+    ['loginMobile', 'loginPC', 'appMobile', 'appPC'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.style.display = 'none'; el.classList.add('hidden'); }
+    });
+    const gate = document.getElementById('googleApprovalGate');
+    if (gate) gate.style.display = 'flex';
+}
+
+function showApprovalGate(reason, authUser) {
+    googleGateActive = true;
+    currentUser = null;
+    const titles = {
+        'no-user-doc': '승인 대기 중인 Google 계정입니다',
+        'pending': '승인 대기 중인 계정입니다',
+        'inactive': '비활성화된 계정입니다'
+    };
+    const messages = {
+        'no-user-doc': '아직 용진FLOW 운영 사용자로 승인되지 않았습니다. 관리자에게 승인 요청을 해주세요. 초대코드 입력 기능은 다음 단계에서 제공됩니다.',
+        'pending': '승인 대기 중입니다. 관리자 승인 후 이용할 수 있습니다.',
+        'inactive': '비활성화된 계정입니다. 관리자에게 문의하세요.'
+    };
+    const statusLabels = { 'no-user-doc': '승인대기', 'pending': '승인대기', 'inactive': '비활성' };
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    set('gateTitle', titles[reason] || titles['no-user-doc']);
+    set('gateMessage', messages[reason] || messages['no-user-doc']);
+    set('gateEmail', authUser?.email || '-');
+    set('gateUid', authUser?.uid || '-');
+    set('gateStatus', statusLabels[reason] || '승인대기');
+    try { sessionStorage.removeItem('yongjin_session'); sessionStorage.removeItem('active_tab'); } catch (e) {}
+    reassertGate();
+}
+
 async function loadCurrentUserFromAuthUser(authUser) {
     if (!authUser?.uid) throw new Error('Google Auth user is missing uid.');
     if (!window.db?.collection) throw new Error('Firestore SDK is not initialized.');
 
     const uid = authUser.uid;
     const userDoc = await db.collection('users').doc(uid).get();
-    if (!userDoc.exists) throw new Error('users/{uid} 문서 없음');
+    if (!userDoc.exists) throw makeGateError('no-user-doc', 'users/{uid} 문서 없음');
 
     const userData = userDoc.data() || {};
     const status = userData.status || 'active';
     const role = userData.role;
-    if (status !== 'active') throw new Error('사용 중지된 계정입니다.');
-    if (!role || !ACCESS_MATRIX[role]) throw new Error('권한 설정 오류입니다.');
+    if (status === 'inactive') throw makeGateError('inactive', '비활성화된 계정입니다.');
+    if (status === 'pending' || role === 'pending') throw makeGateError('pending', '승인 대기 중인 계정입니다.');
+    if (status !== 'active') throw makeGateError('inactive', '사용 중지된 계정입니다.');
+    if (!role || !ACCESS_MATRIX[role]) throw makeGateError('pending', '아직 운영 권한이 부여되지 않은 계정입니다.');
     if (userData.auth_uid && userData.auth_uid !== uid) throw new Error('auth_uid가 Firebase UID와 일치하지 않습니다.');
 
     currentUser = {
@@ -2046,6 +2115,12 @@ async function loginWithGoogle() {
             message: error?.message
         });
         currentUser = null;
+        if (error?.gateReason) {
+            // 미승인/비활성/승인대기: 실패 alert/signOut 대신 승인대기 화면 표시
+            renderGoogleLoginResult([`승인대기: ${error?.message || ''}`]);
+            showApprovalGate(error.gateReason, authInstance?.currentUser);
+            return null;
+        }
         renderGoogleLoginResult([`Google 로그인 실패: ${error?.message || '콘솔 확인'}`]);
         alert('Google 로그인 실패: 콘솔 확인');
         try { if (authInstance?.currentUser && !authInstance.currentUser.isAnonymous) await authInstance.signOut(); } catch (signOutError) { console.warn('Google signOut after login failure failed:', signOutError); }
