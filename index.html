@@ -433,6 +433,41 @@
                     <button id="pcPrepareInviteCodeBtn" type="button" onclick="handlePcAdminInviteCodePreview()" class="mt-3 h-10 px-5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-black shadow-sm transition-colors">초대코드 발급 준비</button>
                     <div id="pcInviteCodeAdminMessage" class="mt-3 min-h-[24px] text-[11px] font-bold text-slate-300 bg-[#0f1522] rounded-lg border border-[#334155] p-3"></div>
                 </section>
+                <section id="pcApprovalRequestPanel" class="hidden bg-[#1e293b] border border-[#334155] rounded-xl p-5 mb-6 shadow-lg relative z-10">
+                    <div class="flex justify-between items-start gap-4 mb-4">
+                        <div>
+                            <h3 class="font-black text-white text-sm">승인 요청 목록</h3>
+                            <p class="text-[10px] text-slate-400 font-bold mt-1 leading-5">Google 계정 승인 요청을 검토하기 위한 영역입니다. 현재는 UI 골격 단계이며, 실제 데이터 조회와 승인 처리는 아직 연결하지 않았습니다.</p>
+                        </div>
+                        <span class="text-[10px] font-black text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-full px-3 py-1">K5F-4 UI ONLY</span>
+                    </div>
+                    <div class="overflow-x-auto rounded-lg border border-[#334155] bg-[#0f1522]">
+                        <table class="w-full min-w-[820px] text-left text-[11px]">
+                            <thead class="text-slate-400 uppercase tracking-wider border-b border-[#334155]">
+                                <tr>
+                                    <th class="px-3 py-3 font-black">요청일시</th>
+                                    <th class="px-3 py-3 font-black">email</th>
+                                    <th class="px-3 py-3 font-black">uid</th>
+                                    <th class="px-3 py-3 font-black">요청 role</th>
+                                    <th class="px-3 py-3 font-black">상태</th>
+                                    <th class="px-3 py-3 font-black">메모</th>
+                                    <th class="px-3 py-3 font-black">작업</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="7" class="px-3 py-8 text-center text-slate-500 font-bold">아직 표시할 승인 요청 데이터가 없습니다. K5F-5 단계에서 read-only 목록 표시를 연결합니다.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-3 flex flex-wrap items-center gap-2">
+                        <button type="button" disabled class="px-3 py-2 rounded-lg bg-slate-700 text-slate-500 text-[10px] font-black cursor-not-allowed">승인</button>
+                        <button type="button" disabled class="px-3 py-2 rounded-lg bg-slate-700 text-slate-500 text-[10px] font-black cursor-not-allowed">반려</button>
+                        <button type="button" disabled class="px-3 py-2 rounded-lg bg-slate-700 text-slate-500 text-[10px] font-black cursor-not-allowed">보류</button>
+                        <span class="text-[10px] text-slate-500 font-bold">승인/반려/보류 처리는 아직 구현하지 않았으며, 현재 단계에서는 users 데이터가 변경되지 않습니다.</span>
+                    </div>
+                </section>
                 <div class="grid grid-cols-4 gap-4 mb-6 relative z-10">
                     <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-4 shadow-lg">
                         <p class="text-slate-400 text-xs font-medium mb-1">총 미수금 (KRW)</p>
@@ -2416,6 +2451,8 @@ function applyPCRoleAccess() {
     if (adminInviteCodePanel) adminInviteCodePanel.classList.toggle('hidden', currentUser?.role !== 'admin');
     const pcAdminInviteCodePanel = document.getElementById('pcAdminInviteCodePanel');
     if (pcAdminInviteCodePanel) pcAdminInviteCodePanel.classList.toggle('hidden', currentUser?.role !== 'admin');
+    const pcApprovalRequestPanel = document.getElementById('pcApprovalRequestPanel');
+    if (pcApprovalRequestPanel) pcApprovalRequestPanel.classList.toggle('hidden', currentUser?.role !== 'admin');
 }
 
 async function renderAdminMonitor() {
