@@ -93,19 +93,38 @@ K5A 최종 판단은 다음과 같다.
 
 ### `invite_codes/{code}`
 
-```json
-{
-  "role": "sales",
-  "status": "active",
-  "account_type": "personal",
-  "issued_by": "admin uid",
-  "issued_at": "<serverTimestamp>",
-  "expires_at": "<timestamp>",
-  "used": false,
-  "used_by": null,
-  "used_at": null
+```js
+invite_codes/{code} = {
+  role: 'sales' | 'accounting' | 'factory',   // admin 금지
+  active: true,
+
+  max_uses: 30,
+  used_count: 0,
+  expires_at: '<timestamp>',
+  allowed_domain: null,
+
+  created_by: '<admin uid>',
+  created_at: '<serverTimestamp>',
+  updated_at: '<serverTimestamp>',
+
+  revoked_at: null,
+  revoked_by: null,
+  revoke_reason: null,
+
+  used_by: []
 }
 ```
+
+invite_codes 운영 원칙:
+
+- 역할별 초대코드 1개로 여러 직원을 온보딩할 수 있다.
+- `max_uses`와 `used_count`로 사용 가능 인원을 제한한다.
+- `expires_at`으로 코드 유효기간을 제한한다.
+- `allowed_domain`은 현재는 null 가능하나, 장기적으로 회사 도메인 또는 Workspace 전환 시 사용한다.
+- `active=false` 또는 `revoked_at` 기록으로 코드 폐기 가능하다.
+- `role=admin` 초대코드는 기본 금지한다.
+
+> 비고: 기존 1회성(`used:false`) 구조를 위 다회용(`max_uses`/`used_count`/`used_by[]`) 구조로 보정. 승인 플로우의 "used=true 변경"은 "`used_count` 증가 + `used_by`에 uid 추가"로 대체하며, 이 증가는 동시성 때문에 transaction/Cloud Function으로 처리한다(§10 보안 원칙).
 
 ### `pending_users/{uid}` fallback
 
@@ -129,7 +148,7 @@ K5A 최종 판단은 다음과 같다.
 4. 직원이 초대코드를 입력한다.
 5. 앱이 `invite_codes/{code}`의 만료, 미사용, role, account_type을 확인한다.
 6. 조건이 맞으면 `users/{uid}`를 `account_type=personal`, `status=active`로 생성한다.
-7. 초대코드는 `used=true`, `used_by=<uid>`로 변경한다.
+7. 초대코드는 `used_count`를 1 증가시키고 `used_by`에 `<uid>`를 추가한다(다회용 구조, transaction/Cloud Function 처리).
 8. 이후 로그인은 `users/{uid}` 단건 read와 기존 `ACCESS_MATRIX`로 처리한다.
 
 fallback B안 플로우:
@@ -183,6 +202,19 @@ K5A는 Rules를 변경하지 않는 설계 단계다. 다만 후속 K5B에서 �
 - `pending_users` fallback을 사용할 경우 본인 create와 admin read/update 범위를 분리해야 한다.
 - Rules 전환 전에는 기존 Google Login 최소 운영 흐름과 PIN rollback 경로를 유지한다.
 
+### 중요 보안 원칙 (Cloud Functions)
+
+```text
+role/status/account_type 결정권은 클라이언트가 가져서는 안 된다.
+
+클라이언트는 Google 로그인 결과와 초대코드를 제출할 수만 있다.
+최종 users/{uid} 생성, role 부여, status=active 확정, used_count 증가는
+Cloud Functions 또는 서버 권한에서 처리하는 것이 권장된다.
+
+특히 used_count 증가는 동시성 문제가 있으므로
+transaction 또는 callable Cloud Function으로 처리해야 한다.
+```
+
 ## 11. 기존 PIN 계정 영향
 
 - 기존 PIN 계정은 rollback과 예비 로그인 경로로 유지한다.
@@ -201,18 +233,34 @@ K5A는 Rules를 변경하지 않는 설계 단계다. 다만 후속 K5B에서 �
 
 ## 13. 구현 단계 분할안
 
-1. K5B — 직원 개인 Google 승인 구조 데이터 모델 / Rules 초안 확정
-2. K5C — 초대코드 컬렉션과 관리자 발급 UI 설계
-3. K5D — Google 개인 계정 최초 로그인/초대코드 입력 흐름 구현
-4. K5E — `users/{uid}` 자동 생성 및 초대코드 사용 처리 구현
-5. K5F — pending fallback 또는 반려 플로우 구현
-6. K5G — 퇴사자 inactive 처리 UI와 감사 로그 설계
-7. K5H — Workspace / Google Group 연동 가능성 재검토
+```text
+K5A    설계 문서
+K5A-GH 설계 문서 GitHub 반영
+K5B    데이터 모델 / Rules 초안 확정
+K5C-0  미승인 Google 사용자 차단 UI 골격
+K5D    초대코드 입력/검증 UI + invite_codes 발급 admin UI
+K5E    Cloud Functions로 코드 검증/used_count 원자화 + role 서버 확정
+K5F    퇴사 처리 UI(status=inactive + terminated_*) + Auth disabled 검토
+K5G    Workspace/Group 장기 연동 검토
+```
 
 ## 14. 리스크
 
 - 초대코드 유출 시 잘못된 계정 승인 가능성
 - 초대코드 중복 사용 처리 누락 가능성
+
+### 초대코드 유출 방어책
+
+```text
+1. max_uses 제한
+2. expires_at 만료
+3. allowed_domain 제한
+4. active=false 즉시 폐기
+5. revoked_at/revoked_by/revoke_reason 감사 기록
+6. used_count / used_by 기록
+7. admin role 초대코드 기본 금지
+```
+
 - 개인 Gmail 사용 시 퇴사자 계정 자체를 조직에서 suspend할 수 없는 한계
 - `users/{uid}`와 Firebase Auth UID 불일치 시 권한 오류 가능성
 - Rules 전환이 미흡하면 승인 전 사용자가 과도한 read 권한을 가질 수 있음
