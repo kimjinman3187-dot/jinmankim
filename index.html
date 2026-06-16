@@ -184,6 +184,13 @@
             <div>provider: google</div>
             <div>상태: <span id="gateStatus">승인대기</span></div>
         </div>
+        <div style="text-align:left; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); border-radius:16px; padding:14px; margin-bottom:16px;">
+            <label for="pendingInviteCodeInput" style="display:block; font-size:11px; font-weight:900; color:#dbeafe; margin-bottom:8px;">초대코드</label>
+            <input id="pendingInviteCodeInput" type="text" placeholder="관리자에게 받은 초대코드 입력" style="width:100%; height:42px; border-radius:12px; border:1px solid rgba(255,255,255,0.2); background:rgba(15,23,42,0.72); color:#fff; padding:0 12px; font-size:12px; outline:none; margin-bottom:10px;">
+            <button id="pendingInviteCodeCheckBtn" type="button" onclick="handlePendingInviteCodePreview()" style="width:100%; height:42px; border-radius:12px; border:1px solid rgba(147,197,253,0.45); background:#2563eb; color:#fff; font-size:12px; font-weight:900; cursor:pointer;">초대코드 확인</button>
+            <p style="font-size:10px; line-height:1.6; color:#bfdbfe; margin-top:10px;">관리자에게 받은 초대코드를 입력하면 다음 단계에서 계정 승인이 진행될 수 있습니다. 현재 단계에서는 UI만 제공하며, 실제 초대코드 검증은 K5D-2 또는 K5E에서 구현합니다.</p>
+            <div id="pendingInviteCodeMessage" style="min-height:18px; margin-top:10px; font-size:11px; font-weight:800; color:#fde68a;"></div>
+        </div>
         <button type="button" onclick="switchGoogleAccount()" style="width:100%; height:46px; margin-bottom:10px; border-radius:14px; border:1px solid rgba(255,255,255,0.25); background:rgba(255,255,255,0.12); color:#fff; font-size:13px; font-weight:800; cursor:pointer;">Google 계정전환</button>
         <button type="button" onclick="logout()" style="width:100%; height:46px; border-radius:14px; border:1px solid rgba(255,255,255,0.15); background:transparent; color:#cbd5e1; font-size:13px; font-weight:800; cursor:pointer;">로그아웃</button>
     </div>
@@ -307,6 +314,31 @@
                 <button onclick="exportExcel()" class="text-[10px] bg-green-600 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm">EXCEL 저장</button>
             </div>
             <div id="adminUserMonitor" class="hidden bg-white p-4 rounded-[2rem] border-2 border-red-100 mb-4 space-y-2 shadow-sm"></div>
+            <section id="adminInviteCodePanel" class="hidden bg-white rounded-[2rem] p-5 shadow-sm border-2 border-blue-100 mb-4">
+                <div class="flex justify-between items-center gap-3 mb-4">
+                    <div>
+                        <h3 class="font-black text-slate-900 text-sm">초대코드 관리</h3>
+                        <p class="text-[10px] text-slate-500 font-bold mt-1">현재 단계는 발급 UI 골격만 제공합니다. Firestore 생성은 K5D-2/K5E에서 구현합니다.</p>
+                    </div>
+                    <span class="text-[10px] font-black text-blue-600 bg-blue-50 border border-blue-100 rounded-full px-3 py-1">UI PREVIEW</span>
+                </div>
+                <div class="grid grid-cols-1 gap-3">
+                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider">role</label>
+                    <select id="inviteRoleSelect" class="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold outline-none">
+                        <option value="sales">sales</option>
+                        <option value="accounting">accounting</option>
+                        <option value="factory">factory</option>
+                    </select>
+                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider">max_uses</label>
+                    <input id="inviteMaxUsesInput" type="number" min="1" max="100" value="1" class="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold outline-none">
+                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider">expires_at</label>
+                    <input id="inviteExpiresAtInput" type="date" class="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold outline-none">
+                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider">allowed_domain</label>
+                    <input id="inviteAllowedDomainInput" type="text" placeholder="선택: 회사 도메인 또는 비워두기" class="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold outline-none">
+                    <button id="prepareInviteCodeBtn" type="button" onclick="handleAdminInviteCodePreview()" class="w-full h-11 rounded-xl bg-blue-600 text-white text-xs font-black shadow-sm">초대코드 발급 준비</button>
+                    <div id="inviteCodeAdminMessage" class="min-h-[24px] text-[11px] font-bold text-slate-600 bg-slate-50 rounded-xl border border-slate-100 p-3"></div>
+                </div>
+            </section>
             <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-200">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="font-bold text-slate-800">통합 대시보드</h3>
@@ -2049,6 +2081,32 @@ function showApprovalGate(reason, authUser) {
     reassertGate();
 }
 
+function setupInviteCodeUiHandlers() {
+    // Reserved hook for K5D-2/K5E. Current K5D-1 behavior is intentionally UI-only.
+}
+
+function handlePendingInviteCodePreview() {
+    const input = document.getElementById('pendingInviteCodeInput');
+    const message = document.getElementById('pendingInviteCodeMessage');
+    const value = String(input?.value || '').trim();
+    if (!message) return;
+    if (!value) {
+        message.textContent = '초대코드를 입력하세요.';
+        return;
+    }
+    message.textContent = '초대코드 검증 기능은 다음 단계에서 제공합니다. 현재 단계에서는 users/{uid} 생성, invite_codes 조회, role 부여를 수행하지 않습니다.';
+}
+
+function handleAdminInviteCodePreview() {
+    const role = document.getElementById('inviteRoleSelect')?.value || 'sales';
+    const maxUses = document.getElementById('inviteMaxUsesInput')?.value || '1';
+    const expiresAt = document.getElementById('inviteExpiresAtInput')?.value || '-';
+    const allowedDomain = String(document.getElementById('inviteAllowedDomainInput')?.value || '').trim() || '-';
+    const message = document.getElementById('inviteCodeAdminMessage');
+    if (!message) return;
+    message.innerHTML = `발급 준비값: role=${role}, max_uses=${maxUses}, expires_at=${expiresAt}, allowed_domain=${allowedDomain}<br>실제 초대코드 생성은 K5D-2/K5E에서 구현합니다. Firestore write는 수행하지 않았습니다.`;
+}
+
 async function loadCurrentUserFromAuthUser(authUser) {
     if (!authUser?.uid) throw new Error('Google Auth user is missing uid.');
     if (!window.db?.collection) throw new Error('Firestore SDK is not initialized.');
@@ -2243,6 +2301,9 @@ function applyPCRoleAccess() {
 
     const adminMonitor = document.getElementById('adminUserMonitor');
     if (adminMonitor && currentUser?.role !== 'admin') adminMonitor.classList.add('hidden');
+
+    const adminInviteCodePanel = document.getElementById('adminInviteCodePanel');
+    if (adminInviteCodePanel) adminInviteCodePanel.classList.toggle('hidden', currentUser?.role !== 'admin');
 }
 
 async function renderAdminMonitor() {
