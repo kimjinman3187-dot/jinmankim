@@ -437,9 +437,9 @@
                     <div class="flex justify-between items-start gap-4 mb-4">
                         <div>
                             <h3 class="font-black text-white text-sm">승인 요청 목록</h3>
-                            <p class="text-[10px] text-slate-400 font-bold mt-1 leading-5">Google 계정 승인 요청을 검토하기 위한 영역입니다. 현재는 UI 골격 단계이며, 실제 데이터 조회와 승인 처리는 아직 연결하지 않았습니다.</p>
+                            <p class="text-[10px] text-slate-400 font-bold mt-1 leading-5">Google 계정 승인 요청을 검토하기 위한 영역입니다. read-only 조회만 연결되었고 승인/반려/보류 처리는 아직 구현하지 않았습니다.</p>
                         </div>
-                        <span class="text-[10px] font-black text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-full px-3 py-1">K5F-4 UI ONLY</span>
+                        <span class="text-[10px] font-black text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-full px-3 py-1">K5F-5 READ ONLY</span>
                     </div>
                     <div class="overflow-x-auto rounded-lg border border-[#334155] bg-[#0f1522]">
                         <table class="w-full min-w-[820px] text-left text-[11px]">
@@ -454,7 +454,7 @@
                                     <th class="px-3 py-3 font-black">작업</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="pcApprovalRequestBody">
                                 <tr>
                                     <td colspan="7" class="px-3 py-8 text-center text-slate-500 font-bold">아직 표시할 승인 요청 데이터가 없습니다. K5F-5 단계에서 read-only 목록 표시를 연결합니다.</td>
                                 </tr>
@@ -2455,6 +2455,109 @@ function applyPCRoleAccess() {
     if (pcApprovalRequestPanel) pcApprovalRequestPanel.classList.toggle('hidden', currentUser?.role !== 'admin');
 }
 
+function createApprovalRequestMessageRow(message) {
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 7;
+    cell.className = 'px-3 py-8 text-center text-slate-500 font-bold';
+    cell.textContent = message;
+    row.appendChild(cell);
+    return row;
+}
+
+function formatApprovalRequestTime(value) {
+    try {
+        if (!value) return '-';
+        if (typeof value.toDate === 'function') return value.toDate().toLocaleString('ko-KR');
+        if (typeof value === 'number') return new Date(value).toLocaleString('ko-KR');
+        if (typeof value === 'string') return value;
+    } catch (error) {
+        console.warn('Approval request timestamp formatting failed:', error);
+    }
+    return '-';
+}
+
+function normalizeApprovalRequestStatus(status) {
+    const allowed = ['pending', 'approved', 'rejected', 'on_hold', 'inactive'];
+    return allowed.includes(status) ? status : '확인 필요';
+}
+
+function appendApprovalRequestCell(row, value, className = 'px-3 py-3 text-slate-300 font-bold align-top') {
+    const cell = document.createElement('td');
+    cell.className = className;
+    cell.textContent = value || '-';
+    row.appendChild(cell);
+}
+
+function renderApprovalRequestsEmpty() {
+    const tbody = document.getElementById('pcApprovalRequestBody');
+    if (!tbody) return;
+    tbody.textContent = '';
+    tbody.appendChild(createApprovalRequestMessageRow('아직 표시할 승인 요청 데이터가 없습니다.'));
+}
+
+function renderApprovalRequestsError(error) {
+    const tbody = document.getElementById('pcApprovalRequestBody');
+    if (!tbody) return;
+    tbody.textContent = '';
+    const code = error?.code || '';
+    const message = code === 'permission-denied'
+        ? '승인 요청 목록을 읽을 권한이 아직 연결되지 않았습니다. K5F-5는 read-only 연결 단계이며, Rules/Functions 변경은 별도 승인 후 진행합니다.'
+        : '승인 요청 목록을 불러오지 못했습니다.';
+    tbody.appendChild(createApprovalRequestMessageRow(message));
+}
+
+function renderApprovalRequestRows(requests) {
+    const tbody = document.getElementById('pcApprovalRequestBody');
+    if (!tbody) return;
+    tbody.textContent = '';
+    if (!requests.length) {
+        renderApprovalRequestsEmpty();
+        return;
+    }
+
+    requests.forEach(request => {
+        const row = document.createElement('tr');
+        row.className = 'border-b border-[#334155]/70';
+        appendApprovalRequestCell(row, formatApprovalRequestTime(request.requested_at));
+        appendApprovalRequestCell(row, request.email);
+        appendApprovalRequestCell(row, request.uid, 'px-3 py-3 text-slate-300 font-mono text-[10px] align-top max-w-[180px] truncate');
+        appendApprovalRequestCell(row, request.requested_role);
+        appendApprovalRequestCell(row, normalizeApprovalRequestStatus(request.status));
+        appendApprovalRequestCell(row, request.memo);
+
+        const actionCell = document.createElement('td');
+        actionCell.className = 'px-3 py-3 align-top';
+        ['승인', '반려', '보류'].forEach(label => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.disabled = true;
+            button.className = 'mr-1 mb-1 px-2 py-1 rounded bg-slate-700 text-slate-500 text-[10px] font-black cursor-not-allowed';
+            button.textContent = label;
+            actionCell.appendChild(button);
+        });
+        row.appendChild(actionCell);
+        tbody.appendChild(row);
+    });
+}
+
+async function loadApprovalRequestsReadOnly() {
+    if (currentUser?.role !== 'admin') return;
+    const tbody = document.getElementById('pcApprovalRequestBody');
+    if (!tbody || !window.db?.collection) return;
+    tbody.textContent = '';
+    tbody.appendChild(createApprovalRequestMessageRow('승인 요청 목록을 불러오는 중입니다.'));
+
+    try {
+        const snapshot = await db.collection('approval_requests').orderBy('requested_at', 'desc').limit(50).get();
+        const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderApprovalRequestRows(requests);
+    } catch (error) {
+        console.warn('Approval requests read-only load failed:', error);
+        renderApprovalRequestsError(error);
+    }
+}
+
 async function renderAdminMonitor() {
     if (currentUser.role !== 'admin' || typeof db === 'undefined') return;
     const monitor = document.getElementById('adminUserMonitor');
@@ -3346,6 +3449,9 @@ function switchPCTab(tabId, pushHistory = true) {
    
     if (['dashboard', 'factory', 'accounting', 'receivables'].includes(tabId)) {
     setTimeout(executeSearch, 100);
+    }
+    if (tabId === 'dashboard' && currentUser?.role === 'admin') {
+        loadApprovalRequestsReadOnly();
     }
 
     sessionStorage.setItem('active_tab', tabId);
