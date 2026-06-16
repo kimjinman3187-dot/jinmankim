@@ -2109,16 +2109,85 @@ function setupInviteCodeUiHandlers() {
     // Reserved hook for K5D-2/K5E. Current K5D-1 behavior is intentionally UI-only.
 }
 
-function handlePendingInviteCodePreview() {
+// WORK22-6N-K5D-2 초대코드 정규화
+function normalizeInviteCode(value) {
+    return String(value || '').trim().toUpperCase();
+}
+
+// 다양한 timestamp 표현(Firestore Timestamp / number / ISO string)을 ms로 변환. 불가 시 null.
+function inviteTimestampToMillis(value) {
+    if (value == null || value === '') return null;
+    try {
+        if (typeof value.toMillis === 'function') return value.toMillis();
+        if (typeof value.toDate === 'function') return value.toDate().getTime();
+        if (typeof value === 'number') return value;
+        const ms = new Date(value).getTime();
+        return Number.isNaN(ms) ? null : ms;
+    } catch (e) { return null; }
+}
+
+// WORK22-6N-K5D-2 invite_codes 읽기 전용 검증 (write/승인/role 부여 없음)
+async function validateInviteCodeReadOnly(inviteCode, googleUserContext) {
+    if (!window.db?.collection) return { ok: false, reason: 'firestore-not-ready' };
+    let doc;
+    try {
+        doc = await db.collection('invite_codes').doc(inviteCode).get();
+    } catch (error) {
+        console.warn('WORK22-6N-K5D-2 invite_codes read failed:', { code: error?.code });
+        return { ok: false, reason: 'permission-denied' };
+    }
+    if (!doc.exists) return { ok: false, reason: 'not-found' };
+    const d = doc.data() || {};
+    if (d.active !== true) return { ok: false, reason: 'inactive' };
+    if (d.revoked_at) return { ok: false, reason: 'revoked' };
+    const role = d.role;
+    if (!['sales', 'accounting', 'factory'].includes(role)) return { ok: false, reason: 'bad-role' };
+    const expMs = inviteTimestampToMillis(d.expires_at);
+    if (expMs !== null && expMs < Date.now()) return { ok: false, reason: 'expired' };
+    const used = Number(d.used_count) || 0;
+    const max = Number(d.max_uses) || 0;
+    if (max > 0 && used >= max) return { ok: false, reason: 'max-used' };
+    const allowed = String(d.allowed_domain || '').trim();
+    if (allowed) {
+        const email = String(googleUserContext?.email || '');
+        const domain = (email.split('@')[1] || '').toLowerCase();
+        if (domain !== allowed.toLowerCase()) return { ok: false, reason: 'domain-mismatch' };
+    }
+    return { ok: true, role, code: inviteCode };
+}
+
+async function handlePendingInviteCodePreview() {
     const input = document.getElementById('pendingInviteCodeInput');
     const message = document.getElementById('pendingInviteCodeMessage');
-    const value = String(input?.value || '').trim();
     if (!message) return;
-    if (!value) {
+    message.style.whiteSpace = 'pre-line';
+    const code = normalizeInviteCode(input?.value);
+    if (!code) {
         message.textContent = '초대코드를 입력하세요.';
         return;
     }
-    message.textContent = '초대코드 검증 기능은 다음 단계에서 제공합니다. 현재 단계에서는 users/{uid} 생성, invite_codes 조회, role 부여를 수행하지 않습니다.';
+    message.textContent = '초대코드 확인 중...';
+    const email = window.auth?.currentUser?.email || document.getElementById('gateEmail')?.textContent || '';
+    const result = await validateInviteCodeReadOnly(code, { email });
+    if (result.ok) {
+        // 검증만 성공. 승인/role 부여/users 생성/used_count 증가/운영 진입 없음 — 게이트 유지.
+        message.textContent =
+            `초대코드 확인 완료.\nrole: ${result.role}\n\n실제 계정 승인과 role 부여는 K5E 서버 검증 단계에서 진행됩니다. 현재는 운영 화면에 진입하지 않습니다.`;
+        return;
+    }
+    const reasonMessages = {
+        'permission-denied': '현재 초대코드 검증 권한이 없습니다. Rules 또는 서버 검증 단계에서 연결됩니다.',
+        'firestore-not-ready': '초대코드 검증을 완료할 수 없습니다. 관리자에게 문의하세요.',
+        'not-found': '초대코드가 없거나 사용할 수 없습니다.',
+        'inactive': '초대코드가 없거나 사용할 수 없습니다.',
+        'revoked': '초대코드가 없거나 사용할 수 없습니다.',
+        'bad-role': '초대코드가 없거나 사용할 수 없습니다.',
+        'expired': '초대코드가 만료되었습니다.',
+        'max-used': '초대코드 사용 한도를 초과했습니다.',
+        'domain-mismatch': '이 초대코드는 현재 계정 도메인에서 사용할 수 없습니다.'
+    };
+    message.textContent = reasonMessages[result.reason] || '초대코드가 없거나 사용할 수 없습니다.';
+    // 검증 실패/성공과 무관하게 승인대기 게이트 유지 (운영 화면 진입 없음)
 }
 
 function handleAdminInviteCodePreview() {
