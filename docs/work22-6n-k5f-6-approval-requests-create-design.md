@@ -209,13 +209,18 @@ K5F-6에서는 Rules를 수정하지 않는다.
 ### 12.1 생성 허용 후보
 
 ```text
+match /approval_requests/{requestUid} 기준으로 설계한다.
 request.auth != null
-request.auth.uid == request.resource.id
-request.resource.data.uid == request.auth.uid
+request.auth.uid == requestUid
+request.resource.data.uid == requestUid
 request.resource.data.email == request.auth.token.email
 request.resource.data.status == 'pending'
 request.resource.data.source == 'google_approval_gate'
 request.resource.data.requested_role in ['sales', 'accounting', 'factory']
+request.resource.data.reviewed_by == null
+request.resource.data.reviewed_at == null
+request.resource.data.decision_reason == null
+request.resource.data.memo == null
 users/{request.auth.uid} active 문서가 없어야 함
 ```
 
