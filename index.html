@@ -191,6 +191,20 @@
             <p style="font-size:10px; line-height:1.6; color:#bfdbfe; margin-top:10px;">관리자에게 받은 초대코드를 입력하면 다음 단계에서 계정 승인이 진행될 수 있습니다. 현재 단계에서는 UI만 제공하며, 실제 초대코드 검증은 K5D-2 또는 K5E에서 구현합니다.</p>
             <div id="pendingInviteCodeMessage" style="min-height:18px; margin-top:10px; font-size:11px; font-weight:800; color:#fde68a;"></div>
         </div>
+        <div style="text-align:left; background:rgba(15,23,42,0.44); border:1px solid rgba(125,211,252,0.22); border-radius:16px; padding:14px; margin-bottom:16px;">
+            <div style="font-size:11px; font-weight:900; color:#e0f2fe; margin-bottom:10px;">관리자 승인 요청</div>
+            <label for="approvalRequestRoleSelect" style="display:block; font-size:10px; font-weight:900; color:#bfdbfe; margin-bottom:6px;">요청 권한</label>
+            <select id="approvalRequestRoleSelect" style="width:100%; height:40px; border-radius:12px; border:1px solid rgba(255,255,255,0.2); background:rgba(15,23,42,0.82); color:#fff; padding:0 10px; font-size:12px; outline:none; margin-bottom:10px;">
+                <option value="sales">sales</option>
+                <option value="accounting">accounting</option>
+                <option value="factory">factory</option>
+            </select>
+            <label for="approvalRequestReasonInput" style="display:block; font-size:10px; font-weight:900; color:#bfdbfe; margin-bottom:6px;">요청 사유</label>
+            <textarea id="approvalRequestReasonInput" rows="3" placeholder="업무상 필요한 권한을 간단히 적어주세요." style="width:100%; min-height:72px; border-radius:12px; border:1px solid rgba(255,255,255,0.2); background:rgba(15,23,42,0.82); color:#fff; padding:10px 12px; font-size:12px; outline:none; resize:vertical; margin-bottom:8px;"></textarea>
+            <p style="font-size:10px; line-height:1.6; color:#bfdbfe; margin:0 0 10px;">주민번호, 비밀번호, 개인 연락처 등 민감정보는 입력하지 마세요.</p>
+            <button id="approvalRequestSubmitBtn" type="button" onclick="createApprovalRequest()" style="width:100%; height:42px; border-radius:12px; border:1px solid rgba(34,197,94,0.45); background:#16a34a; color:#fff; font-size:12px; font-weight:900; cursor:pointer;">승인 요청 보내기</button>
+            <div id="approvalRequestMessage" style="min-height:18px; margin-top:10px; font-size:11px; font-weight:800; color:#bbf7d0; white-space:pre-line;"></div>
+        </div>
         <button type="button" onclick="switchGoogleAccount()" style="width:100%; height:46px; margin-bottom:10px; border-radius:14px; border:1px solid rgba(255,255,255,0.25); background:rgba(255,255,255,0.12); color:#fff; font-size:13px; font-weight:800; cursor:pointer;">Google 계정전환</button>
         <button type="button" onclick="logout()" style="width:100%; height:46px; border-radius:14px; border:1px solid rgba(255,255,255,0.15); background:transparent; color:#cbd5e1; font-size:13px; font-weight:800; cursor:pointer;">로그아웃</button>
     </div>
@@ -2223,6 +2237,97 @@ async function handlePendingInviteCodePreview() {
     };
     message.textContent = reasonMessages[result.reason] || '초대코드가 없거나 사용할 수 없습니다.';
     // 검증 실패/성공과 무관하게 승인대기 게이트 유지 (운영 화면 진입 없음)
+}
+
+async function createApprovalRequest() {
+    const message = document.getElementById('approvalRequestMessage');
+    const button = document.getElementById('approvalRequestSubmitBtn');
+    const roleSelect = document.getElementById('approvalRequestRoleSelect');
+    const reasonInput = document.getElementById('approvalRequestReasonInput');
+    const setMessage = (text, color = '#bbf7d0') => {
+        if (!message) return;
+        message.style.whiteSpace = 'pre-line';
+        message.style.color = color;
+        message.textContent = text;
+    };
+
+    const authUser = window.auth?.currentUser;
+    const requestedRole = String(roleSelect?.value || '').trim();
+    const requestReason = String(reasonInput?.value || '').trim();
+    const allowedRoles = ['sales', 'accounting', 'factory'];
+
+    if (!window.db?.collection) {
+        setMessage('승인 요청 기능을 준비하지 못했습니다. 잠시 후 다시 시도하세요.', '#fecaca');
+        return;
+    }
+    if (!authUser?.uid) {
+        setMessage('Google 로그인 정보를 확인할 수 없습니다. Google 계정전환 후 다시 시도하세요.', '#fecaca');
+        return;
+    }
+    if (!authUser?.email) {
+        setMessage('Google 이메일 정보를 확인할 수 없습니다. Google 계정 상태를 확인하세요.', '#fecaca');
+        return;
+    }
+    if (!allowedRoles.includes(requestedRole)) {
+        setMessage('요청 권한은 sales, accounting, factory 중 하나만 선택할 수 있습니다.', '#fecaca');
+        return;
+    }
+
+    const identityText = `${authUser.email || ''} ${authUser.displayName || ''}`.toLowerCase();
+    if (requestedRole === 'admin' || requestedRole === 'device' || identityText.includes('factory-device-01') || identityText.includes('yjflow.factory01@gmail.com')) {
+        setMessage('이 계정 또는 권한은 승인 요청 대상이 아닙니다. 관리자에게 문의하세요.', '#fecaca');
+        return;
+    }
+
+    if (button) button.disabled = true;
+    setMessage('승인 요청 상태를 확인하는 중입니다...', '#fde68a');
+
+    try {
+        const requestRef = db.collection('approval_requests').doc(authUser.uid);
+        const existing = await requestRef.get();
+
+        if (existing.exists) {
+            const status = String((existing.data() || {}).status || 'pending');
+            const statusMessages = {
+                pending: '이미 승인 요청이 접수되었습니다. 관리자 승인을 기다려 주세요.',
+                on_hold: '추가 확인이 필요합니다. 관리자에게 문의해 주세요.',
+                approved: '승인되었습니다. 다시 로그인하면 이용할 수 있습니다.',
+                rejected: '승인 요청이 반려되었습니다. 관리자에게 문의해 주세요.'
+            };
+            setMessage(statusMessages[status] || '이미 승인 요청 기록이 있습니다. 관리자에게 문의해 주세요.', '#fde68a');
+            return;
+        }
+
+        const payload = {
+            uid: authUser.uid,
+            email: authUser.email,
+            displayName: authUser.displayName || '',
+            provider: 'google',
+            source: 'google_approval_gate',
+            requested_role: requestedRole,
+            request_reason: requestReason,
+            status: 'pending',
+            requested_at: firebase.firestore.FieldValue.serverTimestamp(),
+            reviewed_by: null,
+            reviewed_at: null,
+            decision_reason: null,
+            memo: null
+        };
+
+        await requestRef.set(payload, { merge: false });
+        setMessage('승인 요청이 접수되었습니다. 관리자 승인을 기다려 주세요.');
+    } catch (error) {
+        console.warn('WORK22-6N-K5G-1 approval_requests create failed:', { code: error?.code });
+        if (error?.code === 'permission-denied') {
+            setMessage('승인 요청 권한이 없습니다. Google 계정 상태를 확인하거나 관리자에게 문의하세요.', '#fecaca');
+        } else if (error?.code === 'unavailable' || error?.code === 'deadline-exceeded') {
+            setMessage('네트워크 문제로 승인 요청을 완료하지 못했습니다. 잠시 후 다시 시도하세요.', '#fecaca');
+        } else {
+            setMessage('승인 요청을 완료하지 못했습니다. 잠시 후 다시 시도하거나 관리자에게 문의하세요.', '#fecaca');
+        }
+    } finally {
+        if (button) button.disabled = false;
+    }
 }
 
 function handleAdminInviteCodePreview() {
