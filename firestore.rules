@@ -1,0 +1,179 @@
+rules_version = '2';
+
+// WORK22-6N-K5G-1F — Firestore Rules (repo source-of-truth candidate)
+//
+// ⚠️ DO NOT DEPLOY AS-IS. 배포 전 K5G-1F 안전 게이트(PR #99)를 반드시 거친다:
+//   1) firebaserules.googleapis.com REST API GET 으로 "현재 운영 활성 룰셋" 백업
+//   2) 백업본 ↔ 본 파일 라인 단위 diff (+ `firebase deploy --only firestore:rules --dry-run`)
+//   3) diff가 의도된 차이(approval_requests 추가 + 아래 명시된 보정)뿐인지 확인
+//   4) 그 후에만 `firebase deploy --only firestore:rules` (승인자 수행)
+//
+// 본 파일은 코드(index.html, js/) 접근 패턴 기준 "최선 재구성"이며 운영 배포본과
+// 100% 동일함이 보장되지 않는다. 알려진 불확실/보정 지점:
+//   - notifications: 대상 role 사용자가 read/read_at 를 update 하는 현행 동작을 허용(설계 초안과 다름)
+//   - users self-update: attempts/lockoutUntil 는 uid 기준만 허용. (factory PIN/Anonymous 의 legacy
+//     doc-id self-update 경로는 미반영 — 운영 백업과 대조 필요. K4F "6N-D 현행 충돌" 참조)
+//   - invite_codes: 클라이언트는 read(.doc(code).get())만 사용. write 는 admin/Cloud Function(Admin SDK)
+//   - pending_users: 클라이언트 접근 코드 없음 → 본 파일에 규칙 없음(운영 백업에 존재하면 반드시 보존)
+// 배포 시 운영 백업본을 본 파일에 병합(SUPERSET)하여 위 불확실 지점을 운영 실제값으로 확정한다.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function hasUserDoc() {
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function currentUser() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function currentRole() {
+      return hasUserDoc() ? currentUser().role : null;
+    }
+
+    function currentStatus() {
+      return hasUserDoc() && currentUser().keys().hasAny(['status'])
+        ? currentUser().status
+        : 'active';
+    }
+
+    function activeUser() {
+      return hasUserDoc() && currentStatus() == 'active';
+    }
+
+    function roleIn(roles) {
+      return activeUser() && currentRole() in roles;
+    }
+
+    function isAdmin() {
+      return roleIn(['admin']);
+    }
+
+    function isSalesOwner(orderData) {
+      return roleIn(['sales']) && orderData.reportedBy == currentUser().name;
+    }
+
+    function canReadOrder(orderData) {
+      return isAdmin()
+        || roleIn(['accounting'])
+        || isSalesOwner(orderData)
+        || (roleIn(['factory']) && orderData.status in ['approved', 'completed']);
+    }
+
+    function canCreateOrder() {
+      return roleIn(['admin', 'sales', 'accounting']);
+    }
+
+    function isSalesEditableTransition(beforeData, afterData) {
+      return roleIn(['admin', 'sales', 'accounting'])
+        && afterData.keys().hasAll(beforeData.keys());
+    }
+
+    function isFinanceEditableTransition(beforeData, afterData) {
+      return roleIn(['admin', 'accounting'])
+        && afterData.diff(beforeData).affectedKeys().hasOnly([
+          'status', 'rejectReason', 'invoiceStatus', 'invoiceIssuedAt', 'updatedAt'
+        ]);
+    }
+
+    function isArEditableTransition(beforeData, afterData) {
+      return roleIn(['admin', 'sales', 'accounting'])
+        && afterData.diff(beforeData).affectedKeys().hasOnly([
+          'paidAmount', 'paymentStatus', 'updatedAt'
+        ]);
+    }
+
+    function isProductionEditableTransition(beforeData, afterData) {
+      return roleIn(['admin', 'factory'])
+        && afterData.diff(beforeData).affectedKeys().hasOnly([
+          'completedQty', 'status', 'completedAt', 'updatedAt'
+        ]);
+    }
+
+    // users: PIN 로그인 그리드/관리자 목록을 위해 read 허용(축소는 K4B 예정).
+    match /users/{userId} {
+      allow read: if signedIn();
+
+      // 본인(uid) 잠금 카운터 self-reset 만 허용.
+      allow update: if activeUser() && userId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'attempts', 'lockoutUntil'
+        ]);
+      allow create, delete, update: if isAdmin();
+    }
+
+    match /orders/{orderId} {
+      allow read: if signedIn() && canReadOrder(resource.data);
+
+      allow create: if canCreateOrder()
+        && request.resource.data.reportedBy == currentUser().name
+        && request.resource.data.status == 'pending';
+
+      allow update: if signedIn()
+        && canReadOrder(resource.data)
+        && (
+          isSalesEditableTransition(resource.data, request.resource.data)
+          || isFinanceEditableTransition(resource.data, request.resource.data)
+          || isArEditableTransition(resource.data, request.resource.data)
+          || isProductionEditableTransition(resource.data, request.resource.data)
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if activeUser()
+        && request.resource.data.user == currentUser().name
+        && request.resource.data.role == currentRole();
+      allow update, delete: if false;
+    }
+
+    // notifications: 대상 role 사용자가 읽고 read/read_at 만 갱신. 생성/삭제는 admin.
+    match /notifications/{notificationId} {
+      allow read: if activeUser() && currentRole() in resource.data.target_roles;
+      allow update: if activeUser()
+        && currentRole() in resource.data.target_roles
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'read', 'read_at'
+        ]);
+      allow create, delete: if isAdmin();
+    }
+
+    // invite_codes: 클라이언트는 단건 read 만(승인 게이트 검증). write 는 admin/Admin SDK.
+    match /invite_codes/{code} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // approval_requests: 미승인 Google 사용자의 본인 승인요청 생성/조회 (K5G-1R/1F 설계).
+    match /approval_requests/{requestUid} {
+      allow create: if request.auth != null
+        && requestUid == request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.status == 'pending'
+        && request.resource.data.source == 'google_approval_gate'
+        && request.resource.data.requested_role in ['sales', 'accounting', 'factory']
+        && request.resource.data.reviewed_by == null
+        && request.resource.data.reviewed_at == null
+        && request.resource.data.decision_reason == null
+        && request.resource.data.memo == null
+        && !activeUser();
+
+      allow read: if isAdmin()
+        || (request.auth != null && requestUid == request.auth.uid);
+
+      allow update, delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
