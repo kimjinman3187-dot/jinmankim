@@ -1,0 +1,86 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 모든 요청에 대해 기본적으로 '로그인(익명 로그인 포함)된 사용자'만 접근 허용
+    // 이렇게 하면 구글의 보안 경고가 즉시 사라집니다.
+    
+    // [1. 직원 명단]
+    match /users/{userId} {
+      allow read, update: if request.auth != null; 
+      allow write: if false;
+    }
+    
+    // [2. 수주 데이터]
+    match /orders/{orderId} {
+      allow read, create, update, delete: if request.auth != null;
+    }
+    
+    // [3. 감사 로그]
+    match /audit_logs/{logId} {
+      allow create, read: if request.auth != null;
+      allow update, delete: if false;
+    }
+    
+    // [4. 알림 데이터]
+    match /notifications/{notiId} {
+      allow read, create, update: if request.auth != null;
+      allow delete: if false;
+    }
+
+    // [5. 설문조사 전용 데이터]
+    match /surveys/{surveyId} {
+      allow create: if request.auth != null;
+      allow read, update, delete: if false;
+    }
+
+    // [6. 승인요청 approval_requests] WORK22-6N-K5G-1F 추가
+    // 기준: 운영 활성 룰셋 c3c6f360 원본 보존 + approval_requests만 신규
+    function isSignedIn() { return request.auth != null; }
+    function arIsGoogleUser() {
+      return isSignedIn()
+        && request.auth.token.email is string
+        && request.auth.token.email != ""
+        && request.auth.token.email_verified == true
+        && request.auth.token.firebase.sign_in_provider == "google.com";
+    }
+    function arUserDoc() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function arIsActiveUser() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && arUserDoc().get("status", "") == "active";
+    }
+    function arIsAdmin() {
+      return arIsActiveUser() && arUserDoc().get("role", "") == "admin";
+    }
+
+    match /approval_requests/{requestUid} {
+      // 미승인(active 아닌) 본인만 생성, status=pending, role 화이트리스트
+      allow create: if arIsGoogleUser()
+        && requestUid == request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.status == "pending"
+        && request.resource.data.source == "google_approval_gate"
+        && request.resource.data.requested_role in ["sales", "accounting", "factory"]
+        && request.resource.data.reviewed_by == null
+        && request.resource.data.reviewed_at == null
+        && request.resource.data.decision_reason == null
+        && request.resource.data.memo == null
+        && !arIsActiveUser();
+
+      // admin 전체 / 본인 단건 read
+      allow read: if arIsAdmin()
+        || (request.auth != null && requestUid == request.auth.uid);
+
+      // admin만 처리, 변경 필드 제한
+      allow update: if arIsAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "status", "memo", "reviewed_by", "reviewed_at", "decision_reason", "updated_at"
+        ]);
+
+      allow delete: if arIsAdmin();
+    }
+
+  }
+}
