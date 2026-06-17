@@ -1,6 +1,6 @@
 # WORK22-6N-K5F-7 — approval_requests 생성 UI/Rules 구현 범위 확정
 
-기준일: 2026-06-12
+기준일: 2026-06-17
 역할: **저장소 구조 분석자 + 구현 범위 설계자** (구현 아님)
 작업 성격: 분석/범위 확정 문서 (코드/Rules/데이터 변경 없음)
 
@@ -112,12 +112,14 @@ Firebase Console 조작 금지 / Reset Data·Delete Branch·main 직접 수정 �
 
 ## 11. 권장 다음 작업명
 
+**실행 순서는 Rules 선행이 원칙이다:**
+
 ```text
-K5G-1   — 승인 요청 생성 UI + approval_requests write (index.html, 클라이언트)
-K5G-1R  — approval_requests Firestore Rules 신설/배포 (별도 PR, 보안 경계)
-        (배포 순서: K5G-1R Rules 먼저 → K5G-1 UI 나중)
+1순위: K5G-1R — approval_requests Firestore Rules 신설/배포 범위 확정 및 Rules PR (보안 경계)
+2순위: K5G-1  — 승인 요청 생성 UI + approval_requests write 구현 (index.html, 클라이언트)
 ```
-**K5F-7 이후 K5G-1로 진행 권장.** 단 write가 실제 동작하려면 K5G-1R Rules가 선행/병행되어야 함.
+- **K5G-1R(Rules)을 먼저** merge/배포한 뒤 **K5G-1(UI write)** 를 진행한다.
+- Rules 미배포 상태에서 K5G-1을 먼저 진행하면 approval_requests create가 **permission-denied**로 실패한다. 따라서 **K5G-1R 선행을 기본값**으로 둔다.
 
 ## 12. Codex 실행 지시문 초안 (K5G-1)
 
@@ -137,7 +139,9 @@ WORK22-6N-K5G-1 — 미승인 Google 사용자 승인 요청 생성 UI 구현
   - 게이트 유지: processLoginSuccess 미호출, 운영 DOM 미노출
 금지: users 생성/role 부여/status active/승인처리/admin·device role/Rules 파일 수정·배포/Console/Reset Data/Delete Branch/main 직접수정
 검증: git diff --check, JS 파싱, index.html 1개, write는 approval_requests/{본인uid}만
-주의: Rules 미배포 시 permission-denied 가능 → K5G-1R(Rules PR) 선행/병행. PR 생성 후 Gene/ORION 최종 판정.
+주의(원칙): K5G-1은 K5G-1R Rules가 merge/배포된 이후 진행하는 것을 원칙으로 한다.
+      Rules 미배포 상태에서 K5G-1을 먼저 진행하면 approval_requests create가 permission-denied로 실패하므로,
+      K5G-1R 선행을 기본값으로 둔다. PR 생성 후 Gene/ORION 최종 판정.
 ```
 
 ### 부록. 상태별 사용자 안내 기준(메시지 초안)
