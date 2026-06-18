@@ -524,7 +524,7 @@
                                     <th class="px-3 py-3 font-black">uid</th>
                                     <th class="px-3 py-3 font-black">요청 role</th>
                                     <th class="px-3 py-3 font-black">상태</th>
-                                    <th class="px-3 py-3 font-black">메모</th>
+                                    <th class="px-3 py-3 font-black">메모/사유</th>
                                     <th class="px-3 py-3 font-black">작업</th>
                                 </tr>
                             </thead>
@@ -2698,7 +2698,11 @@ function renderApprovalRequestRows(requests) {
         appendApprovalRequestCell(row, request.uid, 'px-3 py-3 text-slate-300 font-mono text-[10px] align-top max-w-[180px] truncate');
         appendApprovalRequestCell(row, request.requested_role);
         appendApprovalRequestCell(row, normalizeApprovalRequestStatus(request.status));
-        appendApprovalRequestCell(row, request.memo);
+        // 반려 상태는 decision_reason을 우선 표시(없으면 memo로 fallback), 그 외는 기존 memo 표시 유지
+        const displayMemo = request.status === 'rejected'
+            ? (request.decision_reason || request.memo)
+            : request.memo;
+        appendApprovalRequestCell(row, displayMemo);
 
         const actionCell = document.createElement('td');
         actionCell.className = 'px-3 py-3 align-top';
