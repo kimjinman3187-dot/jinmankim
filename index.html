@@ -2707,9 +2707,10 @@ function renderApprovalRequestRows(requests) {
         const actionCell = document.createElement('td');
         actionCell.className = 'px-3 py-3 align-top';
         const isAdmin = currentUser?.role === 'admin';
-        const isPending = request.status === 'pending';
-        if (!isPending) {
-            // 처리 완료(approved/rejected/on_hold 등) row는 재처리 방지를 위해 버튼 대신 '처리완료' 표시
+        // terminal(approved/rejected)만 재처리 방지. non-terminal(pending/on_hold)은 추가 처리 가능
+        const isTerminal = request.status === 'approved' || request.status === 'rejected';
+        if (isTerminal) {
+            // terminal row는 버튼 대신 '처리완료' 표시
             const doneLabel = document.createElement('span');
             doneLabel.className = 'text-[10px] font-black text-slate-500';
             doneLabel.textContent = '처리완료';
