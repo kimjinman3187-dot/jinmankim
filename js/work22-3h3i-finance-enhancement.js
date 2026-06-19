@@ -123,10 +123,17 @@
             if (!rows.length) return;
             const firstText = rows[0].textContent || '';
             const firstLower = firstText.toLowerCase();
-            // K5G-12: Release / v2.0.3 라벨은 최신 정적 footer이므로 구버전 LAST UPDATED로 되돌리지 않는다
-            const isReleaseRow = firstLower.includes('release') || firstLower.includes('v2.0.3');
-            if (!isReleaseRow && (firstText.includes('LAST UPDATED') || firstText.includes('26.05.15') || firstText.includes('v2.0.1') || firstText.trim().startsWith(':'))) {
-                rows[0].textContent = `LAST UPDATED: ${LAST_UPDATED}`;
+            // K5G-12a: 모바일 system footer의 release/version row를 정상 라벨로 명시 보정한다.
+            // ':...' 처럼 라벨이 빠지거나 구버전 LAST UPDATED로 되돌아가는 표시 버그를 방지한다.
+            const looksLikeReleaseRow = firstLower.includes('release')
+                || firstLower.includes('v2.0.3')
+                || firstLower.includes('last updated')
+                || firstText.includes('26.06.18')
+                || firstText.includes('26.05.15')
+                || firstText.includes('v2.0.1')
+                || firstText.trim().startsWith(':');
+            if (looksLikeReleaseRow) {
+                rows[0].textContent = 'Release: 26.06.18 / v2.0.3';
             }
             // K5G-12: 기존 'YJ FLOW' 행 또는 Release/v2.0.3 행이 있으면 구버전 버전 라인을 추가 삽입하지 않는다
             const hasVersion = rows.some(p => {
