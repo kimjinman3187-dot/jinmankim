@@ -152,7 +152,6 @@
                     <span class="google-cta-mark" aria-hidden="true">G</span>
                     <span class="google-cta-text">Google 로그인</span>
                 </button>
-                <p class="mt-2 text-[10px] leading-4 text-slate-500 font-bold">factory-device-01 계정은 Google 로그인 전용입니다.</p>
                 <div id="mobileGoogleLoginTestResult" class="mt-2 text-[10px] leading-5 text-slate-500 break-all min-h-[18px]"></div>
             </div>
             <button id="mobilePinLoginToggle" type="button" onclick="togglePinLoginArea('mobile')" class="pin-collapse-toggle w-full rounded-2xl text-slate-600 font-black transition-colors">
@@ -175,7 +174,7 @@
         </div>
     </div>
     <div class="system-footer" style="color: rgba(255,255,255,0.3);">
-        <p>: 26.06.18 / v2.0.3</p>
+        <p>Release: 26.06.18 / v2.0.3</p>
         <p>Designed by GENE KIM</p>    
         <p style="margin-top:10px; letter-spacing:2px; font-weight:700;">SECURE DATA TERMINAL</p>
     </div>
@@ -429,7 +428,7 @@
             </section>
         </div>
         <div class="system-footer pb-4" style="color: #94a3b8;">
-            <p>Last Updated: 26.06.18 / v2.0.3</p>
+            <p>Release: 26.06.18 / v2.0.3</p>
             <p style="color: #64748b;">Designed by GENE KIM</p>
         </div>
     </main>
@@ -453,7 +452,7 @@
             </button>
         </nav>
         <div class="mt-auto p-6 text-left border-t border-[#334155]/50 opacity-60 hover:opacity-100 transition-opacity">
-            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Last Updated: 26.06.18</p>
+            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Release: 26.06.18</p>
             <p class="text-[9px] font-black text-blue-400/80 uppercase tracking-widest mb-1">YJ Flow v2.0.3</p>
             <p class="text-[9px] text-slate-500 font-bold">Designed by GENE KIM</p>
         </div>
@@ -517,9 +516,9 @@
                     <div class="flex justify-between items-start gap-4 mb-4">
                         <div>
                             <h3 class="font-black text-white text-sm">승인 요청 목록</h3>
-                            <p class="text-[10px] text-slate-400 font-bold mt-1 leading-5">Google 계정 승인 요청을 검토하기 위한 영역입니다. read-only 조회만 연결되었고 승인/반려/보류 처리는 아직 구현하지 않았습니다.</p>
+                            <p class="text-[10px] text-slate-400 font-bold mt-1 leading-5">Google 계정 승인 요청을 검토하는 영역입니다. 각 요청 행의 버튼으로 승인/반려/보류 상태를 처리할 수 있습니다. 승인 이후 users 계정 활성화(active/role 부여)는 Firebase Console에서 수동으로 진행합니다.</p>
                         </div>
-                        <span class="text-[10px] font-black text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-full px-3 py-1">K5F-5 READ ONLY</span>
+                        <span class="text-[10px] font-black text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-full px-3 py-1">K5G-6 승인 처리</span>
                     </div>
                     <div class="overflow-x-auto rounded-lg border border-[#334155] bg-[#0f1522]">
                         <table class="w-full min-w-[820px] text-left text-[11px]">
@@ -530,7 +529,7 @@
                                     <th class="px-3 py-3 font-black">uid</th>
                                     <th class="px-3 py-3 font-black">요청 role</th>
                                     <th class="px-3 py-3 font-black">상태</th>
-                                    <th class="px-3 py-3 font-black">메모</th>
+                                    <th class="px-3 py-3 font-black">메모/사유</th>
                                     <th class="px-3 py-3 font-black">작업</th>
                                 </tr>
                             </thead>
@@ -542,10 +541,7 @@
                         </table>
                     </div>
                     <div class="mt-3 flex flex-wrap items-center gap-2">
-                        <button type="button" disabled class="px-3 py-2 rounded-lg bg-slate-700 text-slate-500 text-[10px] font-black cursor-not-allowed">승인</button>
-                        <button type="button" disabled class="px-3 py-2 rounded-lg bg-slate-700 text-slate-500 text-[10px] font-black cursor-not-allowed">반려</button>
-                        <button type="button" disabled class="px-3 py-2 rounded-lg bg-slate-700 text-slate-500 text-[10px] font-black cursor-not-allowed">보류</button>
-                        <span class="text-[10px] text-slate-500 font-bold">승인/반려/보류 처리는 아직 구현하지 않았으며, 현재 단계에서는 users 데이터가 변경되지 않습니다.</span>
+                        <span class="text-[10px] text-slate-500 font-bold">승인/반려/보류는 각 요청 행의 버튼으로 처리합니다. 이 단계에서는 approval_requests 상태만 변경되며 users 데이터는 변경되지 않습니다.</span>
                     </div>
                 </section>
                 <div class="grid grid-cols-4 gap-4 mb-6 relative z-10">
@@ -1850,7 +1846,8 @@ function updatePCProductionCards(metrics) {
                         <span class="text-white">${o.client || '-'} · ${productName}</span>
                         <span class="text-blue-400">${pct}%</span>
                     </div>
-                    <div class="text-[10px] text-slate-500 font-bold mb-2">${o.material || '-'}</div>
+                    <div class="text-[10px] text-slate-500 font-bold mb-1">규격: ${getDetailSpecText(o)}</div>
+                    <div class="text-[10px] text-slate-500 font-bold mb-2">목재: ${o.material || '-'}</div>
 
                     <div class="w-full bg-[#0f1522] h-2.5 rounded-full overflow-hidden border border-[#334155]">
                         <div class="bg-blue-500 h-full rounded-full transition-all duration-1000 ease-out" style="width: ${pct}%"></div>
@@ -2717,18 +2714,41 @@ function renderApprovalRequestRows(requests) {
         appendApprovalRequestCell(row, request.uid, 'px-3 py-3 text-slate-300 font-mono text-[10px] align-top max-w-[180px] truncate');
         appendApprovalRequestCell(row, request.requested_role);
         appendApprovalRequestCell(row, normalizeApprovalRequestStatus(request.status));
-        appendApprovalRequestCell(row, request.memo);
+        // 반려 상태는 decision_reason을 우선 표시(없으면 memo로 fallback), 그 외는 기존 memo 표시 유지
+        const displayMemo = request.status === 'rejected'
+            ? (request.decision_reason || request.memo)
+            : request.memo;
+        appendApprovalRequestCell(row, displayMemo);
 
         const actionCell = document.createElement('td');
         actionCell.className = 'px-3 py-3 align-top';
-        ['승인', '반려', '보류'].forEach(label => {
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.disabled = true;
-            button.className = 'mr-1 mb-1 px-2 py-1 rounded bg-slate-700 text-slate-500 text-[10px] font-black cursor-not-allowed';
-            button.textContent = label;
-            actionCell.appendChild(button);
-        });
+        const isAdmin = currentUser?.role === 'admin';
+        // terminal(approved/rejected)만 재처리 방지. non-terminal(pending/on_hold)은 추가 처리 가능
+        const isTerminal = request.status === 'approved' || request.status === 'rejected';
+        if (isTerminal) {
+            // terminal row는 버튼 대신 '처리완료' 표시
+            const doneLabel = document.createElement('span');
+            doneLabel.className = 'text-[10px] font-black text-slate-500';
+            doneLabel.textContent = '처리완료';
+            actionCell.appendChild(doneLabel);
+        } else {
+            const rowActions = [
+                { label: '승인', handler: approveApprovalRequest, activeClass: 'bg-emerald-700 hover:bg-emerald-600 text-white cursor-pointer' },
+                { label: '반려', handler: rejectApprovalRequest, activeClass: 'bg-rose-700 hover:bg-rose-600 text-white cursor-pointer' },
+                { label: '보류', handler: holdApprovalRequest, activeClass: 'bg-amber-700 hover:bg-amber-600 text-white cursor-pointer' }
+            ];
+            rowActions.forEach(action => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.disabled = !isAdmin;
+                button.className = isAdmin
+                    ? `mr-1 mb-1 px-2 py-1 rounded ${action.activeClass} text-[10px] font-black transition-colors`
+                    : 'mr-1 mb-1 px-2 py-1 rounded bg-slate-700 text-slate-500 text-[10px] font-black cursor-not-allowed';
+                button.textContent = action.label;
+                if (isAdmin) button.addEventListener('click', () => action.handler(request.id));
+                actionCell.appendChild(button);
+            });
+        }
         row.appendChild(actionCell);
         tbody.appendChild(row);
     });
@@ -2749,6 +2769,71 @@ async function loadApprovalRequestsReadOnly() {
         console.warn('Approval requests read-only load failed:', error);
         renderApprovalRequestsError(error);
     }
+}
+
+// WORK22-6N-K5G-6 admin approval actions (B안)
+// approval_requests의 검토 상태 필드만 update. users 컬렉션은 변경하지 않음(활성화는 Console 수동 유지).
+function approvalReviewerId() {
+    return currentUser?.auth_uid || currentUser?.id || currentUser?.email || currentUser?.name || 'unknown-admin';
+}
+
+function approvalActionErrorMessage(error) {
+    const code = error?.code || '';
+    if (code === 'permission-denied') return '처리 권한이 없습니다. 관리자 Google 계정으로 로그인했는지 확인하세요.';
+    if (code === 'unavailable' || code === 'deadline-exceeded') return '네트워크 문제로 처리를 완료하지 못했습니다. 잠시 후 다시 시도하세요.';
+    return '처리를 완료하지 못했습니다. 잠시 후 다시 시도하거나 콘솔을 확인하세요.';
+}
+
+async function updateApprovalRequestStatus(requestUid, payload, logEvent, logLabel) {
+    if (!requireWrite('admin', '관리자만 승인 요청을 처리할 수 있습니다.')) return;
+    if (!requestUid) { alert('요청 식별자를 찾을 수 없습니다.'); return; }
+    if (!window.db?.collection) { alert('처리 기능을 준비하지 못했습니다. 잠시 후 다시 시도하세요.'); return; }
+    try {
+        await db.collection('approval_requests').doc(requestUid).update(payload);
+        await logAction(logEvent, requestUid, { status: payload.status, reviewed_by: payload.reviewed_by });
+        alert(`${logLabel} 처리되었습니다.`);
+        await loadApprovalRequestsReadOnly();
+    } catch (error) {
+        console.warn('WORK22-6N-K5G-6 approval action failed:', { event: logEvent, code: error?.code });
+        alert(approvalActionErrorMessage(error));
+    }
+}
+
+async function approveApprovalRequest(requestUid) {
+    if (!confirm('이 승인 요청을 승인 상태로 변경하시겠습니까?\n(users 계정 활성화는 Firebase Console에서 수동으로 진행합니다.)')) return;
+    const ts = firebase.firestore.FieldValue.serverTimestamp();
+    await updateApprovalRequestStatus(requestUid, {
+        status: 'approved',
+        reviewed_by: approvalReviewerId(),
+        reviewed_at: ts,
+        updated_at: ts
+    }, 'APPROVAL_APPROVED', '승인');
+}
+
+async function rejectApprovalRequest(requestUid) {
+    const reason = prompt('반려 사유를 입력하세요. (선택, 비워도 됩니다)');
+    if (reason === null) return;
+    const ts = firebase.firestore.FieldValue.serverTimestamp();
+    await updateApprovalRequestStatus(requestUid, {
+        status: 'rejected',
+        reviewed_by: approvalReviewerId(),
+        reviewed_at: ts,
+        updated_at: ts,
+        decision_reason: reason.trim() || null
+    }, 'APPROVAL_REJECTED', '반려');
+}
+
+async function holdApprovalRequest(requestUid) {
+    const memo = prompt('보류 메모를 입력하세요. (선택, 비워도 됩니다)');
+    if (memo === null) return;
+    const ts = firebase.firestore.FieldValue.serverTimestamp();
+    await updateApprovalRequestStatus(requestUid, {
+        status: 'on_hold',
+        reviewed_by: approvalReviewerId(),
+        reviewed_at: ts,
+        updated_at: ts,
+        memo: memo.trim() || null
+    }, 'APPROVAL_ON_HOLD', '보류');
 }
 
 async function renderAdminMonitor() {
@@ -2990,8 +3075,12 @@ function renderFactory() {
         return `
         <div class="bg-white p-5 rounded-3xl border shadow-sm border-l-4 ${isPackingWait ? 'border-l-green-500' : 'border-l-orange-500'} mb-5">
             <div class="flex justify-between mb-1"><p class="font-black text-lg">${o.client}</p><span class="text-xs font-bold ${isPackingWait ? 'text-green-600' : 'text-red-500'}">${isPackingWait ? '완료/포장 대기' : '납기: ' + o.dueDate}</span></div>
-            <p class="text-[13px] text-slate-800 mb-1 font-black">${productName}</p>
-            <p class="text-[11px] text-slate-500 mb-3 font-bold flex justify-between items-center"><span>${o.material} / 총 ${o.qty}장 (완료: ${o.completedQty || 0}장)</span><span class="${isPackingWait ? 'text-green-600' : 'text-red-500'} text-xs">남은 수량: ${remainQty}장</span></p>
+            <p class="text-[13px] text-slate-800 mb-2 font-black">${productName}</p>
+            <div class="text-[11px] mb-3 font-bold grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 items-baseline">
+                <span class="text-slate-400">규격</span><span class="text-slate-800">${getDetailSpecText(o)}</span>
+                <span class="text-slate-400">목재</span><span class="text-slate-800">${o.material || '-'}</span>
+                <span class="text-slate-400">수량</span><span class="text-slate-800">총 ${o.qty}장 · 완료 ${o.completedQty || 0}장 · <span class="${isPackingWait ? 'text-green-600' : 'text-red-500'}">남은 ${remainQty}장</span></span>
+            </div>
             <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden mb-4 border"><div class="${isPackingWait ? 'bg-green-500' : 'bg-orange-500'} h-full rounded-full transition-all" style="width:${pct}%"></div></div>
             ${isPackingWait ? '<p class="text-[11px] text-green-700 font-black bg-green-50 border border-green-100 rounded-xl p-3">생산 완료 후 입금/포장 대기 중인 항목입니다.</p>' : canEditProduction ? `<div class="flex gap-2"><input type="text" id="in-${o.id}" class="flex-1 p-3 bg-slate-50 rounded-xl border font-bold" placeholder="생산 수량"><button onclick="addProgress('${o.id}')" class="px-6 py-3 bg-orange-600 text-white rounded-xl font-bold shadow-md shadow-orange-200">보고</button></div>` : `<div class="flex gap-2"><input type="text" disabled class="flex-1 p-3 bg-slate-100 rounded-xl border font-bold text-slate-400" placeholder="조회 전용"><button disabled class="px-6 py-3 bg-slate-200 text-slate-400 rounded-xl font-bold cursor-not-allowed">조회</button></div>`}
         </div>`;
