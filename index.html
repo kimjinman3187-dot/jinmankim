@@ -315,6 +315,11 @@
                     </div>
                 </div>
 
+                <div class="space-y-2">
+                    <input type="text" id="materialColor" placeholder="색상 (선택)" class="w-full p-4 bg-slate-50 rounded-2xl font-bold border-none outline-none">
+                    <textarea id="salesMemo" rows="2" placeholder="주문 메모 (선택)" class="w-full p-4 bg-slate-50 rounded-2xl font-bold border-none outline-none resize-none text-sm"></textarea>
+                </div>
+
                 <div class="preview-container bg-slate-50 rounded-3xl border border-dashed border-slate-200 shadow-inner">
                     <div class="relative">
                         <div id="woodPlate" class="wood-plate bg-slate-300"></div>
@@ -672,6 +677,16 @@
                                             <p class="text-[10px] text-blue-400 font-bold mb-1 uppercase tracking-widest">Selected Material</p>
                                             <p class="font-bold text-white text-lg" id="pc-selectedWoodName">목재를 선택하세요</p>
                                         </div>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">색상</label>
+                                        <input type="text" id="pc-materialColor" autocomplete="off" placeholder="선택 입력" class="w-full p-4 bg-[#0f1522] border border-[#334155] rounded-xl text-white font-bold outline-none focus:border-blue-500 transition-colors">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">주문 메모</label>
+                                        <textarea id="pc-salesMemo" rows="2" placeholder="선택 입력" class="w-full min-h-[58px] p-3 bg-[#0f1522] border border-[#334155] rounded-xl text-white font-bold outline-none focus:border-blue-500 transition-colors resize-none text-xs"></textarea>
                                     </div>
                                 </div>
                             </div>
@@ -3740,6 +3755,8 @@ async function handleReport() {
     const dueDate = document.getElementById('dueDate')?.value || '';
     const payDate = document.getElementById('payDate')?.value || '';
     const thickness = document.getElementById('thickness')?.value || '18T';
+    const materialColorValue = String(document.getElementById('materialColor')?.value || '').trim();
+    const salesMemoValue = String(document.getElementById('salesMemo')?.value || '').trim();
 
     if (client.length < 2) return alert('❌ 업체명을 입력하세요.');
     if (productName.length < 1) return alert('❌ 상품명/품목명을 입력하세요.');
@@ -3789,7 +3806,15 @@ async function handleReport() {
     reportedBy: reporterName,
     createdAt: Date.now()
 };
-    
+
+    if (materialColorValue) {
+        newOrder.materialColor = materialColorValue;
+    }
+
+    if (salesMemoValue) {
+        newOrder.salesMemo = salesMemoValue;
+    }
+
     try {
         if (typeof db === 'undefined') {
             throw new Error('Firebase DB가 초기화되지 않았습니다.');
@@ -3809,7 +3834,7 @@ async function handleReport() {
         alert('✅ 수주 보고 전송 완료!');
 
         // 모바일 입력 폼 초기화
-        ['clientName', 'productName', 'width', 'height', 'unitPrice', 'dueDate', 'payDate'].forEach(id => {
+        ['clientName', 'productName', 'materialColor', 'salesMemo', 'width', 'height', 'unitPrice', 'dueDate', 'payDate'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.value = '';
         });
@@ -3900,6 +3925,8 @@ async function handleReportPC() {
     const dueDate = document.getElementById('pc-dueDate')?.value || '';
     const payDate = document.getElementById('pc-payDate')?.value || '';
     const thickness = document.getElementById('pc-thickness')?.value || '18T';
+    const materialColorValue = String(document.getElementById('pc-materialColor')?.value || '').trim();
+    const salesMemoValue = String(document.getElementById('pc-salesMemo')?.value || '').trim();
 
     if (client.length < 2) return alert('❌ 거래처 및 현장명을 입력하세요.');
     if (productName.length < 1) return alert('❌ 상품명/품목명을 입력하세요.');
@@ -3950,6 +3977,14 @@ async function handleReportPC() {
     createdAt: Date.now()
 };
 
+    if (materialColorValue) {
+        newOrder.materialColor = materialColorValue;
+    }
+
+    if (salesMemoValue) {
+        newOrder.salesMemo = salesMemoValue;
+    }
+
     try {
         if (typeof db === 'undefined') {
             throw new Error('Firebase DB가 초기화되지 않았습니다.');
@@ -3968,7 +4003,7 @@ async function handleReportPC() {
 
         alert('✅ PC 수주 데이터 전송 완료!');
 
-        ['pc-clientName', 'pc-productName', 'pc-width', 'pc-height', 'pc-unitPrice', 'pc-dueDate', 'pc-payDate'].forEach(id => {
+        ['pc-clientName', 'pc-productName', 'pc-materialColor', 'pc-salesMemo', 'pc-width', 'pc-height', 'pc-unitPrice', 'pc-dueDate', 'pc-payDate'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.value = '';
         });
