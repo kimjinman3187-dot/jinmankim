@@ -230,6 +230,16 @@
             .yj-production-card.is-soon{border-color:rgba(234,179,8,.42);background:rgba(113,63,18,.1);}
             .yj-production-card.is-ready{border-color:rgba(34,197,94,.55);background:rgba(20,83,45,.14);box-shadow:0 0 0 1px rgba(34,197,94,.18) inset;}
             .yj-production-card.is-packing{border-color:rgba(59,130,246,.48);background:rgba(30,64,175,.13);}
+            .yj-production-order-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:.85rem;}
+            .yj-production-order-label{font-size:9px;color:#64748b;font-weight:900;letter-spacing:.08em;text-transform:uppercase;}
+            .yj-production-order-value{color:#f8fafc;font-size:12px;font-weight:1000;line-height:1.35;margin-top:.15rem;overflow-wrap:anywhere;}
+            .yj-production-order-product{color:#cbd5e1;font-size:11px;font-weight:900;line-height:1.35;margin-top:.15rem;overflow-wrap:anywhere;}
+            .yj-production-info-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.55rem;margin-bottom:.75rem;}
+            .yj-production-info-cell{min-width:0;background:rgba(17,24,39,.78);border:1px solid rgba(51,65,85,.9);border-radius:.7rem;padding:.65rem;}
+            .yj-production-info-value{color:#e2e8f0;font-size:10px;font-weight:900;line-height:1.45;margin-top:.2rem;overflow-wrap:anywhere;}
+            .yj-production-qty-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem;margin-bottom:.75rem;}
+            .yj-production-qty-cell{min-width:0;}
+            .yj-production-qty-value{display:block;color:#f8fafc;font-size:11px;font-weight:1000;margin-top:.15rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
             .yj-production-badge{display:inline-flex;align-items:center;justify-content:center;min-height:22px;padding:0 .45rem;border-radius:.5rem;border:1px solid rgba(148,163,184,.2);font-size:10px;font-weight:1000;white-space:nowrap;}
             .yj-production-badge.overdue{color:#f87171;background:rgba(239,68,68,.10);border-color:rgba(239,68,68,.32);}
             .yj-production-badge.today{color:#fb923c;background:rgba(249,115,22,.10);border-color:rgba(249,115,22,.32);}
@@ -592,10 +602,19 @@
         }
 
         const getProductionPrimaryLabel = order =>
-            String(order?.productName || order?.orderName || order?.title || order?.workName || order?.product || order?.material || order?.memo || '-').trim() || '-';
+            String(order?.productName || order?.orderName || order?.title || order?.workName || order?.product || order?.material || '-').trim() || '-';
 
         const getProductionSecondaryLabel = order =>
-            String(order?.material || order?.client || order?.memo || '-').trim() || '-';
+            String(order?.material || '-').trim() || '-';
+
+        const getProductionSpecLabel = order => {
+            if (typeof window.getDetailSpecText === 'function') return window.getDetailSpecText(order);
+            const width = String(order?.width || '').trim();
+            const height = String(order?.height || '').trim();
+            const thickness = String(order?.thickness || '').trim().replace(/T$/i, '');
+            if (!width && !height && !thickness) return '규격 미입력';
+            return `W${width || '-'} × H${height || '-'} × T${thickness || '-'}`;
+        };
 
         function renderEnhancedProductionList(metrics = {}) {
             const list = document.getElementById('pcProductionProgressList');
@@ -673,15 +692,33 @@ const items = Array.from(itemMap.values());
                 const secondaryLabel = getProductionSecondaryLabel(o);
                 return `
                     <div class='yj-production-card is-${cardClass}'>
-                        <div class='flex justify-between items-start gap-3 text-xs font-bold mb-2'>
+                        <div class='yj-production-order-head'>
                             <div class='min-w-0'>
-                                <div class='text-white truncate'>${primaryLabel}</div>
-                                <div class='text-[10px] text-slate-500 mt-1 truncate'>${secondaryLabel} · 총 ${item.qty.toLocaleString()}장</div>
+                                <div class='yj-production-order-label'>거래처</div>
+                                <div class='yj-production-order-value'>${o.client || '-'}</div>
+                                <div class='yj-production-order-label mt-2'>품목</div>
+                                <div class='yj-production-order-product'>${primaryLabel}</div>
                             </div>
                             <div class='flex flex-col items-end gap-1 shrink-0'>
                                 <span class='yj-production-badge ${dueClass}'>${item.due.label}</span>
                                 <span class='yj-production-badge ${item.packing.key}'>${item.packing.label}</span>
                             </div>
+                        </div>
+                        <div class='yj-production-info-grid'>
+                            <div class='yj-production-info-cell'>
+                                <div class='yj-production-order-label'>자재</div>
+                                <div class='yj-production-info-value'>${secondaryLabel}</div>
+                            </div>
+                            <div class='yj-production-info-cell'>
+                                <div class='yj-production-order-label'>규격</div>
+                                <div class='yj-production-info-value'>${getProductionSpecLabel(o)}</div>
+                            </div>
+                        </div>
+                        <div class='yj-production-qty-grid'>
+                            <div class='yj-production-qty-cell'><span class='yj-production-order-label'>총 수량</span><strong class='yj-production-qty-value'>${item.qty.toLocaleString()}장</strong></div>
+                            <div class='yj-production-qty-cell'><span class='yj-production-order-label'>완료</span><strong class='yj-production-qty-value text-blue-400'>${item.completedQty.toLocaleString()}장</strong></div>
+                            <div class='yj-production-qty-cell'><span class='yj-production-order-label'>잔여</span><strong class='yj-production-qty-value ${remainClass}'>${item.remainQty.toLocaleString()}장</strong></div>
+                            <div class='yj-production-qty-cell'><span class='yj-production-order-label'>납기</span><strong class='yj-production-qty-value'>${o.dueDate || '-'}</strong></div>
                         </div>
                         <div class='flex justify-between text-[10px] font-bold mb-1'>
                             <span class='text-slate-400'>${item.completedQty.toLocaleString()} / ${item.qty.toLocaleString()}장</span>
@@ -690,13 +727,9 @@ const items = Array.from(itemMap.values());
                         <div class='w-full bg-[#0f1522] h-2.5 rounded-full overflow-hidden border border-[#334155]'>
                             <div class='${item.pct >= 90 ? 'bg-green-500' : 'bg-blue-500'} h-full rounded-full transition-all duration-1000 ease-out' style='width: ${item.pct}%'></div>
                         </div>
-                        <div class='mt-2 text-[10px] text-slate-500 font-bold flex justify-between'>
-                            <span>납기: ${o.dueDate || '-'}</span>
-                            <span class='${remainClass}'>잔여 ${item.remainQty.toLocaleString()}장</span>
-                        </div>
                         <div class='mt-3 flex gap-2'>
-                            <input type='text' id='${inputId}' class='flex-1 px-3 py-2 bg-[#111827] border border-[#334155] rounded-lg text-xs text-white font-bold outline-none focus:border-blue-400' placeholder='생산 수량'>
-                            <button onclick="addProgress('${o.id}', '${inputId}')" class='px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-black shadow-md transition-colors'>보고</button>
+                            <input type='text' id='${inputId}' class='min-w-0 flex-1 px-3 py-2 bg-[#111827] border border-[#334155] rounded-lg text-xs text-white font-bold outline-none focus:border-blue-400' placeholder='생산 수량'>
+                            <button onclick="addProgress('${o.id}', '${inputId}')" class='shrink-0 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-black shadow-md transition-colors'>보고</button>
                         </div>
                     </div>`;
             }).join('');
