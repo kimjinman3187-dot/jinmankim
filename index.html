@@ -315,10 +315,19 @@
                     </div>
                 </div>
 
-                <div class="space-y-2">
-                    <input type="text" id="materialColor" placeholder="색상 (선택)" class="w-full p-4 bg-slate-50 rounded-2xl font-bold border-none outline-none">
-                    <textarea id="salesMemo" rows="2" placeholder="주문 메모 (선택)" class="w-full p-4 bg-slate-50 rounded-2xl font-bold border-none outline-none resize-none text-sm"></textarea>
-                </div>
+                <details class="bg-slate-50/60 rounded-2xl border border-slate-200">
+                    <summary class="cursor-pointer select-none list-none px-4 py-3 text-sm font-bold text-blue-600">+ 추가 정보 입력</summary>
+                    <div class="space-y-2 px-4 pb-4 pt-1">
+                        <div>
+                            <label for="materialColor" class="block text-xs font-bold text-slate-500 mb-1 ml-1">색상/마감 보충</label>
+                            <input type="text" id="materialColor" placeholder="예: 무광 블랙, 엣지 색상 별도 지정 등" class="w-full p-4 bg-white rounded-2xl font-bold border border-slate-200 outline-none">
+                        </div>
+                        <div>
+                            <label for="salesMemo" class="block text-xs font-bold text-slate-500 mb-1 ml-1">주문 특이사항</label>
+                            <textarea id="salesMemo" rows="2" placeholder="예: 포장 요청, 납품 주의사항, 제작 참고사항 등" class="w-full p-4 bg-white rounded-2xl font-bold border border-slate-200 outline-none resize-none text-sm"></textarea>
+                        </div>
+                    </div>
+                </details>
 
                 <div class="preview-container bg-slate-50 rounded-3xl border border-dashed border-slate-200 shadow-inner">
                     <div class="relative">
@@ -679,16 +688,19 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">색상</label>
-                                        <input type="text" id="pc-materialColor" autocomplete="off" placeholder="선택 입력" class="w-full p-4 bg-[#0f1522] border border-[#334155] rounded-xl text-white font-bold outline-none focus:border-blue-500 transition-colors">
+                                <details class="border border-[#334155] rounded-xl bg-[#0f1522]/40">
+                                    <summary class="cursor-pointer select-none list-none px-4 py-3 text-xs font-bold text-blue-400 uppercase tracking-wider">+ 추가 정보 입력</summary>
+                                    <div class="grid grid-cols-2 gap-4 px-4 pb-4 pt-1">
+                                        <div>
+                                            <label for="pc-materialColor" class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">색상/마감 보충</label>
+                                            <input type="text" id="pc-materialColor" autocomplete="off" placeholder="예: 무광 블랙, 엣지 색상 별도 지정 등" class="w-full p-4 bg-[#0f1522] border border-[#334155] rounded-xl text-white font-bold outline-none focus:border-blue-500 transition-colors">
+                                        </div>
+                                        <div>
+                                            <label for="pc-salesMemo" class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">주문 특이사항</label>
+                                            <textarea id="pc-salesMemo" rows="2" placeholder="예: 포장 요청, 납품 주의사항, 제작 참고사항 등" class="w-full min-h-[58px] p-3 bg-[#0f1522] border border-[#334155] rounded-xl text-white font-bold outline-none focus:border-blue-500 transition-colors resize-none text-xs"></textarea>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">주문 메모</label>
-                                        <textarea id="pc-salesMemo" rows="2" placeholder="선택 입력" class="w-full min-h-[58px] p-3 bg-[#0f1522] border border-[#334155] rounded-xl text-white font-bold outline-none focus:border-blue-500 transition-colors resize-none text-xs"></textarea>
-                                    </div>
-                                </div>
+                                </details>
                             </div>
                             <div class="space-y-6">
                                 <div class="grid grid-cols-2 gap-4">
