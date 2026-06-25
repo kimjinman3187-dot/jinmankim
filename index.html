@@ -295,7 +295,7 @@
     <main class="max-w-md mx-auto w-full p-4 space-y-6 flex-grow pb-10">
         <div id="section-sales" class="hidden space-y-6">
             <section class="bg-white p-6 rounded-[2.5rem] shadow-sm border space-y-4">
-                <h3 class="font-bold text-lg text-slate-800">📝 신규 수주 보고</h3>
+                <h3 class="font-bold text-lg text-slate-800">신규 수주 보고</h3>
                 <input type="text" id="clientName" placeholder="업체명 및 현장명" class="w-full p-4 bg-slate-50 rounded-2xl font-bold border-none outline-none">
                 <input type="text" id="productName" placeholder="상품명/품목명 (예: 주방 상부장 도어)" class="w-full p-4 bg-slate-50 rounded-2xl font-bold border-none outline-none">
                 <button onclick="openWoodModal()" class="w-full py-4 border-2 border-slate-800 rounded-2xl font-bold bg-slate-50 active:scale-95 transition-transform">목재 선택</button>
@@ -365,14 +365,14 @@
         
         <div id="section-accounting" class="hidden space-y-6">
             <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-blue-100">
-                <h3 class="font-bold text-blue-800 mb-4 flex items-center gap-2"><span class="bg-blue-100 p-1.5 rounded-lg">💼</span> 신규 승인 대기</h3>
+                <h3 class="font-bold text-blue-800 mb-4">신규 승인 대기</h3>
                 <div id="accountingList" class="space-y-4 mb-6"></div>
                 <div class="border-t border-dashed border-gray-200 pt-6 mb-6">
-                    <h3 class="font-bold text-orange-600 mb-4 text-sm flex items-center gap-2"><span class="bg-orange-100 p-1.5 rounded-lg">🏭</span> 공장 생산 현황</h3>
+                    <h3 class="font-bold text-orange-600 mb-4 text-sm">공장 생산 현황</h3>
                     <div id="accountingFactoryList" class="space-y-3"></div>
                 </div>
                 <div class="border-t border-dashed border-gray-200 pt-6">
-                    <h3 class="font-bold text-slate-600 mb-4 text-sm flex items-center gap-2"><span class="bg-slate-100 p-1.5 rounded-lg">🧾</span> 청구 대기 (계산서)</h3>
+                    <h3 class="font-bold text-slate-600 mb-4 text-sm">청구 대기 (계산서)</h3>
                     <div id="accountingCompletedList" class="space-y-3"></div>
                 </div>
             </section>
@@ -380,7 +380,7 @@
 
         <div id="section-factory" class="hidden space-y-6">
             <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-orange-100">
-                <h3 class="font-bold text-orange-800 mb-6 italic text-lg">🏭 생산 공정 제어판</h3>
+                <h3 class="font-bold text-orange-800 mb-6 italic text-lg">생산 공정 제어판</h3>
                 <div id="productionList" class="space-y-6"></div>
             </section>
         </div>
@@ -389,7 +389,7 @@
             <div id="receivableBannerWrap"></div>
             <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-amber-200">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-bold text-amber-700">💰 채권관리 (미수금)</h3>
+                    <h3 class="font-bold text-amber-700">채권관리 (미수금)</h3>
                     <button onclick="exportReceivablesCSV()" class="text-[10px] bg-green-600 text-white px-3 py-2 rounded-lg font-bold shadow-sm">📊 엑셀 저장</button>
                 </div>
                 <div id="receivablesList" class="space-y-4"></div>
@@ -398,7 +398,7 @@
 
         <div id="section-history" class="hidden space-y-6">
             <div class="px-2 flex justify-between items-center mb-2">
-                <h3 class="font-bold text-slate-800 italic">📊 마스터 제어판 (ADMIN)</h3>
+                <h3 class="font-bold text-slate-800 italic">마스터 제어판 (ADMIN)</h3>
                 <button onclick="exportExcel()" class="text-[10px] bg-green-600 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm">EXCEL 저장</button>
             </div>
             <div id="adminUserMonitor" class="hidden bg-white p-4 rounded-[2rem] border-2 border-red-100 mb-4 space-y-2 shadow-sm"></div>
@@ -430,7 +430,7 @@
             <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-200">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="font-bold text-slate-800">통합 대시보드</h3>
-                    <button onclick="clearAllData()" class="text-[10px] bg-red-100 text-red-600 px-3 py-2 rounded-lg font-bold" id="clearBtn" style="display:none;">🗑 초기화</button>
+                    <button onclick="clearAllData()" class="text-[10px] bg-red-100 text-red-600 px-3 py-2 rounded-lg font-bold" id="clearBtn" style="display:none;"><span class="inline-flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>초기화</span></button>
                 </div>
                 <div id="dashBoard"></div>
                 <div id="historyList" class="space-y-3 mt-4 text-xs"></div>
@@ -450,14 +450,14 @@
         </div>
 
         <nav class="flex-1 py-6 flex flex-col gap-2 px-4" id="pcNav">
-            <a href="#" onclick="switchPCTab('dashboard')" id="pc-tab-dashboard" class="pc-tab-btn px-4 py-3 rounded-xl bg-[#1e293b] text-blue-400 font-bold text-xs uppercase tracking-wider transition-colors">📊 Live</a>
-            <a href="#" onclick="switchPCTab('sales')" id="pc-tab-sales" class="pc-tab-btn px-4 py-3 rounded-xl text-slate-400 hover:bg-[#1e293b] hover:text-white font-bold text-xs uppercase tracking-wider transition-colors">📝 Sales</a>
-            <a href="#" onclick="switchPCTab('accounting')" id="pc-tab-accounting" class="pc-tab-btn px-4 py-3 rounded-xl text-slate-400 hover:bg-[#1e293b] hover:text-white font-bold text-xs uppercase tracking-wider transition-colors">💼 Finance</a>
-            <a href="#" onclick="switchPCTab('receivables')" id="pc-tab-receivables" class="pc-tab-btn px-4 py-3 rounded-xl text-slate-400 hover:bg-[#1e293b] hover:text-white font-bold text-xs uppercase tracking-wider transition-colors">💰 AR</a>
-            <a href="#" onclick="switchPCTab('factory')" id="pc-tab-factory" class="pc-tab-btn px-4 py-3 rounded-xl text-slate-400 hover:bg-[#1e293b] hover:text-white font-bold text-xs uppercase tracking-wider transition-colors">🏭 Production</a>
+            <a href="#" onclick="switchPCTab('dashboard')" id="pc-tab-dashboard" class="pc-tab-btn inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-[#1e293b] text-blue-400 font-bold text-xs uppercase tracking-wider transition-colors"><span class="nav-ico" aria-hidden="true"></span><span>Live</span></a>
+            <a href="#" onclick="switchPCTab('sales')" id="pc-tab-sales" class="pc-tab-btn inline-flex items-center gap-2 px-4 py-3 rounded-xl text-slate-400 hover:bg-[#1e293b] hover:text-white font-bold text-xs uppercase tracking-wider transition-colors"><span class="nav-ico" aria-hidden="true"></span><span>Sales</span></a>
+            <a href="#" onclick="switchPCTab('accounting')" id="pc-tab-accounting" class="pc-tab-btn inline-flex items-center gap-2 px-4 py-3 rounded-xl text-slate-400 hover:bg-[#1e293b] hover:text-white font-bold text-xs uppercase tracking-wider transition-colors"><span class="nav-ico" aria-hidden="true"></span><span>Finance</span></a>
+            <a href="#" onclick="switchPCTab('receivables')" id="pc-tab-receivables" class="pc-tab-btn inline-flex items-center gap-2 px-4 py-3 rounded-xl text-slate-400 hover:bg-[#1e293b] hover:text-white font-bold text-xs uppercase tracking-wider transition-colors"><span class="nav-ico" aria-hidden="true"></span><span>AR</span></a>
+            <a href="#" onclick="switchPCTab('factory')" id="pc-tab-factory" class="pc-tab-btn inline-flex items-center gap-2 px-4 py-3 rounded-xl text-slate-400 hover:bg-[#1e293b] hover:text-white font-bold text-xs uppercase tracking-wider transition-colors"><span class="nav-ico" aria-hidden="true"></span><span>Production</span></a>
             
             <button onclick="clearAllData()" id="pcClearBtn" style="display:none;" class="mt-4 px-4 py-3 text-left rounded-xl text-red-500/70 hover:bg-red-500/10 font-bold text-xs uppercase transition-colors border border-transparent hover:border-red-500/30">
-                🗑️ Reset Data
+                <span class="inline-flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>Reset Data</span>
             </button>
         </nav>
         <div class="mt-auto p-6 text-left border-t border-[#334155]/50 opacity-60 hover:opacity-100 transition-opacity">
@@ -470,7 +470,7 @@
     <div class="flex-1 flex flex-col bg-[#0b1120] overflow-hidden min-w-0">
         <header class="h-16 flex items-center justify-between px-6 border-b border-[#334155] bg-[#111827] flex-shrink-0">
             <div class="flex items-center gap-3">
-                <span class="text-xl">🏢</span>
+                <span class="text-blue-400" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"/></svg></span>
                 <h1 class="text-lg font-black text-white tracking-wide">Operations Hub</h1>
             </div>
             <div class="flex items-center gap-4 text-white">
@@ -480,7 +480,7 @@
                     <option value="lastMonth">지난 달</option>
                     <option value="thisYear">올해</option>
                 </select>
-                <button onclick="requestNotificationPermission()" class="hover:text-blue-400 transition-colors text-xl">🔔</button>
+                <button onclick="requestNotificationPermission()" class="hover:text-blue-400 transition-colors" aria-label="알림"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"/></svg></button>
                 <div class="flex items-center gap-2 ml-2">
                     <span id="pcDisplayUser" class="text-sm font-bold text-blue-400 bg-[#1e293b] px-3 py-1.5 rounded-lg border border-[#334155]">관리자</span>
                     <button onclick="switchGoogleAccount()" class="text-[10px] font-black text-blue-300 bg-[#1e293b] px-3 py-1.5 rounded-lg border border-[#334155] hover:border-blue-400 transition-all">Google 계정전환</button>
@@ -574,7 +574,7 @@
                 <div class="grid grid-cols-3 gap-4 mb-6 relative z-10">
                     <div class="col-span-2 bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
                         <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest">📈 최근 수주 트렌드 (금액)</h3>
+                            <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest">최근 수주 트렌드 (금액)</h3>
                             <select id="chartPeriodFilter" onchange="initDashboardCharts()" class="bg-[#0f1522] border border-[#334155] rounded-md px-2 py-1 text-[11px] font-bold text-slate-400 outline-none focus:border-blue-400 cursor-pointer">
                                 <option value="6">최근 6개월</option>
                                 <option value="3">최근 3개월</option>
@@ -586,7 +586,7 @@
                         </div>
                     </div>
                     <div class="col-span-1 bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
-                        <h3 class="text-sm font-bold text-slate-400 mb-4 uppercase tracking-widest">🔄 공정 상태 비율</h3>
+                        <h3 class="text-sm font-bold text-slate-400 mb-4 uppercase tracking-widest">공정 상태 비율</h3>
                         <div class="relative h-[240px] w-full flex justify-center">
                             <canvas id="statusChart"></canvas>
                         </div>
@@ -656,7 +656,7 @@
 
             <div id="pc-page-sales" class="pc-page hidden">
                 <div class="max-w-5xl mx-auto w-full pb-10">
-                    <h2 class="text-2xl font-black text-white mb-6">📝 신규 수주 보고</h2>
+                    <h2 class="text-2xl font-black text-white mb-6">신규 수주 보고</h2>
                     <div class="bg-[#1e293b] border border-[#334155] rounded-2xl p-8 shadow-2xl">
                         <div class="grid grid-cols-2 gap-10">
                             <div class="space-y-6">
@@ -751,7 +751,7 @@
             <div id="pc-page-accounting" class="pc-page hidden">
                 <div class="max-w-6xl mx-auto w-full p-6 pb-10">
                     <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-2xl font-black text-white">💼 회계 자산 관제탑</h2>
+                        <h2 class="text-2xl font-black text-white">회계 자산 관제탑</h2>
                     <div class="text-xs font-bold text-slate-500 bg-[#1e293b] px-4 py-2 rounded-lg border border-[#334155]">
                    기준일: <span id="pcFinanceBaseDate">-</span>
                    </div>    
@@ -785,7 +785,7 @@
                         </div>
                     </div>
                     <div class="bg-[#1e293b] border border-[#334155] rounded-2xl p-6 shadow-xl mb-10">
-                        <h3 class="text-sm font-bold text-slate-400 mb-6 uppercase tracking-widest text-center">📊 상반기 재무 흐름 비교 (수주액 vs 실결제액)</h3>
+                        <h3 class="text-sm font-bold text-slate-400 mb-6 uppercase tracking-widest text-center">상반기 재무 흐름 비교 (수주액 vs 실결제액)</h3>
                         <div class="relative h-[320px] w-full">
                             <canvas id="monthlyComparisonChart"></canvas>
                         </div>
@@ -797,7 +797,7 @@
                    <div class="bg-[#1e293b] border border-[#334155] rounded-2xl shadow-xl overflow-hidden">
     <div class="p-5 border-b border-[#334155] bg-[#111827] flex justify-between items-center">
         <div>
-            <h3 class="text-sm font-bold text-white uppercase tracking-widest">🧾 PC 청구 대기 리스트</h3>
+            <h3 class="text-sm font-bold text-white uppercase tracking-widest">PC 청구 대기 리스트</h3>
             <p class="text-[10px] text-slate-500 font-bold mt-1">
                 생산 완료 후 계산서 발행 및 입금 처리가 필요한 주문
             </p>
@@ -837,7 +837,7 @@
                 <div id="pc-page-receivables" class="pc-page hidden">
                 <div class="max-w-6xl mx-auto w-full p-6 pb-10">
                     <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-2xl font-black text-white">💰 채권 현황 관제탑 (미수금)</h2>
+                        <h2 class="text-2xl font-black text-white">채권 현황 관제탑 (미수금)</h2>
                         <button onclick="exportReceivablesCSV()" class="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg transition-colors">📊 미수금 명세서 출력</button>
                     </div>
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -875,7 +875,7 @@
                         </div>
                         <div class="lg:col-span-2 bg-[#1e293b] border border-[#334155] rounded-2xl shadow-xl overflow-hidden flex flex-col h-[360px]">
                             <div class="p-4 border-b border-[#334155] bg-[#111827]">
-                                <h3 class="text-sm font-bold text-white uppercase tracking-widest">📋 미수금 집중 관리 업체</h3>
+                                <h3 class="text-sm font-bold text-white uppercase tracking-widest">미수금 집중 관리 업체</h3>
                             </div>
                             <div class="flex-1 overflow-y-auto">
                                 <table class="w-full text-left text-[11px] text-slate-300">
@@ -898,7 +898,7 @@
 
             <div id="pc-page-factory" class="pc-page hidden">
                 <div class="max-w-6xl mx-auto w-full p-6 pb-10">
-                    <h2 class="text-2xl font-black text-white mb-6">🏭 생산 공정 관제탑</h2>
+                    <h2 class="text-2xl font-black text-white mb-6">생산 공정 관제탑</h2>
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
                             <p class="text-slate-400 text-xs font-medium mb-1">진행 중 공정</p>
@@ -937,7 +937,7 @@
 </div>
 </div>
         <div id="pc-factory-chart-container" class="bg-[#1e293b] border border-[#334155] rounded-2xl p-6 shadow-xl hidden lg:block">
-                        <h3 class="text-sm font-bold text-slate-400 mb-6 uppercase tracking-widest text-center">📊 품목별 생산 누적 현황 (진행 vs 완료)</h3>
+                        <h3 class="text-sm font-bold text-slate-400 mb-6 uppercase tracking-widest text-center">품목별 생산 누적 현황 (진행 vs 완료)</h3>
                         <div class="relative h-[280px] w-full">
                             <canvas id="productionBarChart"></canvas>
                         </div>
@@ -1221,7 +1221,23 @@ const ROLE_TABS = {
     factory: ['factory'],
     admin: ['sales', 'accounting', 'receivables', 'factory', 'history']
 };
-const TAB_META = { sales: {label:'영업', emoji:'📝'}, accounting: {label:'회계', emoji:'💼'}, receivables: {label:'채권', emoji:'💰'}, factory: {label:'생산', emoji:'🏭'}, history: {label:'현황', emoji:'📊'} };
+// [K5G-17] PC 사이드바 네비 아이콘 (Heroicons outline, currentColor 기반). SVG는 여기 한 곳에서만 관리.
+const NAV_ICONS = {
+    dashboard: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/></svg>',
+    sales: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"/></svg>',
+    accounting: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V12Zm-12 0h.008v.008H6V12Z"/></svg>',
+    receivables: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>',
+    factory: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"/></svg>'
+};
+function applyNavIcons() {
+    Object.keys(NAV_ICONS).forEach(key => {
+        const ico = document.querySelector('#pc-tab-' + key + ' .nav-ico');
+        if (ico) ico.innerHTML = NAV_ICONS[key];
+    });
+}
+document.addEventListener('DOMContentLoaded', applyNavIcons);
+
+const TAB_META = { sales: {label:'영업'}, accounting: {label:'회계'}, receivables: {label:'채권'}, factory: {label:'생산'}, history: {label:'현황'} };
 const PC_ROLE_TABS = {
     sales: ['dashboard', 'sales', 'receivables', 'factory'],
     accounting: ['dashboard', 'sales', 'accounting', 'receivables', 'factory'],
@@ -2887,7 +2903,7 @@ async function forceUnlock(uid) { if(!requireWrite('admin', '관리자만 처리
 
 function initTabs() {
     const tabs = getAllowedMobileTabs(); const wrap = document.getElementById('roleTabsWrap');
-    if(wrap) { wrap.style.gridTemplateColumns = `repeat(${tabs.length}, 1fr)`; wrap.innerHTML = tabs.map(t => `<button onclick="switchTab('${t}')" id="role-${t}" class="py-2 text-[10px] font-black bg-slate-100 rounded-lg active:scale-95 transition-all">${TAB_META[t].emoji} ${TAB_META[t].label}</button>`).join(''); }
+    if(wrap) { wrap.style.gridTemplateColumns = `repeat(${tabs.length}, 1fr)`; wrap.innerHTML = tabs.map(t => `<button onclick="switchTab('${t}')" id="role-${t}" class="py-2 text-[10px] font-black bg-slate-100 rounded-lg active:scale-95 transition-all">${TAB_META[t].label}</button>`).join(''); }
     if (!getHashTargetTab()) switchTab(getDefaultMobileTab());
 }
 
@@ -3764,7 +3780,7 @@ function switchPCTab(tabId, pushHistory = true) {
         activeBtn.classList.add('bg-[#1e293b]', 'text-blue-400');
     }
 
-    const pageTitles = { 'dashboard': '📊 Operations Hub', 'sales': '📝 Sales Management', 'accounting': '💼 Finance Overview', 'receivables': '💰 Accounts Receivable', 'factory': '🏭 Production Live' };
+    const pageTitles = { 'dashboard': 'Operations Hub', 'sales': 'Sales Management', 'accounting': 'Finance Overview', 'receivables': 'Accounts Receivable', 'factory': 'Production Live' };
     const mainHeader = document.querySelector('header h1');
     if (mainHeader && pageTitles[tabId]) { mainHeader.innerText = pageTitles[tabId]; }
 
