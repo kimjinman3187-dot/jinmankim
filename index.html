@@ -1883,7 +1883,7 @@ function updatePCProductionCards(metrics) {
                             <div class="text-slate-200">${getDetailSpecText(o)}</div>
                         </div>
                     </div>
-                    ${(o.materialColor || o.salesMemo) ? `<div class="space-y-1 mb-3 text-[10px] font-bold">${o.materialColor ? `<div class="bg-[#111827] border border-[#334155] rounded-lg p-2"><span class="text-slate-500">색상/마감</span> <span class="text-slate-200 break-words">${o.materialColor}</span></div>` : ''}${o.salesMemo ? `<div class="bg-[#111827] border border-[#334155] rounded-lg p-2"><span class="text-slate-500">특이사항</span> <span class="text-slate-200 break-words">${o.salesMemo}</span></div>` : ''}</div>` : ''}
+                    ${(o.materialColor || o.salesMemo) ? `<div class="space-y-1 mb-3 text-[10px] font-bold">${o.materialColor ? `<div class="bg-[#111827] border border-[#334155] rounded-lg p-2"><span class="text-slate-500">색상/마감</span> <span class="text-slate-200 break-words">${escapeDashboardText(o.materialColor)}</span></div>` : ''}${o.salesMemo ? `<div class="bg-[#111827] border border-[#334155] rounded-lg p-2"><span class="text-slate-500">특이사항</span> <span class="text-slate-200 break-words whitespace-pre-line">${escapeDashboardText(o.salesMemo)}</span></div>` : ''}</div>` : ''}
                     <div class="grid grid-cols-4 gap-2 mb-3 text-[10px] font-bold">
                         <div><span class="text-slate-500">총</span><strong class="block text-white mt-1">${qty.toLocaleString()}장</strong></div>
                         <div><span class="text-slate-500">완료</span><strong class="block text-blue-400 mt-1">${completedQty.toLocaleString()}장</strong></div>
@@ -3126,8 +3126,8 @@ function renderFactory() {
             <div class="bg-slate-50 border border-slate-100 rounded-2xl p-3 mb-3 text-[11px] font-bold grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 items-baseline">
                 <span class="text-slate-400">자재</span><span class="text-slate-800 break-words">${o.material || '-'}</span>
                 <span class="text-slate-400">규격</span><span class="text-slate-800">${getDetailSpecText(o)}</span>
-                ${o.materialColor ? `<span class="text-slate-400">색상/마감</span><span class="text-slate-800 break-words">${o.materialColor}</span>` : ''}
-                ${o.salesMemo ? `<span class="text-slate-400">특이사항</span><span class="text-slate-800 break-words">${o.salesMemo}</span>` : ''}
+                ${o.materialColor ? `<span class="text-slate-400">색상/마감</span><span class="text-slate-800 break-words">${escapeDashboardText(o.materialColor)}</span>` : ''}
+                ${o.salesMemo ? `<span class="text-slate-400">특이사항</span><span class="text-slate-800 break-words whitespace-pre-line">${escapeDashboardText(o.salesMemo)}</span>` : ''}
             </div>
             <div class="grid grid-cols-3 gap-2 mb-3 text-center">
                 <div class="bg-slate-50 rounded-xl p-2"><span class="block text-[9px] text-slate-400 font-black">총 수량</span><strong class="text-xs text-slate-800">${qty.toLocaleString()}장</strong></div>
