@@ -1041,7 +1041,7 @@
     </aside>
 </div>
 
-<div id="notiBanner" onclick="requestNotificationPermission()" class="hidden bg-yellow-50 border-b border-yellow-200 p-3 text-center text-xs font-bold text-yellow-800 cursor-pointer">🔔 알림 허용하기</div>
+<div id="notiBanner" onclick="requestNotificationPermission()" class="hidden bg-yellow-50 border-b border-yellow-200 p-3 text-center text-xs font-bold text-yellow-800 cursor-pointer"><span class="inline-flex items-center justify-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"/></svg>알림 허용하기</span></div>
 <div id="toastWrap"></div>
 <div id="modalContainer"></div>
 
@@ -1055,14 +1055,14 @@
 
         <div class="space-y-8 overflow-y-auto h-[calc(100%-80px)] pr-2">
             <div>
-                <label class="block text-[11px] font-black text-slate-400 uppercase mb-3 tracking-widest">📅 기간 선택 (출고일 기준)</label>
+                <label class="block text-[11px] font-black text-slate-400 uppercase mb-3 tracking-widest">기간 선택 (출고일 기준)</label>
                 <div class="grid grid-cols-2 gap-2">
                     <input type="date" id="filterStartDate" class="w-full p-3 bg-slate-50 border rounded-xl text-xs font-bold">
                     <input type="date" id="filterEndDate" class="w-full p-3 bg-slate-50 border rounded-xl text-xs font-bold">
                 </div>
             </div>
             <div>
-                <label class="block text-[11px] font-black text-slate-400 uppercase mb-3 tracking-widest">🔄 공정 상태</label>
+                <label class="block text-[11px] font-black text-slate-400 uppercase mb-3 tracking-widest">공정 상태</label>
                 <div class="flex flex-wrap gap-2" id="filterStatusGroup">
                     <button onclick="setFilterStatus('all')" class="status-chip active">전체</button>
                     <button onclick="setFilterStatus('pending')" class="status-chip">승인대기</button>
@@ -1071,7 +1071,7 @@
                 </div>
             </div>
             <div>
-                <label class="block text-[11px] font-black text-slate-400 uppercase mb-3 tracking-widest">💵 결제 여부</label>
+                <label class="block text-[11px] font-black text-slate-400 uppercase mb-3 tracking-widest">결제 여부</label>
                 <div class="grid grid-cols-2 gap-2">
                     <button onclick="setPaymentFilter('all')" class="pay-chip active">전체</button>
                     <button onclick="setPaymentFilter('unpaid')" class="pay-chip text-red-600">미수금</button>
@@ -3251,7 +3251,7 @@ function renderHistory() {
     let pS=0, aS=0, uS=0, cS=0; 
     filteredOrders.forEach(o => { const t = (o.price||0) * (o.qty||0); if(o.status==='pending') pS+=t; else if(o.status==='approved') aS+=t; else if(o.status==='completed' && o.paymentStatus==='unpaid') uS+=t; else if(o.status==='completed' && o.paymentStatus==='paid') cS+=t; });
     const dbEl = document.getElementById('dashBoard');
-    if(dbEl) dbEl.innerHTML = `<div class="grid grid-cols-2 gap-2 mb-4 text-[10px] font-black"><div class="bg-white p-3 rounded-2xl border border-yellow-200 text-yellow-700 shadow-sm">⏳ 대기: ₩${pS.toLocaleString()}</div><div class="bg-white p-3 rounded-2xl border border-blue-200 text-blue-700 shadow-sm">🏭 생산: ₩${aS.toLocaleString()}</div><div class="bg-white p-3 rounded-2xl border border-red-200 text-red-700 shadow-sm">💰 미수: ₩${uS.toLocaleString()}</div><div class="bg-white p-3 rounded-2xl border border-green-200 text-green-700 shadow-sm">✅ 완료: ₩${cS.toLocaleString()}</div></div>`;
+    if(dbEl) dbEl.innerHTML = `<div class="grid grid-cols-2 gap-2 mb-4 text-[10px] font-black"><div class="bg-white p-3 rounded-2xl border border-yellow-200 text-yellow-700 shadow-sm">대기: ₩${pS.toLocaleString()}</div><div class="bg-white p-3 rounded-2xl border border-blue-200 text-blue-700 shadow-sm">생산: ₩${aS.toLocaleString()}</div><div class="bg-white p-3 rounded-2xl border border-red-200 text-red-700 shadow-sm">미수: ₩${uS.toLocaleString()}</div><div class="bg-white p-3 rounded-2xl border border-green-200 text-green-700 shadow-sm">완료: ₩${cS.toLocaleString()}</div></div>`;
     const hList = document.getElementById('historyList');
     if(hList) hList.innerHTML = filteredOrders.map(o => `<div class="bg-white p-4 border rounded-2xl mb-2 text-[11px] shadow-sm"><div class="flex justify-between items-center mb-1"><span class="font-bold text-sm text-slate-800">${o.client}</span><span class="badge ${o.status==='pending'?'badge-pending':o.status==='approved'?'badge-approved':'badge-completed'}">${getDisplayStatusLabel(o)}</span></div><div class="flex justify-between"><span class="text-slate-500 font-bold"><span class="text-slate-800">${getOrderProductName(o)}</span><br>${o.material || '-'}<br><span class="text-blue-500 text-[10px]">출고: ${o.dueDate}</span></span><span class="text-right text-slate-900 font-black text-xs">₩${((o.price||0)*(o.qty||0)).toLocaleString()}<br>${o.paymentStatus==='paid'?'<span class="text-green-600">입금완료</span>':'<span class="text-red-500">미수</span>'}</span></div>${o.rejectReason ? `<div class="reject-reason-box mt-2">❌ 거절 사유: ${o.rejectReason}</div>` : ''}</div>`).join('');
 }
