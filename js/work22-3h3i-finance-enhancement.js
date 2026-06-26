@@ -507,12 +507,16 @@
                 if (balance <= 0) return;
                 const baseDate = String(order.payDate || order.dueDate || '').slice(0, 10) || '-';
                 const elapsed = baseDate !== '-' ? daysBetweenSafe(baseDate, todayStr) : 0;
-                if (!map.has(client)) map.set(client, { client, orderCount: 0, totalAmount: 0, paidAmount: 0, balanceAmount: 0, latestDate: '-', maxElapsed: 0 });
+                if (!map.has(client)) map.set(client, { client, orderCount: 0, totalAmount: 0, paidAmount: 0, balanceAmount: 0, latestDate: '-', maxElapsed: 0, primaryOrderId: '', primaryBalance: 0 });
                 const item = map.get(client);
                 item.orderCount += 1;
                 item.totalAmount += getAmount(order);
                 item.paidAmount += getPaid(order);
                 item.balanceAmount += balance;
+                if (!item.primaryOrderId || elapsed > item.maxElapsed || (elapsed === item.maxElapsed && balance > item.primaryBalance)) {
+                    item.primaryOrderId = order.id || '';
+                    item.primaryBalance = balance;
+                }
                 item.maxElapsed = Math.max(item.maxElapsed, elapsed);
                 if (baseDate !== '-' && (item.latestDate === '-' || baseDate > item.latestDate)) item.latestDate = baseDate;
             });
@@ -527,6 +531,12 @@
                 const elapsedClass = item.maxElapsed >= 60 ? 'text-red-500' : item.maxElapsed >= 30 ? 'text-orange-400' : 'text-slate-400';
                 return `<tr class='hover:bg-red-500/5 transition-colors'><td class='px-4 py-3 font-bold text-white'>${item.client}<br><span class='text-[10px] text-slate-500 font-black'>미수 ${item.orderCount}건</span></td><td class='px-4 py-3 text-slate-400'>${item.latestDate}</td><td class='px-4 py-3 ${elapsedClass} font-bold'>${item.maxElapsed}일<br>${riskBadge}</td><td class='px-4 py-3 text-right font-black text-red-400'>${dashboardKrwShort(item.balanceAmount)}</td></tr>`;
             }).join('') || `<tr><td colspan='4' class='px-4 py-8 text-center text-slate-500 font-bold'>미수금 데이터가 없습니다.</td></tr>`;
+            tbody.querySelectorAll('tr').forEach((row, index) => {
+                const item = clientItems[index];
+                if (!item?.primaryOrderId || row.querySelector('[colspan]')) return;
+                row.classList.add('cursor-pointer', 'pc-table-row', 'border-l-[3px]', 'border-transparent');
+                row.onclick = event => selectFinanceDetailRow(row, item.primaryOrderId, event);
+            });
         }
 
         function applyARCards(metrics = {}) {
@@ -691,7 +701,7 @@ const items = Array.from(itemMap.values());
                 const primaryLabel = getProductionPrimaryLabel(o);
                 const secondaryLabel = getProductionSecondaryLabel(o);
                 return `
-                    <div class='yj-production-card is-${cardClass}'>
+                    <div class='yj-production-card is-${cardClass} cursor-pointer pc-table-row border-l-[3px] border-transparent' onclick="selectFinanceDetailRow(this, '${o.id}', event)">
                         <div class='yj-production-order-head'>
                             <div class='min-w-0'>
                                 <div class='yj-production-order-label'>거래처</div>
