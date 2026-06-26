@@ -1411,19 +1411,23 @@ function enforceCurrentHashAccess() {
     if (!currentUser) return;
     const targetTab = getHashTargetTab();
     if (!targetTab) return;
+    const isPC = window.innerWidth > 768;
+    const allowedTabs = isPC ? getAllowedPCTabs() : getAllowedMobileTabs();
     if (targetTab === 'reset') {
         if (!canWrite('reset')) history.replaceState({ tab: getDefaultPCTab() }, '', '#' + getDefaultPCTab());
         return;
     }
     const area = getAccessAreaForTab(targetTab);
-    if (!canView(area)) {
-        const fallback = window.innerWidth > 768 ? getDefaultPCTab() : getDefaultMobileTab();
+    const fallback = isPC ? getDefaultPCTab() : getDefaultMobileTab();
+    if (!canView(area) || !allowedTabs.includes(targetTab)) {
         history.replaceState({ tab: fallback }, '', '#' + fallback);
-        if (window.innerWidth > 768) switchPCTab(fallback, false);
+        if (isPC) switchPCTab(fallback, false);
         else switchTab(fallback, false);
-    } else if (window.innerWidth > 768 && getAllowedPCTabs().includes(targetTab)) {
+        return;
+    }
+    if (isPC) {
         switchPCTab(targetTab, false);
-    } else if (window.innerWidth <= 768 && getAllowedMobileTabs().includes(targetTab)) {
+    } else {
         switchTab(targetTab, false);
     }
 }
