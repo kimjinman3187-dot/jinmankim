@@ -1856,7 +1856,7 @@ function updatePCARCards(metrics) {
         .sort((a, b) => b.elapsed - a.elapsed)
         .slice(0, 10)
         .map(item => `
-            <tr class="hover:bg-red-500/5">
+            <tr class="hover:bg-red-500/5 cursor-pointer pc-table-row border-l-[3px] border-transparent" onclick="selectRow(this, '${item.o.id}')">
                 <td class="px-4 py-3 font-bold text-white">${item.o.client || '-'}</td>
                 <td class="px-4 py-3">${item.baseDate}</td>
                 <td class="px-4 py-3 ${item.elapsedClass} font-bold">${item.elapsed}일</td>
@@ -3247,15 +3247,30 @@ function renderReceivables() {
     if (!listEl) return;
     listEl.innerHTML = debtItems.map(o => {
         const total = (o.price || 0) * (o.qty || 0); const paid = o.paidAmount || 0; const remaining = total - paid; const pct = total > 0 ? Math.min(100, Math.round((paid / total) * 100)) : 0;
+        const arProductName = escapeDashboardText(getOrderProductName(o));
+        const arSpecText = getDetailSpecText(o);
+        const arColorMemo = String(o.materialColor || '').trim();
+        const arNoteMemo = String(o.salesMemo || '').trim();
+        const arInvoiceIssued = isInvoiceIssued(o);
         return `
         <div class="bg-amber-50 p-5 border border-amber-200 rounded-[2rem] mb-4 shadow-sm">
-            <div class="flex justify-between"><p class="font-black text-amber-900">${o.client}</p><span class="text-[10px] font-bold ${o.status === 'approved' ? 'text-blue-500' : 'text-red-500'} bg-white px-2 py-1 rounded shadow-sm">${o.status === 'approved' ? '🚀 생산 중' : '✅ 생산 완료'}</span></div>
-            <p class="text-[10px] text-amber-700 opacity-80 mt-1 font-bold">${o.material} / 기한: ${o.payDate || '-'}</p>
+            <div class="flex justify-between"><p class="font-black text-amber-900">${escapeDashboardText(o.client || '-')}</p><span class="text-[10px] font-bold ${o.status === 'approved' ? 'text-blue-500' : 'text-red-500'} bg-white px-2 py-1 rounded shadow-sm">${o.status === 'approved' ? '생산 중' : '생산 완료'}</span></div>
+            <p class="text-[10px] text-amber-700 opacity-80 mt-1 font-bold">기한: ${o.payDate || '-'}</p>
+            <div class="mt-2 text-[11px] text-amber-900 font-bold space-y-0.5">
+                <div>${arProductName}</div>
+                <div class="text-amber-700 font-medium">${escapeDashboardText(o.material || '-')}${arSpecText ? ' · ' + escapeDashboardText(arSpecText) : ''}</div>
+                ${arColorMemo ? `<div class="text-amber-700 font-medium">색상/마감: ${escapeDashboardText(arColorMemo)}</div>` : ''}
+                ${arNoteMemo ? `<div class="text-amber-700 font-medium whitespace-pre-line">특이사항: ${escapeDashboardText(arNoteMemo)}</div>` : ''}
+            </div>
             <div class="mt-3 p-3 bg-white rounded-xl border border-amber-100 shadow-inner">
                 <div class="flex justify-between text-xs mb-1"><span class="text-slate-400 font-bold">총 청구액</span><span class="font-black text-slate-700">₩${total.toLocaleString()}</span></div>
                 <div class="flex justify-between text-xs mb-2"><span class="text-blue-600 font-bold">누적 입금액</span><span class="font-black text-blue-600">₩${paid.toLocaleString()}</span></div>
                 <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden mb-2"><div class="bg-blue-500 h-full transition-all" style="width: ${pct}%"></div></div>
                 <div class="flex justify-between items-center border-t border-slate-100 pt-2"><span class="text-red-500 font-bold text-sm">잔금 (미수금)</span><span class="text-lg font-black text-red-600">₩${remaining.toLocaleString()}</span></div>
+                <div class="flex justify-between items-center mt-2 text-[9px] font-black">
+                    <span class="px-2 py-0.5 rounded ${arInvoiceIssued ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}">계산서 ${arInvoiceIssued ? '발행' : '미발행'}</span>
+                    <span class="px-2 py-0.5 rounded bg-amber-100 text-amber-700">${escapeDashboardText(getPaymentStatusLabel(o))}</span>
+                </div>
             </div>
             ${
                 canEditAR
