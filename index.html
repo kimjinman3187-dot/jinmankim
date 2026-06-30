@@ -1063,6 +1063,44 @@
                             </div>
                         </section>
                     </div>
+
+                    <section class="mt-6 bg-[#1e293b] border border-[#334155] rounded-2xl shadow-xl overflow-hidden">
+                        <div class="p-5 border-b border-[#334155] bg-[#111827] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                            <div>
+                                <h3 class="text-sm font-bold text-white uppercase tracking-widest">제품 거래처 검색</h3>
+                                <p class="text-[10px] text-slate-500 font-bold mt-1">기존 orders 데이터를 읽어 거래처 단위로 묶어 보여주는 read-only 검색입니다.</p>
+                            </div>
+                            <div class="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
+                                <input id="pcInventoryProductSearchInput" type="text" oninput="renderInventoryClientSearch()" placeholder="제품명, 자재, 색상, 두께, 메모 검색" class="w-full lg:w-[360px] bg-[#0f1522] border border-[#334155] rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-cyan-400 font-bold">
+                                <button type="button" onclick="clearInventoryClientSearch()" class="px-4 py-3 rounded-xl bg-[#0f1522] border border-[#334155] text-slate-300 hover:text-white hover:border-slate-500 text-xs font-black whitespace-nowrap">초기화</button>
+                            </div>
+                        </div>
+                        <div class="p-5">
+                            <div class="flex flex-wrap gap-2 mb-4 text-[10px] font-black text-slate-400">
+                                <span id="pcInventorySearchMeta" class="bg-[#0f1522] border border-[#334155] rounded-lg px-3 py-1.5">검색어를 입력하세요</span>
+                                <span class="bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 rounded-lg px-3 py-1.5">거래처 기준 group by</span>
+                                <span class="bg-amber-500/10 text-amber-300 border border-amber-500/20 rounded-lg px-3 py-1.5">미수 참고</span>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-[11px] text-slate-300">
+                                    <thead class="bg-[#0f1522] text-slate-500 font-bold border-b border-[#334155]">
+                                        <tr>
+                                            <th class="px-4 py-3">거래처명</th>
+                                            <th class="px-4 py-3">최근 거래 기준일</th>
+                                            <th class="px-4 py-3 text-right">거래 횟수</th>
+                                            <th class="px-4 py-3 text-right">총 거래 금액</th>
+                                            <th class="px-4 py-3 text-center">미수 참고</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="pcInventoryClientSearchBody" class="divide-y divide-[#334155]/50">
+                                        <tr>
+                                            <td colspan="5" class="px-4 py-10 text-center text-slate-500 font-bold">제품명 또는 자재명을 검색하면 거래처별 과거 주문 요약이 표시됩니다.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
                 </div>
             </div>
 
@@ -1492,6 +1530,118 @@ function getPaidAmount(order) {
 
 function getOutstandingAmount(order) {
     return Math.max(0, getOrderAmount(order) - getPaidAmount(order));
+}
+
+function normalizeInventorySearchText(value = '') {
+    return String(value || '').trim().toLowerCase();
+}
+
+function getInventoryClientName(order = {}) {
+    return String(order.client || order.clientName || order.customerName || '거래처 미상').trim() || '거래처 미상';
+}
+
+function getInventoryRecentTradeDate(order = {}) {
+    const candidates = [order.shippedAt, order.completedAt, order.dueDate, order.createdAt];
+    for (const value of candidates) {
+        const normalized = normalizeOrderDateText(value);
+        if (normalized) return normalized;
+    }
+    return '-';
+}
+
+function normalizeOrderDateText(value) {
+    if (!value) return '';
+    try {
+        if (typeof value.toDate === 'function') return value.toDate().toISOString().slice(0, 10);
+        if (typeof value === 'number') return new Date(value).toISOString().slice(0, 10);
+        return String(value).slice(0, 10);
+    } catch (error) {
+        return '';
+    }
+}
+
+function getInventorySearchHaystack(order = {}) {
+    return [
+        getOrderProductName(order),
+        order.material,
+        order.materialColor,
+        order.salesMemo,
+        order.thickness
+    ].map(normalizeInventorySearchText).join(' ');
+}
+
+function getInventoryClientSearchItems(keyword) {
+    const source = Array.isArray(orders) ? orders : [];
+    const normalizedKeyword = normalizeInventorySearchText(keyword);
+    const keywordTokens = normalizedKeyword.split(/\s+/).filter(Boolean);
+    if (!normalizedKeyword) return [];
+
+    const map = new Map();
+    source.forEach(order => {
+        if (!order || order.status === 'rejected') return;
+        const haystack = getInventorySearchHaystack(order);
+        if (!keywordTokens.every(token => haystack.includes(token))) return;
+
+        const clientName = getInventoryClientName(order);
+        const clientKey = clientName.trim();
+        const amount = getOrderAmount(order);
+        const recentDate = getInventoryRecentTradeDate(order);
+
+        if (!map.has(clientKey)) {
+            map.set(clientKey, {
+                clientName,
+                latestDate: '-',
+                orderCount: 0,
+                totalAmount: 0,
+                hasOutstanding: false
+            });
+        }
+
+        const item = map.get(clientKey);
+        item.orderCount += 1;
+        item.totalAmount += amount;
+        if (recentDate !== '-' && (item.latestDate === '-' || recentDate > item.latestDate)) item.latestDate = recentDate;
+        if (typeof getOutstandingAmount === 'function' && getOutstandingAmount(order) > 0) item.hasOutstanding = true;
+    });
+
+    return Array.from(map.values()).sort((a, b) => {
+        const dateCompare = String(b.latestDate || '').localeCompare(String(a.latestDate || ''));
+        if (dateCompare) return dateCompare;
+        return b.totalAmount - a.totalAmount || a.clientName.localeCompare(b.clientName);
+    });
+}
+
+function renderInventoryClientSearch() {
+    const input = document.getElementById('pcInventoryProductSearchInput');
+    const tbody = document.getElementById('pcInventoryClientSearchBody');
+    const meta = document.getElementById('pcInventorySearchMeta');
+    if (!tbody) return;
+
+    const keyword = input?.value || '';
+    const normalizedKeyword = normalizeInventorySearchText(keyword);
+    if (!normalizedKeyword) {
+        if (meta) meta.textContent = '검색어를 입력하세요';
+        tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-10 text-center text-slate-500 font-bold">제품명 또는 자재명을 검색하면 거래처별 과거 주문 요약이 표시됩니다.</td></tr>`;
+        return;
+    }
+
+    const items = getInventoryClientSearchItems(keyword);
+    if (meta) meta.textContent = `${items.length.toLocaleString()}개 거래처`;
+    tbody.innerHTML = items.map(item => `
+        <tr class="hover:bg-cyan-500/5 transition-colors">
+            <td class="px-4 py-3 font-bold text-white">${escapeDashboardText(item.clientName)}</td>
+            <td class="px-4 py-3 text-slate-400">${escapeDashboardText(item.latestDate)}</td>
+            <td class="px-4 py-3 text-right font-black text-slate-200">${item.orderCount.toLocaleString()}건</td>
+            <td class="px-4 py-3 text-right font-black text-cyan-300">${formatKRW(item.totalAmount)}</td>
+            <td class="px-4 py-3 text-center">${item.hasOutstanding ? `<span class="bg-amber-500/10 text-amber-300 border border-amber-500/30 px-2 py-1 rounded text-[10px] font-black">미수 참고</span>` : `<span class="bg-slate-500/10 text-slate-400 border border-slate-500/20 px-2 py-1 rounded text-[10px] font-black">확인 필요</span>`}</td>
+        </tr>
+    `).join('') || `<tr><td colspan="5" class="px-4 py-10 text-center text-slate-500 font-bold">검색어와 일치하는 거래처 주문 이력이 없습니다.</td></tr>`;
+}
+
+function clearInventoryClientSearch() {
+    const input = document.getElementById('pcInventoryProductSearchInput');
+    if (input) input.value = '';
+    renderInventoryClientSearch();
 }
 // --- [작업 22-1] 기존 orders 데이터 호환용 lifecycle helper ---
 function getInvoiceStatus(order = {}) {
@@ -3132,6 +3282,7 @@ window.addEventListener('hashchange', enforceCurrentHashAccess);
     }
     
     filteredOrders = tempOrders;
+    renderInventoryClientSearch();
     
     const activeRoleBtn = document.querySelector('.active-role');
     if (activeRoleBtn) { 
@@ -3978,6 +4129,9 @@ function switchPCTab(tabId, pushHistory = true) {
    
     if (['dashboard', 'factory', 'accounting', 'receivables'].includes(tabId)) {
     setTimeout(executeSearch, 100);
+    }
+    if (tabId === 'inventory') {
+        renderInventoryClientSearch();
     }
     if (tabId === 'dashboard' && currentUser?.role === 'admin') {
         loadApprovalRequestsReadOnly();
