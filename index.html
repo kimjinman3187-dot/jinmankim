@@ -132,6 +132,8 @@
         .toast { background: #1e293b; color: #fff; border-radius: 16px; padding: 14px 18px; display: flex; align-items: center; gap: 12px; pointer-events: auto; animation: toastIn 0.3s forwards; }
         @keyframes toastIn { from { opacity:0; transform:translateY(-14px); } to { opacity:1; transform:translateY(0); } }
         .pc-table-row.active { background-color: rgba(59, 130, 246, 0.15) !important; border-left: 3px solid #3b82f6; }
+        /* [WORK24-SEARCH01-A3] factory role: 재무성 정보 숨김 */
+        body.yj-hide-finance .yj-fin-only { display: none !important; }
         
         .pc-page .shadow-lg { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: default; }
         .pc-page .shadow-lg:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.2); border-color: rgba(59, 130, 246, 0.4); }
@@ -514,7 +516,7 @@
                         <div class="flex flex-wrap gap-2 mb-4 text-[10px] font-black text-slate-400">
                             <span id="pcInventorySearchMeta" class="bg-[#0f1522] border border-[#334155] rounded-lg px-3 py-1.5">검색어를 입력하세요</span>
                             <span class="bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 rounded-lg px-3 py-1.5">거래처 기준 group by</span>
-                            <span class="bg-amber-500/10 text-amber-300 border border-amber-500/20 rounded-lg px-3 py-1.5">미수 참고</span>
+                            <span class="bg-amber-500/10 text-amber-300 border border-amber-500/20 rounded-lg px-3 py-1.5 yj-fin-only">미수 참고</span>
                         </div>
                         <div class="overflow-x-auto">
                             <table class="w-full text-left text-[11px] text-slate-300">
@@ -523,8 +525,8 @@
                                         <th class="px-4 py-3">거래처명</th>
                                         <th class="px-4 py-3">최근 거래 기준일</th>
                                         <th class="px-4 py-3 text-right">거래 횟수</th>
-                                        <th class="px-4 py-3 text-right">총 거래 금액</th>
-                                        <th class="px-4 py-3 text-center">미수 참고</th>
+                                        <th class="px-4 py-3 text-right yj-fin-only">총 거래 금액</th>
+                                        <th class="px-4 py-3 text-center yj-fin-only">미수 참고</th>
                                     </tr>
                                 </thead>
                                 <tbody id="pcInventoryClientSearchBody" class="divide-y divide-[#334155]/50">
@@ -594,11 +596,11 @@
                     </div>
                 </section>
                 <div class="grid grid-cols-4 gap-4 mb-6 relative z-10">
-                    <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-4 shadow-lg">
+                    <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-4 shadow-lg yj-fin-only">
                         <p class="text-slate-400 text-xs font-medium mb-1">총 미수금 (KRW)</p>
                         <p class="text-2xl font-bold text-white" id="pcKpiDebt">0</p>
                     </div>
-                    <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-4 shadow-lg">
+                    <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-4 shadow-lg yj-fin-only">
                         <p class="text-slate-400 text-xs font-medium mb-1">이번 달 매출액</p>
                         <p class="text-2xl font-bold text-white" id="pcKpiSales">0</p>
                     </div>
@@ -612,7 +614,7 @@
                     </div>
                 </div>
                 <div class="grid grid-cols-3 gap-4 mb-6 relative z-10">
-                    <div class="col-span-2 bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
+                    <div class="col-span-2 bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg yj-fin-only">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest">최근 수주 트렌드 (금액)</h3>
                             <select id="chartPeriodFilter" onchange="initDashboardCharts()" class="bg-[#0f1522] border border-[#334155] rounded-md px-2 py-1 text-[11px] font-bold text-slate-400 outline-none focus:border-blue-400 cursor-pointer">
@@ -632,7 +634,7 @@
                         </div>
                     </div>
                 </div>
-                <div id="pcTopProductSalesCard" class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg mb-6 relative z-10">
+                <div id="pcTopProductSalesCard" class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg mb-6 relative z-10 yj-fin-only">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest">TOP 품목 매출</h3>
                         <span class="text-[10px] font-black text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-1 rounded">수주 기준</span>
@@ -641,7 +643,7 @@
                         <p class="text-xs text-slate-500 font-bold col-span-full text-center py-4">품목 매출 데이터가 없습니다.</p>
                     </div>
                 </div>
-                <div id="pcTopProductReceivableCard" class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg mb-6 relative z-10">
+                <div id="pcTopProductReceivableCard" class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg mb-6 relative z-10 yj-fin-only">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest">TOP 품목 미수금</h3>
                         <div class="flex items-center gap-2">
@@ -653,7 +655,7 @@
                         <p class="text-xs text-slate-500 font-bold col-span-full text-center py-4">품목 미수금 데이터가 없습니다.</p>
                     </div>
                 </div>
-                <div id="pcMonthlyTopProductCard" class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg mb-6 relative z-10">
+                <div id="pcMonthlyTopProductCard" class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg mb-6 relative z-10 yj-fin-only">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest">월별 TOP 품목</h3>
                         <span id="pcMonthlyTopProductMeta" class="text-[10px] font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded">기준월 -</span>
@@ -662,7 +664,7 @@
                         <p class="text-xs text-slate-500 font-bold col-span-full text-center py-4">월별 품목 데이터가 없습니다.</p>
                     </div>
                 </div>
-                <div id="pcClientProductSalesCard" class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg mb-6 relative z-10">
+                <div id="pcClientProductSalesCard" class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg mb-6 relative z-10 yj-fin-only">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest">거래처별 TOP 품목 매출</h3>
                         <span class="text-[10px] font-black text-violet-400 bg-violet-500/10 border border-violet-500/20 px-2 py-1 rounded">거래처 + 품목</span>
@@ -687,7 +689,7 @@
                     <div class="flex-1 overflow-x-auto p-4">
                         <table class="w-full text-left text-sm whitespace-nowrap text-slate-300">
                             <thead class="text-xs text-slate-500 bg-[#0f1522] border-b border-[#334155]">
-                                <tr><th class="px-6 py-4 font-medium">납기일</th><th class="px-6 py-4 font-medium">거래처명</th><th class="px-6 py-4 font-medium">자재명 / 수량</th><th class="px-6 py-4 font-medium text-right">총액 (KRW)</th><th class="px-6 py-4 font-medium text-center">공정 상태</th></tr>
+                                <tr><th class="px-6 py-4 font-medium">납기일</th><th class="px-6 py-4 font-medium">거래처명</th><th class="px-6 py-4 font-medium">자재명 / 수량</th><th class="px-6 py-4 font-medium text-right yj-fin-only">총액 (KRW)</th><th class="px-6 py-4 font-medium text-center">공정 상태</th></tr>
                             </thead>
                             <tbody id="pcTableBody" class="divide-y divide-[#334155]">
                                 <tr><td colspan="5" class="p-8 text-center text-slate-500">데이터를 불러오는 중입니다...</td></tr>
@@ -1003,7 +1005,6 @@
                         <span class="text-[10px] font-black text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded-lg px-3 py-1.5">UI SHELL</span>
                     </div>
 
-                    <div id="inventoryProductClientSearchMount"></div>
 
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
@@ -1158,7 +1159,7 @@
                             <span class="text-slate-500 font-bold">수량</span>
                             <span class="text-slate-300 font-black text-sm" id="detailQtyText">0장</span>
                         </div>
-                        <div class="flex justify-between border-b border-[#334155] pb-2">
+                        <div class="flex justify-between border-b border-[#334155] pb-2 yj-fin-only">
                             <span class="text-slate-500 font-bold">단가</span>
                             <span class="text-slate-300 font-black text-sm" id="detailUnitPrice">0원</span>
                         </div>
@@ -1166,19 +1167,19 @@
                             <span class="text-slate-500 font-bold">출고일(납기)</span>
                             <span class="text-slate-300" id="detailDate">-</span>
                         </div>
-                        <div class="flex justify-between border-b border-[#334155] pb-2">
+                        <div class="flex justify-between border-b border-[#334155] pb-2 yj-fin-only">
                             <span class="text-slate-500 font-bold">총액</span>
                             <span class="text-blue-400 font-black text-sm" id="detailAmount">0</span>
                         </div>
-                        <div class="flex justify-between border-b border-[#334155] pb-2">
+                        <div class="flex justify-between border-b border-[#334155] pb-2 yj-fin-only">
                             <span class="text-slate-500 font-bold">입금 상태</span>
                             <span class="text-slate-300 font-black text-sm" id="detailPaymentStatus">-</span>
                         </div>
-                        <div class="flex justify-between border-b border-[#334155] pb-2">
+                        <div class="flex justify-between border-b border-[#334155] pb-2 yj-fin-only">
                             <span class="text-slate-500 font-bold">잔금</span>
                             <span class="text-amber-400 font-black text-sm" id="detailOutstandingAmount">0</span>
                         </div>
-                        <div class="border border-[#334155] rounded-xl p-4 bg-[#0f1522]">
+                        <div class="border border-[#334155] rounded-xl p-4 bg-[#0f1522] yj-fin-only">
     <div class="flex justify-between items-center mb-3">
         <span class="text-slate-500 font-bold text-xs">계산서 상태</span>
         <span id="detailInvoiceStatus" class="text-[11px] font-black px-2 py-1 rounded bg-slate-700 text-slate-300">
@@ -1359,7 +1360,7 @@ const ACCESS_MATRIX = {
         write: ['finance', 'ar']
     },
     factory: {
-        view: ['production', 'inventory'],
+        view: ['live', 'dashboard', 'production', 'inventory'],
         write: ['production']
     }
 };
@@ -1401,10 +1402,10 @@ const TAB_META = { sales: {label:'영업'}, accounting: {label:'회계'}, receiv
 const PC_ROLE_TABS = {
     sales: ['dashboard', 'sales', 'receivables', 'factory', 'inventory'],
     accounting: ['dashboard', 'sales', 'accounting', 'receivables', 'factory', 'inventory'],
-    factory: ['factory', 'inventory'],
+    factory: ['dashboard', 'factory', 'inventory'],
     admin: ['dashboard', 'sales', 'accounting', 'receivables', 'factory', 'inventory']
 };
-const ROLE_DEFAULT_PC_TAB = { admin: 'dashboard', sales: 'dashboard', accounting: 'accounting', factory: 'factory' };
+const ROLE_DEFAULT_PC_TAB = { admin: 'dashboard', sales: 'dashboard', accounting: 'accounting', factory: 'dashboard' };
 const HASH_TAB_ALIASES = {
     '#live': 'dashboard',
     '#dashboard': 'dashboard',
@@ -1623,10 +1624,8 @@ function mountProductClientSearchPanel() {
     const panel = document.getElementById('pcProductClientSearchPanel');
     if (!panel) return;
 
-    const targetId = currentUser?.role === 'factory'
-        ? 'inventoryProductClientSearchMount'
-        : 'dashboardProductClientSearchMount';
-    const target = document.getElementById(targetId);
+    // [WORK24-SEARCH01-A3] 검색 패널은 role 무관하게 Live 상단 단일 고정 (Inventory fallback mount 제거)
+    const target = document.getElementById('dashboardProductClientSearchMount');
     if (!target || panel.parentElement === target) return;
 
     target.appendChild(panel);
@@ -1653,8 +1652,8 @@ function renderInventoryClientSearch() {
             <td class="px-4 py-3 font-bold text-white">${escapeDashboardText(item.clientName)}</td>
             <td class="px-4 py-3 text-slate-400">${escapeDashboardText(item.latestDate)}</td>
             <td class="px-4 py-3 text-right font-black text-slate-200">${item.orderCount.toLocaleString()}건</td>
-            <td class="px-4 py-3 text-right font-black text-cyan-300">${formatKRW(item.totalAmount)}</td>
-            <td class="px-4 py-3 text-center">${item.hasOutstanding ? `<span class="bg-amber-500/10 text-amber-300 border border-amber-500/30 px-2 py-1 rounded text-[10px] font-black">미수 참고</span>` : `<span class="bg-slate-500/10 text-slate-400 border border-slate-500/20 px-2 py-1 rounded text-[10px] font-black">확인 필요</span>`}</td>
+            <td class="px-4 py-3 text-right font-black text-cyan-300 yj-fin-only">${formatKRW(item.totalAmount)}</td>
+            <td class="px-4 py-3 text-center yj-fin-only">${item.hasOutstanding ? `<span class="bg-amber-500/10 text-amber-300 border border-amber-500/30 px-2 py-1 rounded text-[10px] font-black">미수 참고</span>` : `<span class="bg-slate-500/10 text-slate-400 border border-slate-500/20 px-2 py-1 rounded text-[10px] font-black">확인 필요</span>`}</td>
         </tr>
     `).join('') || `<tr><td colspan="5" class="px-4 py-10 text-center text-slate-500 font-bold">검색어와 일치하는 거래처 주문 이력이 없습니다.</td></tr>`;
 }
@@ -3007,6 +3006,8 @@ function applyPCRoleAccess() {
     if (pcAdminInviteCodePanel) pcAdminInviteCodePanel.classList.toggle('hidden', currentUser?.role !== 'admin');
     const pcApprovalRequestPanel = document.getElementById('pcApprovalRequestPanel');
     if (pcApprovalRequestPanel) pcApprovalRequestPanel.classList.toggle('hidden', currentUser?.role !== 'admin');
+    // [WORK24-SEARCH01-A3] factory role: Live 재무성 정보(.yj-fin-only) 숨김
+    document.body.classList.toggle('yj-hide-finance', currentUser?.role === 'factory');
 }
 
 function createApprovalRequestMessageRow(message) {
@@ -4102,7 +4103,7 @@ function renderPCTable() {
             <td class="p-3 text-slate-400">${o.dueDate || '-'}</td>
             <td class="p-3 font-bold text-white">${o.client}</td>
             <td class="p-3 text-slate-400 text-xs">${o.material} <br><span class="text-white">${o.qty}장</span></td>
-            <td class="p-3 font-bold text-blue-400 text-right">₩${((o.price || 0) * (o.qty || 0)).toLocaleString()}</td>
+            <td class="p-3 font-bold text-blue-400 text-right yj-fin-only">₩${((o.price || 0) * (o.qty || 0)).toLocaleString()}</td>
             <td class="p-3 text-center">${statusBadge}</td>
         </tr>`;
     }).join('') || '<tr><td colspan="5" class="p-8 text-center text-slate-500">조회된 내역이 없습니다.</td></tr>';
