@@ -498,6 +498,45 @@
             <div id="drawerBackdrop" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden xl:hidden transition-opacity" onclick="closeDrawer()"></div>
 
             <div id="pc-page-dashboard" class="pc-page block">
+                <div id="dashboardProductClientSearchMount">
+                <section id="pcProductClientSearchPanel" class="bg-[#1e293b] border border-[#334155] rounded-2xl shadow-xl overflow-hidden mb-6 relative z-10">
+                    <div class="p-5 border-b border-[#334155] bg-[#111827] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                        <div>
+                            <h3 class="text-sm font-bold text-white uppercase tracking-widest">제품 거래처 검색</h3>
+                            <p class="text-[10px] text-slate-500 font-bold mt-1">기존 orders 데이터를 읽어 거래처 단위로 묶어 보여주는 read-only 검색입니다.</p>
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
+                            <input id="pcInventoryProductSearchInput" type="text" oninput="renderInventoryClientSearch()" placeholder="제품명, 자재, 색상, 두께, 메모 검색" class="w-full lg:w-[360px] bg-[#0f1522] border border-[#334155] rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-cyan-400 font-bold">
+                            <button type="button" onclick="clearInventoryClientSearch()" class="px-4 py-3 rounded-xl bg-[#0f1522] border border-[#334155] text-slate-300 hover:text-white hover:border-slate-500 text-xs font-black whitespace-nowrap">초기화</button>
+                        </div>
+                    </div>
+                    <div class="p-5">
+                        <div class="flex flex-wrap gap-2 mb-4 text-[10px] font-black text-slate-400">
+                            <span id="pcInventorySearchMeta" class="bg-[#0f1522] border border-[#334155] rounded-lg px-3 py-1.5">검색어를 입력하세요</span>
+                            <span class="bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 rounded-lg px-3 py-1.5">거래처 기준 group by</span>
+                            <span class="bg-amber-500/10 text-amber-300 border border-amber-500/20 rounded-lg px-3 py-1.5">미수 참고</span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-[11px] text-slate-300">
+                                <thead class="bg-[#0f1522] text-slate-500 font-bold border-b border-[#334155]">
+                                    <tr>
+                                        <th class="px-4 py-3">거래처명</th>
+                                        <th class="px-4 py-3">최근 거래 기준일</th>
+                                        <th class="px-4 py-3 text-right">거래 횟수</th>
+                                        <th class="px-4 py-3 text-right">총 거래 금액</th>
+                                        <th class="px-4 py-3 text-center">미수 참고</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pcInventoryClientSearchBody" class="divide-y divide-[#334155]/50">
+                                    <tr>
+                                        <td colspan="5" class="px-4 py-10 text-center text-slate-500 font-bold">제품명 또는 자재명을 검색하면 거래처별 과거 주문 요약이 표시됩니다.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+                </div>
                 <!-- WORK22-6N-K5D-1-R2 PC admin 초대코드 관리 UI 골격 -->
                 <section id="pcAdminInviteCodePanel" class="hidden bg-[#1e293b] border border-[#334155] rounded-xl p-5 mb-6 shadow-lg relative z-10">
                     <div class="flex justify-between items-center gap-3 mb-4">
@@ -964,6 +1003,8 @@
                         <span class="text-[10px] font-black text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded-lg px-3 py-1.5">UI SHELL</span>
                     </div>
 
+                    <div id="inventoryProductClientSearchMount"></div>
+
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
                             <p class="text-slate-400 text-[11px] font-bold mb-2 uppercase">총 재고 품목</p>
@@ -1064,43 +1105,6 @@
                         </section>
                     </div>
 
-                    <section class="mt-6 bg-[#1e293b] border border-[#334155] rounded-2xl shadow-xl overflow-hidden">
-                        <div class="p-5 border-b border-[#334155] bg-[#111827] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                            <div>
-                                <h3 class="text-sm font-bold text-white uppercase tracking-widest">제품 거래처 검색</h3>
-                                <p class="text-[10px] text-slate-500 font-bold mt-1">기존 orders 데이터를 읽어 거래처 단위로 묶어 보여주는 read-only 검색입니다.</p>
-                            </div>
-                            <div class="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
-                                <input id="pcInventoryProductSearchInput" type="text" oninput="renderInventoryClientSearch()" placeholder="제품명, 자재, 색상, 두께, 메모 검색" class="w-full lg:w-[360px] bg-[#0f1522] border border-[#334155] rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-cyan-400 font-bold">
-                                <button type="button" onclick="clearInventoryClientSearch()" class="px-4 py-3 rounded-xl bg-[#0f1522] border border-[#334155] text-slate-300 hover:text-white hover:border-slate-500 text-xs font-black whitespace-nowrap">초기화</button>
-                            </div>
-                        </div>
-                        <div class="p-5">
-                            <div class="flex flex-wrap gap-2 mb-4 text-[10px] font-black text-slate-400">
-                                <span id="pcInventorySearchMeta" class="bg-[#0f1522] border border-[#334155] rounded-lg px-3 py-1.5">검색어를 입력하세요</span>
-                                <span class="bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 rounded-lg px-3 py-1.5">거래처 기준 group by</span>
-                                <span class="bg-amber-500/10 text-amber-300 border border-amber-500/20 rounded-lg px-3 py-1.5">미수 참고</span>
-                            </div>
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-left text-[11px] text-slate-300">
-                                    <thead class="bg-[#0f1522] text-slate-500 font-bold border-b border-[#334155]">
-                                        <tr>
-                                            <th class="px-4 py-3">거래처명</th>
-                                            <th class="px-4 py-3">최근 거래 기준일</th>
-                                            <th class="px-4 py-3 text-right">거래 횟수</th>
-                                            <th class="px-4 py-3 text-right">총 거래 금액</th>
-                                            <th class="px-4 py-3 text-center">미수 참고</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="pcInventoryClientSearchBody" class="divide-y divide-[#334155]/50">
-                                        <tr>
-                                            <td colspan="5" class="px-4 py-10 text-center text-slate-500 font-bold">제품명 또는 자재명을 검색하면 거래처별 과거 주문 요약이 표시됩니다.</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </section>
                 </div>
             </div>
 
@@ -1609,6 +1613,19 @@ function getInventoryClientSearchItems(keyword) {
         if (dateCompare) return dateCompare;
         return b.totalAmount - a.totalAmount || a.clientName.localeCompare(b.clientName);
     });
+}
+
+function mountProductClientSearchPanel() {
+    const panel = document.getElementById('pcProductClientSearchPanel');
+    if (!panel) return;
+
+    const targetId = currentUser?.role === 'factory'
+        ? 'inventoryProductClientSearchMount'
+        : 'dashboardProductClientSearchMount';
+    const target = document.getElementById(targetId);
+    if (!target || panel.parentElement === target) return;
+
+    target.appendChild(panel);
 }
 
 function renderInventoryClientSearch() {
@@ -4130,7 +4147,8 @@ function switchPCTab(tabId, pushHistory = true) {
     if (['dashboard', 'factory', 'accounting', 'receivables'].includes(tabId)) {
     setTimeout(executeSearch, 100);
     }
-    if (tabId === 'inventory') {
+    if (tabId === 'dashboard' || tabId === 'inventory') {
+        mountProductClientSearchPanel();
         renderInventoryClientSearch();
     }
     if (tabId === 'dashboard' && currentUser?.role === 'admin') {
