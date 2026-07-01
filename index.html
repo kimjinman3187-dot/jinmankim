@@ -1579,6 +1579,22 @@ function getInventorySearchHaystack(order = {}) {
     ].map(normalizeInventorySearchText).join(' ');
 }
 
+// [WORK24-SEARCH02] 검색 결과 대표 주문 = 최근 주문 기준 (createdAt > orderDate > deliveryDate > 배열순서/id fallback)
+function getInventoryOrderRecencyKey(order = {}) {
+    return {
+        createdAt: Number(order.createdAt) || 0,
+        orderDate: String(order.orderDate || '').slice(0, 10),
+        deliveryDate: String(order.deliveryDate || order.dueDate || '').slice(0, 10)
+    };
+}
+function isInventoryOrderMoreRecent(a, b) {
+    if (!b) return true;
+    if (a.createdAt !== b.createdAt) return a.createdAt > b.createdAt;
+    if (a.orderDate !== b.orderDate) return a.orderDate > b.orderDate;
+    if (a.deliveryDate !== b.deliveryDate) return a.deliveryDate > b.deliveryDate;
+    return false; // 동률: 먼저 발견된(배열 순서) 주문 유지
+}
+
 function getInventoryClientSearchItems(keyword) {
     const source = Array.isArray(orders) ? orders : [];
     const normalizedKeyword = normalizeInventorySearchText(keyword);
@@ -1602,7 +1618,9 @@ function getInventoryClientSearchItems(keyword) {
                 latestDate: '-',
                 orderCount: 0,
                 totalAmount: 0,
-                hasOutstanding: false
+                hasOutstanding: false,
+                primaryOrderId: null,
+                _primaryKey: null
             });
         }
 
@@ -1611,6 +1629,14 @@ function getInventoryClientSearchItems(keyword) {
         item.totalAmount += amount;
         if (recentDate !== '-' && (item.latestDate === '-' || recentDate > item.latestDate)) item.latestDate = recentDate;
         if (typeof getOutstandingAmount === 'function' && getOutstandingAmount(order) > 0) item.hasOutstanding = true;
+        // [WORK24-SEARCH02] 거래처별 대표 주문(최근 주문) id 부여 — 집계식/표시 데이터는 불변
+        if (order.id) {
+            const rk = getInventoryOrderRecencyKey(order);
+            if (item.primaryOrderId === null || isInventoryOrderMoreRecent(rk, item._primaryKey)) {
+                item._primaryKey = rk;
+                item.primaryOrderId = order.id;
+            }
+        }
     });
 
     return Array.from(map.values()).sort((a, b) => {
@@ -1647,15 +1673,18 @@ function renderInventoryClientSearch() {
 
     const items = getInventoryClientSearchItems(keyword);
     if (meta) meta.textContent = `${items.length.toLocaleString()}개 거래처`;
-    tbody.innerHTML = items.map(item => `
-        <tr class="hover:bg-cyan-500/5 transition-colors">
+    tbody.innerHTML = items.map(item => {
+        const rowOpen = item.primaryOrderId
+            ? `<tr class="hover:bg-cyan-500/5 transition-colors cursor-pointer pc-table-row border-l-[3px] border-transparent" onclick="selectFinanceDetailRow(this, '${item.primaryOrderId}', event)">`
+            : `<tr class="hover:bg-cyan-500/5 transition-colors">`;
+        return `${rowOpen}
             <td class="px-4 py-3 font-bold text-white">${escapeDashboardText(item.clientName)}</td>
             <td class="px-4 py-3 text-slate-400">${escapeDashboardText(item.latestDate)}</td>
             <td class="px-4 py-3 text-right font-black text-slate-200">${item.orderCount.toLocaleString()}건</td>
             <td class="px-4 py-3 text-right font-black text-cyan-300 yj-fin-only">${formatKRW(item.totalAmount)}</td>
             <td class="px-4 py-3 text-center yj-fin-only">${item.hasOutstanding ? `<span class="bg-amber-500/10 text-amber-300 border border-amber-500/30 px-2 py-1 rounded text-[10px] font-black">미수 참고</span>` : `<span class="bg-slate-500/10 text-slate-400 border border-slate-500/20 px-2 py-1 rounded text-[10px] font-black">확인 필요</span>`}</td>
-        </tr>
-    `).join('') || `<tr><td colspan="5" class="px-4 py-10 text-center text-slate-500 font-bold">검색어와 일치하는 거래처 주문 이력이 없습니다.</td></tr>`;
+        </tr>`;
+    }).join('') || `<tr><td colspan="5" class="px-4 py-10 text-center text-slate-500 font-bold">검색어와 일치하는 거래처 주문 이력이 없습니다.</td></tr>`;
 }
 
 function clearInventoryClientSearch() {
