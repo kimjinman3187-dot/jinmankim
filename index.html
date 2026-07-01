@@ -1580,9 +1580,25 @@ function getInventorySearchHaystack(order = {}) {
 }
 
 // [WORK24-SEARCH02] 검색 결과 대표 주문 = 최근 주문 기준 (createdAt > orderDate > deliveryDate > 배열순서/id fallback)
+// createdAt은 number / string / Date / Firestore Timestamp(toMillis/toDate/{seconds}) 모두 ms 값으로 정규화
+function getInventoryTimestampValue(value) {
+    if (!value) return 0;
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+        const parsed = Date.parse(value);
+        return Number.isNaN(parsed) ? 0 : parsed;
+    }
+    if (typeof value.toMillis === 'function') return value.toMillis();
+    if (typeof value.toDate === 'function') {
+        const date = value.toDate();
+        return date instanceof Date ? date.getTime() : 0;
+    }
+    if (typeof value.seconds === 'number') return value.seconds * 1000;
+    return 0;
+}
 function getInventoryOrderRecencyKey(order = {}) {
     return {
-        createdAt: Number(order.createdAt) || 0,
+        createdAt: getInventoryTimestampValue(order.createdAt),
         orderDate: String(order.orderDate || '').slice(0, 10),
         deliveryDate: String(order.deliveryDate || order.dueDate || '').slice(0, 10)
     };
