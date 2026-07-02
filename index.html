@@ -655,6 +655,32 @@
                         <p class="text-xs text-slate-500 font-bold col-span-full text-center py-4">품목 미수금 데이터가 없습니다.</p>
                     </div>
                 </div>
+                <div id="pcProductOutstandingDashboardCard" class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg mb-6 relative z-10 yj-fin-only">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest">품목별 미수금 TOP 10</h3>
+                            <p class="text-[10px] text-slate-500 font-bold mt-1">미수금 합계 기준 상위 품목</p>
+                        </div>
+                        <span class="text-[10px] font-black text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded">TOP 10</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-[11px] text-slate-300">
+                            <thead class="bg-[#0f1522] text-slate-500 font-bold border-b border-[#334155]">
+                                <tr>
+                                    <th class="px-3 py-3">품목명</th>
+                                    <th class="px-3 py-3 text-right">주문 건수</th>
+                                    <th class="px-3 py-3 text-right">총 매출</th>
+                                    <th class="px-3 py-3 text-right">입금액</th>
+                                    <th class="px-3 py-3 text-right">미수금 합계</th>
+                                    <th class="px-3 py-3">최근 주문일</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pcProductOutstandingDashboardBody" class="divide-y divide-[#334155]/50">
+                                <tr><td colspan="6" class="px-4 py-8 text-center text-slate-500 font-bold">표시할 품목별 미수금 데이터가 없습니다.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
                 <div id="pcMonthlyTopProductCard" class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg mb-6 relative z-10 yj-fin-only">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest">월별 TOP 품목</h3>
@@ -1991,6 +2017,70 @@ function updateTopProductReceivableCard(data = filteredOrders) {
             <p class="text-[10px] text-slate-500 font-bold mt-1">${item.qty.toLocaleString()}장</p>
         </div>
     `;
+    }).join('');
+}
+
+function buildProductOutstandingSummary(data = filteredOrders) {
+    const map = new Map();
+
+    data.forEach(order => {
+        if (!order || order.status === 'rejected') return;
+
+        const productName = getOrderProductName(order);
+        const outstandingAmount = getOutstandingAmount(order);
+        if (!productName || productName === '-' || outstandingAmount <= 0) return;
+
+        if (!map.has(productName)) {
+            map.set(productName, {
+                productName,
+                orderCount: 0,
+                totalAmount: 0,
+                paidAmount: 0,
+                outstandingAmount: 0,
+                latestOrderDate: '-'
+            });
+        }
+
+        const item = map.get(productName);
+        const latestDate = normalizeOrderDateText(order.dueDate) || normalizeOrderDateText(order.createdAt);
+
+        item.orderCount += 1;
+        item.totalAmount += getOrderAmount(order);
+        item.paidAmount += getPaidAmount(order);
+        item.outstandingAmount += outstandingAmount;
+        if (latestDate && (item.latestOrderDate === '-' || latestDate > item.latestOrderDate)) item.latestOrderDate = latestDate;
+    });
+
+    return Array.from(map.values())
+        .sort((a, b) =>
+            b.outstandingAmount - a.outstandingAmount ||
+            b.totalAmount - a.totalAmount ||
+            a.productName.localeCompare(b.productName)
+        )
+        .slice(0, 10);
+}
+
+function renderProductOutstandingDashboard(data = filteredOrders) {
+    const tbody = document.getElementById('pcProductOutstandingDashboardBody');
+    if (!tbody) return;
+
+    const items = buildProductOutstandingSummary(data);
+    if (!items.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-slate-500 font-bold">표시할 품목별 미수금 데이터가 없습니다.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = items.map(item => {
+        const productName = escapeDashboardText(item.productName);
+        return `
+        <tr class="hover:bg-amber-500/5 transition-colors">
+            <td class="px-3 py-3 font-bold text-white max-w-[220px] truncate" title="${productName}">${productName}</td>
+            <td class="px-3 py-3 text-right font-black text-slate-200">${item.orderCount.toLocaleString()}</td>
+            <td class="px-3 py-3 text-right font-black text-slate-300">${formatKRW(item.totalAmount)}</td>
+            <td class="px-3 py-3 text-right font-black text-emerald-300">${formatKRW(item.paidAmount)}</td>
+            <td class="px-3 py-3 text-right font-black text-amber-300">${formatKRW(item.outstandingAmount)}</td>
+            <td class="px-3 py-3 text-slate-400">${escapeDashboardText(item.latestOrderDate)}</td>
+        </tr>`;
     }).join('');
 }
 
@@ -4155,6 +4245,7 @@ function updateCharts() {
 function renderPCTable() {
     updateTopProductSalesCard(filteredOrders);
     updateTopProductReceivableCard(filteredOrders);
+    renderProductOutstandingDashboard(filteredOrders);
     updateMonthlyTopProductCard(filteredOrders);
     updateClientProductSalesCard(filteredOrders);
     let pS=0, aS=0, uS=0, cS=0; let aCnt=0, pCnt=0;
