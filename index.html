@@ -1015,11 +1015,11 @@
 </div>
 </div>
         <div id="pc-factory-chart-container" class="bg-[#1e293b] border border-[#334155] rounded-2xl p-6 shadow-xl hidden lg:block">
-                        <h3 class="text-sm font-bold text-slate-400 mb-6 uppercase tracking-widest text-center">품목별 생산 Top10 (진행 vs 완료)</h3>
+                        <h3 class="text-sm font-bold text-slate-400 mb-6 uppercase tracking-widest text-center">주문품목별 생산 Top10 (진행 vs 완료)</h3>
                         <div class="relative h-[280px] w-full">
                             <canvas id="productionBarChart"></canvas>
                         </div>
-                        <p class="mt-4 text-[10px] text-center text-slate-500 font-bold">품목명 기준 상위 10개 · 수량(장) 집계</p>
+                        <p class="mt-4 text-[10px] text-center text-slate-500 font-bold">주문품목 기준 상위 10개 · 수량(장) 집계</p>
                     </div>
                 </div>
             </div>
@@ -4094,7 +4094,7 @@ function initProductionChart() {
     if (!ctx) return;
     if (productionBarChartInstance) productionBarChartInstance.destroy();
 
-    // 주 집계축: 품목명(getOrderProductName). 자재 카테고리/색상/두께/규격은 주 집계축이 아니다.
+    // 주 집계축: 주문품목(getOrderProductName). 자재 카테고리/색상/두께/규격은 보조 분석 축이다.
     const buckets = {};
 
     filteredOrders.forEach(o => {
@@ -4118,7 +4118,7 @@ function initProductionChart() {
         }
     });
 
-    // 품목명별 총량(진행+완료) 내림차순 정렬 후 상위 10개(Top10)만 표시
+    // 주문품목별 총량(진행+완료) 내림차순 정렬 후 상위 10개(Top10)만 표시
     const labels = Object.keys(buckets)
         .sort((a, b) =>
             (buckets[b].active + buckets[b].completed) - (buckets[a].active + buckets[a].completed))
