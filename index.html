@@ -369,7 +369,7 @@
             <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-blue-100">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="font-bold text-blue-800">신규 승인 대기</h3>
-                    <button onclick="exportAccountingDashboardExcel()" class="text-[10px] bg-green-600 text-white px-3 py-2 rounded-lg font-bold shadow-sm">📊 회계자료 Excel 저장</button>
+                    <button onclick="exportAccountingDashboardExcel()" class="text-[10px] bg-green-600 text-white px-3 py-2 rounded-lg font-bold shadow-sm">회계자료 Excel 저장</button>
                 </div>
                 <div id="accountingList" class="space-y-4 mb-6"></div>
                 <div class="border-t border-dashed border-gray-200 pt-6 mb-6">
@@ -828,7 +828,7 @@
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="text-2xl font-black text-white">회계 자산 관제탑</h2>
                     <div class="flex items-center gap-2">
-                        <button onclick="exportAccountingDashboardExcel()" class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg transition-colors">📊 회계자료 Excel 저장</button>
+                        <button onclick="exportAccountingDashboardExcel()" class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg transition-colors">회계자료 Excel 저장</button>
                         <div class="text-xs font-bold text-slate-500 bg-[#1e293b] px-4 py-2 rounded-lg border border-[#334155]">
                        기준일: <span id="pcFinanceBaseDate">-</span>
                        </div>
@@ -3911,105 +3911,93 @@ function selectWood(name, imgUrl, color) {
 
 function exportExcel() { const rows = filteredOrders.map(o => [o.client, getOrderProductName(o), o.material, o.qty, o.price, ((o.price||0) * (o.qty||0)), o.status, o.dueDate, o.payDate]); const ws = XLSX.utils.aoa_to_sheet([['업체명', '상품명', '목재', '수량', '단가', '합계', '상태', '납기', '입금기한'], ...rows]); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "YONGJIN"); XLSX.writeFile(wb, `용진기업_현황_${new Date().toLocaleDateString()}.xlsx`); }
 function exportAccountingDashboardExcel() {
-    const data = Array.isArray(filteredOrders) ? filteredOrders : [];
-    if (!data.length) return alert('회계 대시보드 데이터가 없습니다.');
+    // 회계자료 read-only Export. 현재 화면/필터 기준(filteredOrders) 우선, 비어 있으면 orders fallback.
+    const sourceOrders = Array.isArray(filteredOrders) && filteredOrders.length
+        ? filteredOrders
+        : (Array.isArray(orders) ? orders : []);
+    if (!sourceOrders.length) return alert('회계 대시보드 데이터가 없습니다.');
 
-    const metrics = getPCDashboardMetrics(data);
+    const metrics = getPCDashboardMetrics(sourceOrders);
     const collectionRate = metrics.totalOrderAmount > 0
         ? Math.round((metrics.paidAmount / metrics.totalOrderAmount) * 100)
         : 0;
-    const issuedRate = metrics.totalOrderAmount > 0
-        ? Math.round((metrics.issuedAmount / metrics.totalOrderAmount) * 100)
-        : 0;
 
-    const summaryRows = [
-        ['항목', '값'],
-        ['기준일', metrics.todayStr],
-        ['조회 건수', metrics.totalCount],
-        ['총 수주액', metrics.totalOrderAmount],
-        ['계산서 발행액', metrics.issuedAmount],
-        ['계산서 발행 건수', metrics.issuedItems.length],
-        ['계산서 발행 기준율', `${issuedRate}%`],
-        ['실결제 입금액', metrics.paidAmount],
-        ['수금률', `${collectionRate}%`],
-        ['전체 미수금 합계', metrics.debtAmount],
-        ['미수 건수', metrics.debtItems.length],
-        ['30일 이상 연체액', metrics.overdueAmount],
-        ['정상 미수금', metrics.normalDebtAmount],
-        ['생산 진행 건수', metrics.activeProductionItems.length],
-        ['포장/입금 대기 건수', metrics.packingWaitItems.length],
-        ['오늘 생산 완료 건수', metrics.todayDoneItems.length],
-        ['평균 리드타임', metrics.avgLeadTime]
+    // 첫 시트 '회계자료' — 주문/거래 1건당 1행 명세형 자료 (회계팀 실무 기준)
+    const detailHeader = [
+        '거래처명', '상품명', '목재/자재', '가로', '세로', '두께',
+        '수량', '단가', '합계금액', '주문상태', '계산서상태', '결제상태',
+        '납기', '입금예정일', '메모'
     ];
-
-    const orderHeader = [
-        '주문ID', '거래처명', '상품명', '자재', '수량', '단가', '수주액',
-        '입금액', '미수금', '주문상태', '결제상태', '계산서상태',
-        '납기일', '입금기한', '생성일'
-    ];
-    const orderRows = data.map(o => [
-        o.id || '',
+    const buildDetailRow = o => [
         o.client || o.clientName || '',
         getOrderProductName(o),
         o.material || '',
+        Number(o.width) || 0,
+        Number(o.height) || 0,
+        o.thickness || '-',
         Number(o.qty) || 0,
         Number(o.price) || 0,
         getOrderAmount(o),
-        getPaidAmount(o),
-        getOutstandingAmount(o),
         getDisplayStatusLabel(o),
-        getPaymentStatusLabel(o),
         isInvoiceIssued(o) ? '발행 완료' : '미발행',
-        o.dueDate || '',
-        o.payDate || '',
-        normalizeOrderDateText(o.createdAt) || ''
-    ]);
+        getPaymentStatusLabel(o),
+        o.dueDate || '-',
+        o.payDate || '-',
+        o.salesMemo || o.memo || o.note || ''
+    ];
 
-    const invoiceWaitRows = data
-        .filter(o => o.status === 'completed' && o.paymentStatus !== 'paid')
+    const ledgerRows = sourceOrders.map(buildDetailRow);
+
+    // 청구대기 — 생산완료 & 계산서 미발행 (§10)
+    const invoiceWaitRows = sourceOrders
+        .filter(o => o.status === 'completed' && !isInvoiceIssued(o))
         .sort((a, b) => String(a.dueDate || '').localeCompare(String(b.dueDate || '')))
-        .map(o => [
-            o.id || '',
-            o.dueDate || '',
-            o.client || o.clientName || '',
-            getOrderProductName(o),
-            o.material || '',
-            Number(o.qty) || 0,
-            getOrderAmount(o),
-            isInvoiceIssued(o) ? '발행 완료' : '미발행',
-            getPaymentStatusLabel(o)
-        ]);
+        .map(buildDetailRow);
 
-    const receivableRows = metrics.debtItems.map(o => [
-        o.id || '',
-        o.client || o.clientName || '',
-        getOrderProductName(o),
-        o.material || '',
-        Number(o.qty) || 0,
-        getOrderAmount(o),
-        getPaidAmount(o),
-        getOutstandingAmount(o),
-        o.dueDate || '',
-        o.payDate || '',
-        getPaymentStatusLabel(o)
-    ]);
+    // 미수금 — 생산완료 & 미완납(부분입금 포함, paymentStatus !== 'paid') (§11)
+    // 회계요약과 숫자가 정확히 일치하도록 동일 집합(receivableItems)으로 시트/합계를 산출한다.
+    const receivableItems = sourceOrders
+        .filter(o => o.status === 'completed' && o.paymentStatus !== 'paid')
+        .sort((a, b) => String(a.dueDate || '').localeCompare(String(b.dueDate || '')));
+    const receivableTotal = receivableItems.reduce((sum, o) => sum + getOutstandingAmount(o), 0);
+    // 부분입금 대응: 미수금 시트에는 입금액/미수잔액 컬럼을 추가로 노출한다.
+    const receivableRows = receivableItems.map(o => [...buildDetailRow(o), getPaidAmount(o), getOutstandingAmount(o)]);
+
+    // 회계요약 — 보조 자료(마지막 시트) (§12)
+    const summaryRows = [
+        ['항목', '값'],
+        ['기준일', metrics.todayStr],
+        ['전체 거래건수', metrics.totalCount],
+        ['총 거래금액', metrics.totalOrderAmount],
+        ['청구대기 건수', invoiceWaitRows.length],
+        ['미수 건수', receivableItems.length],
+        ['미수금 합계', receivableTotal],
+        ['완납 건수', sourceOrders.filter(o => o.paymentStatus === 'paid').length],
+        ['수금률', `${collectionRate}%`]
+    ];
 
     const wb = XLSX.utils.book_new();
-    const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
-    const ordersSheet = XLSX.utils.aoa_to_sheet([orderHeader, ...orderRows]);
-    const invoiceWaitSheet = XLSX.utils.aoa_to_sheet([
-        ['주문ID', '납기일', '거래처명', '상품명', '자재', '수량', '청구액', '계산서상태', '결제상태'],
-        ...invoiceWaitRows
-    ]);
+    const ledgerSheet = XLSX.utils.aoa_to_sheet([detailHeader, ...ledgerRows]);
+    const detailCols = [
+        {wch:18},{wch:24},{wch:22},{wch:8},{wch:8},{wch:8},
+        {wch:8},{wch:12},{wch:14},{wch:12},{wch:12},{wch:12},
+        {wch:12},{wch:12},{wch:24}
+    ];
+    ledgerSheet['!cols'] = detailCols;
+    const invoiceWaitSheet = XLSX.utils.aoa_to_sheet([detailHeader, ...invoiceWaitRows]);
+    invoiceWaitSheet['!cols'] = detailCols;
     const receivableSheet = XLSX.utils.aoa_to_sheet([
-        ['주문ID', '거래처명', '상품명', '자재', '수량', '수주액', '입금액', '미수금', '납기일', '입금기한', '결제상태'],
+        [...detailHeader, '입금액', '미수잔액'],
         ...receivableRows
     ]);
+    receivableSheet['!cols'] = [...detailCols, {wch:12}, {wch:14}];
+    const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
 
-    XLSX.utils.book_append_sheet(wb, summarySheet, '회계요약');
-    XLSX.utils.book_append_sheet(wb, ordersSheet, '전체주문');
+    // 시트 순서: 명세형 자료 우선, 회계요약은 마지막 보조 시트 (§8)
+    XLSX.utils.book_append_sheet(wb, ledgerSheet, '회계자료');
     XLSX.utils.book_append_sheet(wb, invoiceWaitSheet, '청구대기');
     XLSX.utils.book_append_sheet(wb, receivableSheet, '미수금');
+    XLSX.utils.book_append_sheet(wb, summarySheet, '회계요약');
     XLSX.writeFile(wb, `용진기업_회계자료_${metrics.todayStr}.xlsx`);
 }
 function exportReceivablesCSV() { const unpaid = filteredOrders.filter(o => o.status === 'completed' && o.paymentStatus === 'unpaid'); if (!unpaid.length) return alert('미수금 데이터가 없습니다.'); const wb = XLSX.utils.book_new(); const header = [['업체명', '상품명', '목재', '가로(mm)', '세로(mm)', '두께', '수량', '단가', '합계금액', '출고일', '입금예정일']]; const rows = unpaid.map(o => [ o.client, getOrderProductName(o), o.material, Number(o.width)||0, Number(o.height)||0, o.thickness||'-', o.qty, o.price, (o.price||0) * (o.qty||0), o.dueDate||'-', o.payDate||'-' ]); const total = unpaid.reduce((s,o) => s + ((o.price||0) * (o.qty||0)), 0); rows.push(['', '', '', '', '', '', '', '합계', total, '', '']); const ws = XLSX.utils.aoa_to_sheet([...header, ...rows]); ws['!cols'] = [{wch:18},{wch:24},{wch:22},{wch:10},{wch:10},{wch:8},{wch:8},{wch:12},{wch:14},{wch:12},{wch:12}]; XLSX.utils.book_append_sheet(wb, ws, '미수금현황'); XLSX.writeFile(wb, `용진기업_미수금_${new Date().toISOString().slice(0,7).replace('-','년') + '월'}.xlsx`); }
