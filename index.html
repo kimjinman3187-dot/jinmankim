@@ -827,9 +827,12 @@
                 <div class="max-w-6xl mx-auto w-full p-6 pb-10">
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="text-2xl font-black text-white">회계 자산 관제탑</h2>
-                    <div class="text-xs font-bold text-slate-500 bg-[#1e293b] px-4 py-2 rounded-lg border border-[#334155]">
-                   기준일: <span id="pcFinanceBaseDate">-</span>
-                   </div>    
+                    <div class="flex items-center gap-2">
+                        <button onclick="exportReceivablesCSV()" class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg transition-colors">📊 미수금 Excel 저장</button>
+                        <div class="text-xs font-bold text-slate-500 bg-[#1e293b] px-4 py-2 rounded-lg border border-[#334155]">
+                       기준일: <span id="pcFinanceBaseDate">-</span>
+                       </div>
+                    </div>    
                     </div>
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg relative overflow-hidden">
