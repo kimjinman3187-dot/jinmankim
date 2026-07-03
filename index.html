@@ -367,7 +367,10 @@
         
         <div id="section-accounting" class="hidden space-y-6">
             <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-blue-100">
-                <h3 class="font-bold text-blue-800 mb-4">신규 승인 대기</h3>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-blue-800">신규 승인 대기</h3>
+                    <button onclick="exportReceivablesCSV()" class="text-[10px] bg-green-600 text-white px-3 py-2 rounded-lg font-bold shadow-sm">📊 엑셀 저장</button>
+                </div>
                 <div id="accountingList" class="space-y-4 mb-6"></div>
                 <div class="border-t border-dashed border-gray-200 pt-6 mb-6">
                     <h3 class="font-bold text-orange-600 mb-4 text-sm">공장 생산 현황</h3>
