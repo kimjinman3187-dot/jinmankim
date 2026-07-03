@@ -1015,15 +1015,11 @@
 </div>
 </div>
         <div id="pc-factory-chart-container" class="bg-[#1e293b] border border-[#334155] rounded-2xl p-6 shadow-xl hidden lg:block">
-                        <h3 class="text-sm font-bold text-slate-400 mb-6 uppercase tracking-widest text-center">품목별 생산 누적 현황 (진행 vs 완료)</h3>
+                        <h3 class="text-sm font-bold text-slate-400 mb-6 uppercase tracking-widest text-center">품목별 생산 Top10 (진행 vs 완료)</h3>
                         <div class="relative h-[280px] w-full">
                             <canvas id="productionBarChart"></canvas>
                         </div>
-                        <div class="mt-4 grid grid-cols-3 gap-2 text-[10px] text-center font-bold">
-                            <div class="text-blue-400 border border-blue-500/20 bg-blue-500/5 py-1 rounded">목재(Wood)</div>
-                            <div class="text-yellow-500 border border-yellow-500/20 bg-yellow-500/5 py-1 rounded">합판(Plywood)</div>
-                            <div class="text-green-500 border border-green-500/20 bg-green-500/5 py-1 rounded">MDF</div>
-                        </div>
+                        <p class="mt-4 text-[10px] text-center text-slate-500 font-bold">품목명 기준 상위 10개 · 수량(장) 집계</p>
                     </div>
                 </div>
             </div>
@@ -4098,32 +4094,35 @@ function initProductionChart() {
     if (!ctx) return;
     if (productionBarChartInstance) productionBarChartInstance.destroy();
 
-    const buckets = {
-        '목재': { active: 0, completed: 0 },
-        '합판': { active: 0, completed: 0 },
-        'MDF': { active: 0, completed: 0 },
-        '코팅/PET': { active: 0, completed: 0 },
-        '기타': { active: 0, completed: 0 }
-    };
+    // 주 집계축: 품목명(getOrderProductName). 자재 카테고리/색상/두께/규격은 주 집계축이 아니다.
+    const buckets = {};
 
     filteredOrders.forEach(o => {
-        const bucket = getMaterialBucket(o.material);
+        // 생산 대상(진행/완료)만 집계 — 승인대기는 기존과 동일하게 수량 기여 없음
+        if (o.status !== 'approved' && o.status !== 'completed') return;
+
+        const rawName = getOrderProductName(o);
+        const productName = (!rawName || rawName === '-') ? '미지정' : rawName;
         const qty = Number(o.qty) || 0;
         const completedQty = o.status === 'completed'
             ? qty
             : Math.min(Number(o.completedQty) || 0, qty);
 
-        if (!buckets[bucket]) buckets[bucket] = { active: 0, completed: 0 };
+        if (!buckets[productName]) buckets[productName] = { active: 0, completed: 0 };
 
         if (o.status === 'approved') {
-            buckets[bucket].active += Math.max(0, qty - completedQty);
-            buckets[bucket].completed += completedQty;
+            buckets[productName].active += Math.max(0, qty - completedQty);
+            buckets[productName].completed += completedQty;
         } else if (o.status === 'completed') {
-            buckets[bucket].completed += qty;
+            buckets[productName].completed += qty;
         }
     });
 
-    const labels = Object.keys(buckets);
+    // 품목명별 총량(진행+완료) 내림차순 정렬 후 상위 10개(Top10)만 표시
+    const labels = Object.keys(buckets)
+        .sort((a, b) =>
+            (buckets[b].active + buckets[b].completed) - (buckets[a].active + buckets[a].completed))
+        .slice(0, 10);
     const activeData = labels.map(label => buckets[label].active);
     const completedData = labels.map(label => buckets[label].completed);
 
