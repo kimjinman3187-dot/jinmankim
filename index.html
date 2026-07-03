@@ -367,7 +367,10 @@
         
         <div id="section-accounting" class="hidden space-y-6">
             <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-blue-100">
-                <h3 class="font-bold text-blue-800 mb-4">신규 승인 대기</h3>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-blue-800">신규 승인 대기</h3>
+                    <button onclick="exportReceivablesCSV()" class="text-[10px] bg-green-600 text-white px-3 py-2 rounded-lg font-bold shadow-sm">📊 엑셀 저장</button>
+                </div>
                 <div id="accountingList" class="space-y-4 mb-6"></div>
                 <div class="border-t border-dashed border-gray-200 pt-6 mb-6">
                     <h3 class="font-bold text-orange-600 mb-4 text-sm">공장 생산 현황</h3>
@@ -824,9 +827,12 @@
                 <div class="max-w-6xl mx-auto w-full p-6 pb-10">
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="text-2xl font-black text-white">회계 자산 관제탑</h2>
-                    <div class="text-xs font-bold text-slate-500 bg-[#1e293b] px-4 py-2 rounded-lg border border-[#334155]">
-                   기준일: <span id="pcFinanceBaseDate">-</span>
-                   </div>    
+                    <div class="flex items-center gap-2">
+                        <button onclick="exportReceivablesCSV()" class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg transition-colors">📊 미수금 Excel 저장</button>
+                        <div class="text-xs font-bold text-slate-500 bg-[#1e293b] px-4 py-2 rounded-lg border border-[#334155]">
+                       기준일: <span id="pcFinanceBaseDate">-</span>
+                       </div>
+                    </div>    
                     </div>
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg relative overflow-hidden">
