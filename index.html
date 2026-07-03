@@ -3955,10 +3955,13 @@ function exportAccountingDashboardExcel() {
         .map(buildDetailRow);
 
     // 미수금 — 생산완료 & 미완납(부분입금 포함, paymentStatus !== 'paid') (§11)
-    const receivableRows = sourceOrders
+    // 회계요약과 숫자가 정확히 일치하도록 동일 집합(receivableItems)으로 시트/합계를 산출한다.
+    const receivableItems = sourceOrders
         .filter(o => o.status === 'completed' && o.paymentStatus !== 'paid')
-        .sort((a, b) => String(a.dueDate || '').localeCompare(String(b.dueDate || '')))
-        .map(buildDetailRow);
+        .sort((a, b) => String(a.dueDate || '').localeCompare(String(b.dueDate || '')));
+    const receivableTotal = receivableItems.reduce((sum, o) => sum + getOutstandingAmount(o), 0);
+    // 부분입금 대응: 미수금 시트에는 입금액/미수잔액 컬럼을 추가로 노출한다.
+    const receivableRows = receivableItems.map(o => [...buildDetailRow(o), getPaidAmount(o), getOutstandingAmount(o)]);
 
     // 회계요약 — 보조 자료(마지막 시트) (§12)
     const summaryRows = [
@@ -3967,8 +3970,8 @@ function exportAccountingDashboardExcel() {
         ['전체 거래건수', metrics.totalCount],
         ['총 거래금액', metrics.totalOrderAmount],
         ['청구대기 건수', invoiceWaitRows.length],
-        ['미수 건수', receivableRows.length],
-        ['미수금 합계', metrics.debtAmount],
+        ['미수 건수', receivableItems.length],
+        ['미수금 합계', receivableTotal],
         ['완납 건수', sourceOrders.filter(o => o.paymentStatus === 'paid').length],
         ['수금률', `${collectionRate}%`]
     ];
@@ -3983,8 +3986,11 @@ function exportAccountingDashboardExcel() {
     ledgerSheet['!cols'] = detailCols;
     const invoiceWaitSheet = XLSX.utils.aoa_to_sheet([detailHeader, ...invoiceWaitRows]);
     invoiceWaitSheet['!cols'] = detailCols;
-    const receivableSheet = XLSX.utils.aoa_to_sheet([detailHeader, ...receivableRows]);
-    receivableSheet['!cols'] = detailCols;
+    const receivableSheet = XLSX.utils.aoa_to_sheet([
+        [...detailHeader, '입금액', '미수잔액'],
+        ...receivableRows
+    ]);
+    receivableSheet['!cols'] = [...detailCols, {wch:12}, {wch:14}];
     const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
 
     // 시트 순서: 명세형 자료 우선, 회계요약은 마지막 보조 시트 (§8)
