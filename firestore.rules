@@ -1,42 +1,10 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // 모든 요청에 대해 기본적으로 '로그인(익명 로그인 포함)된 사용자'만 접근 허용
-    // 이렇게 하면 구글의 보안 경고가 즉시 사라집니다.
-    
-    // [1. 직원 명단]
-    match /users/{userId} {
-      allow read, update: if request.auth != null; 
-      allow write: if false;
-    }
-    
-    // [2. 수주 데이터]
-    match /orders/{orderId} {
-      allow read, create, update, delete: if request.auth != null;
-    }
-    
-    // [3. 감사 로그]
-    match /audit_logs/{logId} {
-      allow create, read: if request.auth != null;
-      allow update, delete: if false;
-    }
-    
-    // [4. 알림 데이터]
-    match /notifications/{notiId} {
-      allow read, create, update: if request.auth != null;
-      allow delete: if false;
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    // [5. 설문조사 전용 데이터]
-    match /surveys/{surveyId} {
-      allow create: if request.auth != null;
-      allow read, update, delete: if false;
-    }
-
-    // [6. 승인요청 approval_requests] WORK22-6N-K5G-1F 추가
-    // 기준: 운영 활성 룰셋 c3c6f360 원본 보존 + approval_requests만 신규
-    function isSignedIn() { return request.auth != null; }
     function arIsGoogleUser() {
       return isSignedIn()
         && request.auth.token.email is string
@@ -44,18 +12,95 @@ service cloud.firestore {
         && request.auth.token.email_verified == true
         && request.auth.token.firebase.sign_in_provider == "google.com";
     }
-    function arUserDoc() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+
+    function arUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
     function arIsActiveUser() {
       return isSignedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && arUserDoc().get("status", "") == "active";
     }
+
     function arIsAdmin() {
       return arIsActiveUser() && arUserDoc().get("role", "") == "admin";
     }
 
+    function validAssignableRole(role) {
+      return role in ["admin", "sales", "accounting", "factory"];
+    }
+
+    function validUserStatus(status) {
+      return status in ["active", "inactive"];
+    }
+
+    function userWriteKeys() {
+      return [
+        "id", "uid", "email", "emailLower", "displayName", "name",
+        "provider", "auth_uid", "role", "status", "account_type",
+        "legacyUserId", "device_id", "pin", "sort_index", "attempts",
+        "lockoutUntil", "permissions", "created_at", "createdAt",
+        "createdAtKst", "updated_at", "updatedAt", "updatedAtKst"
+      ];
+    }
+
+    function hasValidUserWriteShape(targetUid) {
+      return request.resource.data.keys().hasOnly(userWriteKeys())
+        && validAssignableRole(request.resource.data.role)
+        && validUserStatus(request.resource.data.status)
+        && request.resource.data.email is string
+        && request.resource.data.emailLower is string
+        && request.resource.data.provider in ["google", "pin", "legacy"]
+        && request.resource.data.auth_uid == targetUid;
+    }
+
+    function preventsAdminSelfLockout(targetUid) {
+      return targetUid != request.auth.uid
+        || !request.resource.data.diff(resource.data).affectedKeys().hasAny(["role", "status"]);
+    }
+
+    function isUserLockStateUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(["attempts", "lockoutUntil"]);
+    }
+
+    function hasValidAssignedRole() {
+      return !request.resource.data.keys().hasAny(["assigned_role"])
+        || validAssignableRole(request.resource.data.assigned_role);
+    }
+
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow create: if arIsAdmin()
+        && hasValidUserWriteShape(userId);
+      allow update: if arIsAdmin()
+        && (
+          (hasValidUserWriteShape(userId) && preventsAdminSelfLockout(userId))
+          || isUserLockStateUpdate()
+        );
+      allow delete: if false;
+    }
+
+    match /orders/{orderId} {
+      allow read, create, update, delete: if request.auth != null;
+    }
+
+    match /audit_logs/{logId} {
+      allow create, read: if request.auth != null;
+      allow update, delete: if false;
+    }
+
+    match /notifications/{notiId} {
+      allow read, create, update: if request.auth != null;
+      allow delete: if false;
+    }
+
+    match /surveys/{surveyId} {
+      allow create: if request.auth != null;
+      allow read, update, delete: if false;
+    }
+
     match /approval_requests/{requestUid} {
-      // 미승인(active 아닌) 본인만 생성, status=pending, role 화이트리스트
       allow create: if arIsGoogleUser()
         && requestUid == request.auth.uid
         && request.resource.data.uid == request.auth.uid
@@ -69,18 +114,16 @@ service cloud.firestore {
         && request.resource.data.memo == null
         && !arIsActiveUser();
 
-      // admin 전체 / 본인 단건 read
       allow read: if arIsAdmin()
         || (request.auth != null && requestUid == request.auth.uid);
 
-      // admin만 처리, 변경 필드 제한
       allow update: if arIsAdmin()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          "status", "memo", "reviewed_by", "reviewed_at", "decision_reason", "updated_at"
-        ]);
+          "status", "memo", "reviewed_by", "reviewed_at", "decision_reason", "updated_at", "assigned_role"
+        ])
+        && hasValidAssignedRole();
 
       allow delete: if arIsAdmin();
     }
-
   }
 }
