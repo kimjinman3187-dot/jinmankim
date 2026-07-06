@@ -73,11 +73,14 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow create: if arIsAdmin()
         && hasValidUserWriteShape(userId);
-      allow update: if arIsAdmin()
-        && (
-          (hasValidUserWriteShape(userId) && preventsAdminSelfLockout(userId))
-          || isUserLockStateUpdate()
-        );
+      allow update: if (
+        arIsAdmin()
+          && hasValidUserWriteShape(userId)
+          && preventsAdminSelfLockout(userId)
+      ) || (
+        isSignedIn()
+          && isUserLockStateUpdate()
+      );
       allow delete: if false;
     }
 
