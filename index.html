@@ -570,7 +570,7 @@
                     <div class="flex justify-between items-start gap-4 mb-4">
                         <div>
                             <h3 class="font-black text-white text-sm">승인 요청 목록</h3>
-                            <p class="text-[10px] text-slate-400 font-bold mt-1 leading-5">Google 계정 승인 요청을 검토하는 영역입니다. 각 요청 행의 버튼으로 승인/반려/보류 상태를 처리할 수 있습니다. 승인 이후 users 계정 활성화(active/role 부여)는 Firebase Console에서 수동으로 진행합니다.</p>
+                            <p class="text-[10px] text-slate-400 font-bold mt-1 leading-5">Google 계정 승인 요청을 검토하는 영역입니다. 승인 시 assigned role 기준으로 approval_requests와 users 계정 활성화를 함께 처리합니다.</p>
                         </div>
                         <span class="text-[10px] font-black text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-full px-3 py-1">K5G-6 승인 처리</span>
                     </div>
@@ -581,6 +581,7 @@
                                     <th class="px-3 py-3 font-black">요청일시</th>
                                     <th class="px-3 py-3 font-black">email</th>
                                     <th class="px-3 py-3 font-black">uid</th>
+                                    <th class="px-3 py-3 font-black">assigned role</th>
                                     <th class="px-3 py-3 font-black">요청 role</th>
                                     <th class="px-3 py-3 font-black">상태</th>
                                     <th class="px-3 py-3 font-black">메모/사유</th>
@@ -595,7 +596,7 @@
                         </table>
                     </div>
                     <div class="mt-3 flex flex-wrap items-center gap-2">
-                        <span class="text-[10px] text-slate-500 font-bold">승인/반려/보류는 각 요청 행의 버튼으로 처리합니다. 이 단계에서는 approval_requests 상태만 변경되며 users 데이터는 변경되지 않습니다.</span>
+                        <span class="text-[10px] text-slate-500 font-bold">승인은 approval_requests와 users를 함께 처리합니다. 반려/보류는 approval_requests 상태만 변경합니다.</span>
                     </div>
                 </section>
                 <div class="grid grid-cols-4 gap-4 mb-6 relative z-10">
@@ -1317,6 +1318,9 @@ let pinBuffer = '';
 let googleAuthRestoreStarted = false;
 let googleLoginProcessing = false;
 let anonymousPinBootstrapStarted = false;
+const APPROVAL_ASSIGNABLE_ROLES = ['admin', 'sales', 'accounting', 'factory'];
+const STAFF_ADMIN_APPROVAL_UID = 'k71PMratO6fHpyePn7G5QEvwwql1';
+const STAFF_ADMIN_APPROVAL_EMAIL = 'jeongwony0412@gmail.com';
 let selectedWoodStr = '목재를 선택하세요';
 let notiPoller = null;
 let ordersListenerUnsubscribe = null; 
@@ -2682,6 +2686,15 @@ function kp(digit) { if (!chosenUserId || pinBuffer.length >= 4 || checkLockoutS
 function kpDel() { pinBuffer = pinBuffer.slice(0, -1); updateDots(); }
 function updateDots() { for (let i = 0; i < 4; i++) { ['pd' + i, 'pcPd' + i].forEach(id => { const dot = document.getElementById(id); if (dot) dot.className = 'pin-dot' + (i < pinBuffer.length ? ' on' : ''); }); } }
 
+async function updatePinAttemptState(userId, payload) {
+    if (typeof db === 'undefined' || !userId) return;
+    try {
+        await db.collection('users').doc(userId).update(payload);
+    } catch (error) {
+        console.warn('PIN attempt state update skipped:', { code: error?.code });
+    }
+}
+
 async function tryLogin() {
     const user = USERS.find(u => u.id === chosenUserId);
     if (!user) {
@@ -2705,12 +2718,12 @@ async function tryLogin() {
     }
     const attempts = (user.attempts || 0) + 1; const limit = user.role === 'admin' ? 5 : 3;
     if (pinBuffer === user.pin) {
-        if(typeof db !== 'undefined') await db.collection('users').doc(user.id).update({ attempts: 0, lockoutUntil: 0 });
+        await updatePinAttemptState(user.id, { attempts: 0, lockoutUntil: 0 });
         currentUser = user; sessionStorage.setItem('yongjin_session', JSON.stringify(currentUser)); await logAction('LOGIN_SUCCESS', 'SYSTEM', { method: 'PIN' });
         processLoginSuccess();
     } else {
-        if (attempts >= limit) { const unlockTime = Date.now() + (LOCKOUT_MINUTES * 60 * 1000); if(typeof db !== 'undefined') await db.collection('users').doc(user.id).update({ attempts: attempts, lockoutUntil: unlockTime }); await syncUsers(); } 
-        else { if(typeof db !== 'undefined') await db.collection('users').doc(user.id).update({ attempts: attempts }); setAuthError(`❌ PIN 불일치 (${attempts}/${limit})`); pinBuffer = ''; updateDots(); }
+        if (attempts >= limit) { const unlockTime = Date.now() + (LOCKOUT_MINUTES * 60 * 1000); await updatePinAttemptState(user.id, { attempts: attempts, lockoutUntil: unlockTime }); await syncUsers(); }
+        else { await updatePinAttemptState(user.id, { attempts: attempts }); setAuthError(`❌ PIN 불일치 (${attempts}/${limit})`); pinBuffer = ''; updateDots(); }
     }
 }
 
@@ -3186,7 +3199,7 @@ function applyPCRoleAccess() {
 function createApprovalRequestMessageRow(message) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 7;
+    cell.colSpan = 8;
     cell.className = 'px-3 py-8 text-center text-slate-500 font-bold';
     cell.textContent = message;
     row.appendChild(cell);
@@ -3215,6 +3228,63 @@ function appendApprovalRequestCell(row, value, className = 'px-3 py-3 text-slate
     cell.className = className;
     cell.textContent = value || '-';
     row.appendChild(cell);
+}
+
+function validateAssignableRole(role) {
+    const normalized = String(role || '').trim().toLowerCase();
+    return APPROVAL_ASSIGNABLE_ROLES.includes(normalized) ? normalized : '';
+}
+
+function getAssignableRoleForRequest(request) {
+    const uid = String(request?.uid || request?.id || '');
+    const email = String(request?.email || '').toLowerCase();
+    if (uid === STAFF_ADMIN_APPROVAL_UID || email === STAFF_ADMIN_APPROVAL_EMAIL) return 'admin';
+    return validateAssignableRole(request?.assigned_role || request?.requested_role) || 'sales';
+}
+
+function createAssignedRoleSelect(request, disabled) {
+    const select = document.createElement('select');
+    select.className = disabled
+        ? 'w-28 rounded bg-slate-800 border border-slate-700 px-2 py-1 text-[10px] font-black text-slate-500 cursor-not-allowed'
+        : 'w-28 rounded bg-[#0f1522] border border-[#334155] px-2 py-1 text-[10px] font-black text-slate-100 outline-none';
+    select.disabled = disabled;
+    const selectedRole = validateAssignableRole(request?.assigned_role) || getAssignableRoleForRequest(request);
+    APPROVAL_ASSIGNABLE_ROLES.forEach(role => {
+        const option = document.createElement('option');
+        option.value = role;
+        option.textContent = role;
+        option.selected = role === selectedRole;
+        select.appendChild(option);
+    });
+    return select;
+}
+
+function appendApprovalRequestNodeCell(row, node, className = 'px-3 py-3 text-slate-300 font-bold align-top') {
+    const cell = document.createElement('td');
+    cell.className = className;
+    cell.appendChild(node);
+    row.appendChild(cell);
+    return cell;
+}
+
+function buildUserProfileFromApprovalRequest(request, assignedRole, nowKst) {
+    const email = String(request?.email || '').trim();
+    const displayName = String(request?.displayName || request?.name || email || 'Google User').trim();
+    const uid = String(request?.uid || request?.id || '').trim();
+    return {
+        email,
+        emailLower: email.toLowerCase(),
+        displayName,
+        name: displayName,
+        provider: 'google',
+        auth_uid: uid,
+        role: assignedRole,
+        status: 'active',
+        account_type: 'user',
+        updated_at: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAtKst: nowKst
+    };
 }
 
 function renderApprovalRequestsEmpty() {
@@ -3247,9 +3317,13 @@ function renderApprovalRequestRows(requests) {
     requests.forEach(request => {
         const row = document.createElement('tr');
         row.className = 'border-b border-[#334155]/70';
+        const isAdmin = currentUser?.role === 'admin';
+        const isTerminal = request.status === 'approved' || request.status === 'rejected';
         appendApprovalRequestCell(row, formatApprovalRequestTime(request.requested_at));
         appendApprovalRequestCell(row, request.email);
         appendApprovalRequestCell(row, request.uid, 'px-3 py-3 text-slate-300 font-mono text-[10px] align-top max-w-[180px] truncate');
+        const assignedRoleControl = createAssignedRoleSelect(request, !isAdmin || isTerminal);
+        appendApprovalRequestNodeCell(row, assignedRoleControl);
         appendApprovalRequestCell(row, request.requested_role);
         appendApprovalRequestCell(row, normalizeApprovalRequestStatus(request.status));
         // 반려 상태는 decision_reason을 우선 표시(없으면 memo로 fallback), 그 외는 기존 memo 표시 유지
@@ -3260,9 +3334,7 @@ function renderApprovalRequestRows(requests) {
 
         const actionCell = document.createElement('td');
         actionCell.className = 'px-3 py-3 align-top';
-        const isAdmin = currentUser?.role === 'admin';
         // terminal(approved/rejected)만 재처리 방지. non-terminal(pending/on_hold)은 추가 처리 가능
-        const isTerminal = request.status === 'approved' || request.status === 'rejected';
         if (isTerminal) {
             // terminal row는 버튼 대신 '처리완료' 표시
             const doneLabel = document.createElement('span');
@@ -3271,7 +3343,7 @@ function renderApprovalRequestRows(requests) {
             actionCell.appendChild(doneLabel);
         } else {
             const rowActions = [
-                { label: '승인', handler: approveApprovalRequest, activeClass: 'bg-emerald-700 hover:bg-emerald-600 text-white cursor-pointer' },
+                { label: '승인', handler: approveApprovalRequestWithUserProvision, activeClass: 'bg-emerald-700 hover:bg-emerald-600 text-white cursor-pointer' },
                 { label: '반려', handler: rejectApprovalRequest, activeClass: 'bg-rose-700 hover:bg-rose-600 text-white cursor-pointer' },
                 { label: '보류', handler: holdApprovalRequest, activeClass: 'bg-amber-700 hover:bg-amber-600 text-white cursor-pointer' }
             ];
@@ -3283,7 +3355,7 @@ function renderApprovalRequestRows(requests) {
                     ? `mr-1 mb-1 px-2 py-1 rounded ${action.activeClass} text-[10px] font-black transition-colors`
                     : 'mr-1 mb-1 px-2 py-1 rounded bg-slate-700 text-slate-500 text-[10px] font-black cursor-not-allowed';
                 button.textContent = action.label;
-                if (isAdmin) button.addEventListener('click', () => action.handler(request.id));
+                if (isAdmin) button.addEventListener('click', () => action.handler(request.id, assignedRoleControl.value));
                 actionCell.appendChild(button);
             });
         }
@@ -3309,8 +3381,8 @@ async function loadApprovalRequestsReadOnly() {
     }
 }
 
-// WORK22-6N-K5G-6 admin approval actions (B안)
-// approval_requests의 검토 상태 필드만 update. users 컬렉션은 변경하지 않음(활성화는 Console 수동 유지).
+// WORK25-GOOGLE-APPROVAL-01 admin approval actions.
+// Approve provisions users/{uid}; reject/hold only update approval_requests.
 function approvalReviewerId() {
     return currentUser?.auth_uid || currentUser?.id || currentUser?.email || currentUser?.name || 'unknown-admin';
 }
@@ -3338,14 +3410,75 @@ async function updateApprovalRequestStatus(requestUid, payload, logEvent, logLab
 }
 
 async function approveApprovalRequest(requestUid) {
-    if (!confirm('이 승인 요청을 승인 상태로 변경하시겠습니까?\n(users 계정 활성화는 Firebase Console에서 수동으로 진행합니다.)')) return;
-    const ts = firebase.firestore.FieldValue.serverTimestamp();
-    await updateApprovalRequestStatus(requestUid, {
-        status: 'approved',
-        reviewed_by: approvalReviewerId(),
-        reviewed_at: ts,
-        updated_at: ts
-    }, 'APPROVAL_APPROVED', '승인');
+    return approveApprovalRequestWithUserProvision(requestUid);
+}
+
+async function approveApprovalRequestWithUserProvision(requestUid, selectedRole) {
+    if (!requireWrite('admin', '관리자만 승인 요청을 처리할 수 있습니다.')) return;
+    if (!requestUid) { alert('요청 식별자를 찾을 수 없습니다.'); return; }
+    if (!window.db?.collection || typeof db.runTransaction !== 'function') {
+        alert('처리 기능이 준비되지 않았습니다. 잠시 후 다시 시도하세요.');
+        return;
+    }
+
+    try {
+        const requestRef = db.collection('approval_requests').doc(requestUid);
+        const requestSnap = await requestRef.get();
+        if (!requestSnap.exists) { alert('승인 요청이 없습니다.'); return; }
+        const request = { id: requestSnap.id, ...requestSnap.data() };
+        if (String(request.status || '') !== 'pending') {
+            alert('pending 상태의 승인 요청만 처리할 수 있습니다.');
+            return;
+        }
+
+        const assignedRole = validateAssignableRole(selectedRole) || getAssignableRoleForRequest(request);
+        if (!assignedRole) { alert('부여 role은 sales/accounting/factory/admin 중 하나여야 합니다.'); return; }
+        if (assignedRole === 'admin') {
+            if (!confirm('이 계정에 admin 권한을 부여합니다. 회사 운영용 관리자 계정이 맞습니까?')) return;
+        } else if (!confirm('이 승인 요청을 승인하고 users 계정을 active로 생성/활성화할까요?')) {
+            return;
+        }
+
+        const reviewer = approvalReviewerId();
+        const nowKst = formatKstDateTime(new Date());
+        await db.runTransaction(async transaction => {
+            const latestRequestSnap = await transaction.get(requestRef);
+            if (!latestRequestSnap.exists) throw Object.assign(new Error('approval request not found'), { code: 'not-found' });
+            const latestRequest = { id: latestRequestSnap.id, ...latestRequestSnap.data() };
+            if (String(latestRequest.status || '') !== 'pending') {
+                throw Object.assign(new Error('approval request is not pending'), { code: 'failed-precondition' });
+            }
+
+            const uid = String(latestRequest.uid || latestRequest.id || requestUid);
+            const userRef = db.collection('users').doc(uid);
+            const userSnap = await transaction.get(userRef);
+            const ts = firebase.firestore.FieldValue.serverTimestamp();
+            const userPayload = buildUserProfileFromApprovalRequest({ ...latestRequest, uid }, assignedRole, nowKst);
+            userPayload.updated_at = ts;
+            userPayload.updatedAt = ts;
+            if (!userSnap.exists) {
+                userPayload.created_at = ts;
+                userPayload.createdAt = ts;
+                userPayload.createdAtKst = nowKst;
+            }
+
+            transaction.set(userRef, userPayload, { merge: true });
+            transaction.update(requestRef, {
+                status: 'approved',
+                reviewed_by: reviewer,
+                reviewed_at: ts,
+                updated_at: ts,
+                assigned_role: assignedRole
+            });
+        });
+
+        await logAction('APPROVAL_APPROVED', requestUid, { status: 'approved', reviewed_by: reviewer, assigned_role: assignedRole });
+        alert('승인 처리했습니다. users 계정을 active로 생성/활성화했습니다.');
+        await loadApprovalRequestsReadOnly();
+    } catch (error) {
+        console.warn('WORK25-GOOGLE-APPROVAL-01 approval transaction failed:', { code: error?.code });
+        alert(approvalActionErrorMessage(error));
+    }
 }
 
 async function rejectApprovalRequest(requestUid) {
