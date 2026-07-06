@@ -1021,6 +1021,13 @@
                         </div>
                         <p class="mt-4 text-[10px] text-center text-slate-500 font-bold">주문품목 기준 상위 10개 · 수량(장) 집계</p>
                     </div>
+                    <div id="pc-factory-material-container" class="bg-[#1e293b] border border-[#334155] rounded-2xl p-6 shadow-xl mt-6">
+                        <h3 class="text-sm font-bold text-slate-400 mb-6 uppercase tracking-widest text-center">자재 소요 현황</h3>
+                        <div id="pcMaterialUsageSummary" class="text-xs">
+                            <p class="text-center text-xs text-slate-500 font-bold py-6">표시할 자재 소요 데이터가 없습니다.</p>
+                        </div>
+                        <p class="mt-4 text-[10px] text-center text-slate-500 font-bold">주문품목 생산의 보조 참고 정보 · 총량 상위 5개 자재 · 수량(장) 집계</p>
+                    </div>
                 </div>
             </div>
 
@@ -4171,6 +4178,70 @@ function initProductionChart() {
     });
 }
 
+// --- [보조 분석] 자재 소요 현황 -----------------------------------------
+// 메인 차트(주문품목별 생산 Top10)를 보조하는 참고 정보.
+// 집계 범위/수량 처리는 initProductionChart와 동일(진행 approved · 완료 completed).
+// 자재명은 원문 o.material 기준(trim, 없으면 '미지정'). 색상/두께/규격과 결합하지 않는다.
+function buildMaterialUsageSummary(orders = filteredOrders) {
+    const summary = {};
+
+    (orders || []).forEach(o => {
+        if (o.status !== 'approved' && o.status !== 'completed') return;
+
+        const rawMaterial = (o.material === undefined || o.material === null)
+            ? ''
+            : String(o.material).trim();
+        const materialName = rawMaterial || '미지정';
+
+        const qty = Number(o.qty) || 0;
+        const completedQty = o.status === 'completed'
+            ? qty
+            : Math.min(Number(o.completedQty) || 0, qty);
+
+        if (!summary[materialName]) summary[materialName] = { active: 0, completed: 0, total: 0 };
+
+        if (o.status === 'approved') {
+            summary[materialName].active += Math.max(0, qty - completedQty);
+            summary[materialName].completed += completedQty;
+        } else if (o.status === 'completed') {
+            summary[materialName].completed += qty;
+        }
+    });
+
+    Object.keys(summary).forEach(name => {
+        summary[name].total = summary[name].active + summary[name].completed;
+    });
+
+    return summary;
+}
+
+function renderMaterialUsageSummary(summary = {}) {
+    const container = document.getElementById('pcMaterialUsageSummary');
+    if (!container) return;
+
+    const rows = Object.keys(summary)
+        .map(name => ({ name, ...summary[name] }))
+        .filter(r => r.total > 0)
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 5);
+
+    if (!rows.length) {
+        container.innerHTML = '<p class="text-center text-xs text-slate-500 font-bold py-6">표시할 자재 소요 데이터가 없습니다.</p>';
+        return;
+    }
+
+    container.innerHTML = rows.map((r, i) => `
+        <div class="flex items-center justify-between py-2 border-b border-[#334155] last:border-0">
+            <span class="flex items-center gap-2 text-slate-200 font-bold">
+                <span class="text-slate-500 tabular-nums">${i + 1}.</span>${escapeDashboardText(r.name)}
+            </span>
+            <span class="text-right text-slate-300 tabular-nums whitespace-nowrap">
+                <strong class="text-white">${r.total.toLocaleString()}장</strong>
+                <span class="block text-[10px] text-slate-500 font-bold">진행 ${r.active.toLocaleString()} · 완료 ${r.completed.toLocaleString()}</span>
+            </span>
+        </div>`).join('');
+}
+
 function initMonthlyComparisonChart() {
     const ctx = document.getElementById('monthlyComparisonChart');
     if (!ctx) return;
@@ -4331,7 +4402,10 @@ function updateCharts() {
     if (accountingPage && accountingPage.classList.contains('block')) initMonthlyComparisonChart();
     
     const factoryPage = document.getElementById('pc-page-factory');
-    if (factoryPage && factoryPage.classList.contains('block')) initProductionChart();
+    if (factoryPage && factoryPage.classList.contains('block')) {
+        initProductionChart();
+        renderMaterialUsageSummary(buildMaterialUsageSummary(filteredOrders));
+    }
     
     const receivablesPage = document.getElementById('pc-page-receivables');
     if (receivablesPage && receivablesPage.classList.contains('block')) initReceivableChart();
