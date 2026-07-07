@@ -219,17 +219,17 @@
     }, 250);
 })();
 
-// WORK25-MOBILE-LOGIN-UI-02 — 모바일 로그인 중앙 정렬, PC 톤 동기화, 인벤토리 Beta 표시
-(function installWork25MobileLoginUi02() {
-    if (window.__WORK25_MOBILE_LOGIN_UI02__) return;
-    window.__WORK25_MOBILE_LOGIN_UI02__ = true;
+// WORK25-MOBILE-LOGIN-UI-03 — 모바일 로그인 패널 통합 보수, PC 톤 유지, 인벤토리 Beta 표시
+(function installWork25MobileLoginUi03() {
+    if (window.__WORK25_MOBILE_LOGIN_UI03__) return;
+    window.__WORK25_MOBILE_LOGIN_UI03__ = true;
 
-    const RELEASE_TEXT = 'Release: 26.07.07 / v2.0.4 · Mobile Login UI';
+    const RELEASE_TEXT = 'Release: 26.07.07 / v2.0.5 · Mobile Login Panel';
 
     function installStyle() {
-        if (document.getElementById('work25-mobile-login-ui02-style')) return;
+        if (document.getElementById('work25-mobile-login-ui03-style')) return;
         const style = document.createElement('style');
-        style.id = 'work25-mobile-login-ui02-style';
+        style.id = 'work25-mobile-login-ui03-style';
         style.textContent = `
             @media (max-width: 768px) {
                 .mobile-ui.login-gateway-layer {
@@ -320,14 +320,33 @@
                     margin-bottom: 18px !important;
                 }
 
-                .mobile-ui .google-login-panel {
+                .mobile-ui .login-method-stack {
+                    gap: 0 !important;
+                }
+
+                .mobile-ui .yj-mobile-login-group {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 14px;
+                    padding: 16px;
+                    border-radius: 24px;
                     border: 1px solid rgba(255,255,255,0.10);
                     background: rgba(15,23,42,0.34);
-                    box-shadow: inset 0 1px 0 rgba(255,255,255,0.055);
+                    box-shadow: inset 0 1px 0 rgba(255,255,255,0.055), 0 16px 34px rgba(0,0,0,0.18);
+                }
+
+                .mobile-ui .yj-mobile-login-group .google-login-panel {
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    border: 0 !important;
+                    border-radius: 0 !important;
+                    background: transparent !important;
+                    box-shadow: none !important;
                 }
 
                 .mobile-ui .google-login-panel > div:first-child {
                     color: rgba(219,234,254,0.82) !important;
+                    margin-bottom: 10px !important;
                 }
 
                 .mobile-ui .login-action-btn {
@@ -348,6 +367,7 @@
                 }
 
                 .mobile-ui .pin-collapse-toggle {
+                    width: 100%;
                     border-color: rgba(255,255,255,0.12);
                     background: linear-gradient(180deg, rgba(255,255,255,0.060) 0%, rgba(255,255,255,0.035) 100%);
                     color: rgba(255,255,255,0.74) !important;
@@ -360,10 +380,14 @@
                     color: rgba(255,255,255,0.88) !important;
                 }
 
-                .mobile-ui .login-pin-panel {
-                    border-color: rgba(255,255,255,0.10);
-                    background: rgba(15,23,42,0.34);
-                    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+                .mobile-ui .yj-mobile-login-group .login-pin-panel {
+                    margin-top: 0 !important;
+                    padding: 14px 0 0 !important;
+                    border: 0 !important;
+                    border-top: 1px solid rgba(255,255,255,0.10) !important;
+                    border-radius: 0 !important;
+                    background: transparent !important;
+                    box-shadow: none !important;
                 }
 
                 .mobile-ui .role-sel-btn,
@@ -414,6 +438,44 @@
                     line-height: 1.1;
                 }
             }
+
+            .yj-inventory-beta-badge {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 999px;
+                border: 1px solid rgba(255,255,255,0.18);
+                background: rgba(255,255,255,0.055);
+                font-size: 9px;
+                font-weight: 900;
+                letter-spacing: 0.08em;
+                padding: 2px 7px;
+                line-height: 1.1;
+            }
+
+            .yj-beta-rainbow-text {
+                background: linear-gradient(90deg, #ff3b30 0%, #ff9500 16%, #ffcc00 32%, #34c759 48%, #00c7be 64%, #007aff 80%, #af52de 100%);
+                -webkit-background-clip: text;
+                background-clip: text;
+                color: transparent;
+                font-weight: 900;
+            }
+
+            .yj-inventory-status-badge {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 999px;
+                border: 1px solid rgba(251,191,36,0.32);
+                background: rgba(251,191,36,0.11);
+                color: #fbbf24;
+                font-size: 9px;
+                font-weight: 900;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                padding: 2px 7px;
+                line-height: 1.1;
+            }
         `;
         document.head.appendChild(style);
     }
@@ -434,11 +496,26 @@
                 </span>
             `;
         }
+    }
 
-        const securityStatus = document.getElementById('securityStatus');
-        if (securityStatus && securityStatus.textContent.trim() === 'Authority Required') {
-            securityStatus.textContent = 'Authority Required';
+    function applyMobileLoginPanelGrouping() {
+        const mobileLogin = document.getElementById('loginMobile');
+        const stack = mobileLogin?.querySelector('.login-method-stack');
+        const googlePanel = mobileLogin?.querySelector('.google-login-panel');
+        const pinToggle = document.getElementById('mobilePinLoginToggle');
+        const pinArea = document.getElementById('mobilePinLoginArea');
+        if (!stack || !googlePanel || !pinToggle) return;
+
+        let group = stack.querySelector('.yj-mobile-login-group');
+        if (!group) {
+            group = document.createElement('div');
+            group.className = 'yj-mobile-login-group';
+            stack.insertBefore(group, stack.firstChild);
         }
+
+        if (googlePanel.parentElement !== group) group.appendChild(googlePanel);
+        if (pinToggle.parentElement !== group) group.appendChild(pinToggle);
+        if (pinArea && pinArea.parentElement !== group) group.appendChild(pinArea);
     }
 
     function applyReleaseText() {
@@ -452,7 +529,7 @@
         const inventoryTab = document.getElementById('pc-tab-inventory');
         const inventoryLabel = inventoryTab?.querySelector('span:last-child');
         if (inventoryLabel && !inventoryLabel.querySelector('.yj-inventory-beta-badge')) {
-            inventoryLabel.innerHTML = 'Inventory <span class="yj-inventory-beta-badge">Beta</span>';
+            inventoryLabel.innerHTML = 'Inventory <span class="yj-inventory-beta-badge"><span class="yj-beta-rainbow-text">(BETA)</span></span>';
             inventoryLabel.style.display = 'inline-flex';
             inventoryLabel.style.alignItems = 'center';
             inventoryLabel.style.gap = '6px';
@@ -475,23 +552,24 @@
         }
     }
 
-    function applyWork25MobileLoginUi02() {
+    function applyWork25MobileLoginUi03() {
         installStyle();
         applyMobileLoginBranding();
+        applyMobileLoginPanelGrouping();
         applyReleaseText();
         applyInventoryBetaState();
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', applyWork25MobileLoginUi02);
+        document.addEventListener('DOMContentLoaded', applyWork25MobileLoginUi03);
     } else {
-        applyWork25MobileLoginUi02();
+        applyWork25MobileLoginUi03();
     }
 
     let attempts = 0;
     const timer = setInterval(() => {
         attempts += 1;
-        applyWork25MobileLoginUi02();
+        applyWork25MobileLoginUi03();
         if (attempts >= 40) clearInterval(timer);
     }, 250);
 })();
