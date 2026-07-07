@@ -259,7 +259,7 @@
                     width: 100%;
                     max-width: 382px;
                     max-height: calc(100dvh - 164px);
-                    padding: 34px 24px 30px;
+                    padding: 28px 24px 24px;
                     overflow-y: auto;
                     color: #ffffff;
                     background: linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.038));
@@ -274,7 +274,7 @@
                     align-items: center;
                     justify-content: center;
                     gap: 14px;
-                    margin-bottom: 20px;
+                    margin-bottom: 14px;
                     text-align: left;
                     font-style: normal;
                     text-transform: none;
@@ -317,7 +317,7 @@
 
                 .mobile-ui #securityStatus {
                     color: rgba(191, 219, 254, 0.68) !important;
-                    margin-bottom: 20px !important;
+                    margin-bottom: 14px !important;
                 }
 
                 .mobile-ui .login-method-stack {
@@ -327,8 +327,8 @@
                 .mobile-ui .yj-mobile-login-group {
                     display: flex;
                     flex-direction: column;
-                    gap: 16px;
-                    padding: 22px 16px 18px;
+                    gap: 8px;
+                    padding: 14px 16px 14px;
                     border-radius: 24px;
                     border: 1px solid rgba(255,255,255,0.10);
                     background: rgba(15,23,42,0.34);
@@ -346,7 +346,16 @@
 
                 .mobile-ui .google-login-panel > div:first-child {
                     color: rgba(219,234,254,0.82) !important;
-                    margin-bottom: 12px !important;
+                    margin-bottom: 8px !important;
+                }
+
+                .mobile-ui #mobileGoogleLoginTestResult:empty {
+                    min-height: 0 !important;
+                    margin-top: 0 !important;
+                }
+
+                .mobile-ui #mobileGoogleLoginTestResult:not(:empty) {
+                    margin-top: 8px !important;
                 }
 
                 .mobile-ui .login-action-btn {
@@ -368,6 +377,7 @@
 
                 .mobile-ui .pin-collapse-toggle {
                     width: 100%;
+                    margin-top: 0 !important;
                     border-color: rgba(255,255,255,0.12);
                     background: linear-gradient(180deg, rgba(255,255,255,0.060) 0%, rgba(255,255,255,0.035) 100%);
                     color: rgba(255,255,255,0.74) !important;
@@ -382,7 +392,7 @@
 
                 .mobile-ui .yj-mobile-login-group .login-pin-panel {
                     margin-top: 0 !important;
-                    padding: 16px 0 0 !important;
+                    padding: 10px 0 0 !important;
                     border: 0 !important;
                     border-top: 1px solid rgba(255,255,255,0.10) !important;
                     border-radius: 0 !important;
