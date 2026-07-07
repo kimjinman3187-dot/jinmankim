@@ -218,3 +218,280 @@
         if (attempts >= 120) clearInterval(timer);
     }, 250);
 })();
+
+// WORK25-MOBILE-LOGIN-UI-02 — 모바일 로그인 중앙 정렬, PC 톤 동기화, 인벤토리 Beta 표시
+(function installWork25MobileLoginUi02() {
+    if (window.__WORK25_MOBILE_LOGIN_UI02__) return;
+    window.__WORK25_MOBILE_LOGIN_UI02__ = true;
+
+    const RELEASE_TEXT = 'Release: 26.07.07 / v2.0.4 · Mobile Login UI';
+
+    function installStyle() {
+        if (document.getElementById('work25-mobile-login-ui02-style')) return;
+        const style = document.createElement('style');
+        style.id = 'work25-mobile-login-ui02-style';
+        style.textContent = `
+            @media (max-width: 768px) {
+                .mobile-ui.login-gateway-layer {
+                    min-height: 100vh;
+                    min-height: 100dvh;
+                    justify-content: center;
+                    padding: 28px 22px 94px;
+                    overflow: hidden;
+                    background:
+                        radial-gradient(circle at top left, rgba(59,130,246,0.18), transparent 34%),
+                        radial-gradient(circle at bottom right, rgba(0,180,255,0.10), transparent 30%),
+                        linear-gradient(135deg, #020617 0%, #081225 38%, #0b1d3a 72%, #050b16 100%);
+                }
+
+                .mobile-ui.login-gateway-layer::before {
+                    content: '';
+                    position: absolute;
+                    inset: 18px;
+                    border: 1px solid rgba(255, 255, 255, 0.055);
+                    border-radius: 30px;
+                    pointer-events: none;
+                }
+
+                .mobile-ui.login-gateway-layer .login-card {
+                    position: relative;
+                    z-index: 1;
+                    width: 100%;
+                    max-width: 382px;
+                    max-height: calc(100dvh - 164px);
+                    padding: 30px 24px 24px;
+                    overflow-y: auto;
+                    color: #ffffff;
+                    background: linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.038));
+                    border: 1px solid rgba(255,255,255,0.11);
+                    border-radius: 30px;
+                    backdrop-filter: blur(22px);
+                    box-shadow: 0 30px 80px rgba(0,0,0,0.46);
+                }
+
+                .mobile-ui .yj-mobile-brand-lockup {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 14px;
+                    margin-bottom: 16px;
+                    text-align: left;
+                    font-style: normal;
+                    text-transform: none;
+                    letter-spacing: normal;
+                }
+
+                .mobile-ui .yj-mobile-mark {
+                    width: 58px;
+                    height: 58px;
+                    flex: 0 0 58px;
+                    border-radius: 20px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: #dbeafe;
+                    font-size: 26px;
+                    font-weight: 900;
+                    letter-spacing: -0.08em;
+                    background: rgba(255,255,255,0.055);
+                    border: 1px solid rgba(255,255,255,0.12);
+                    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 16px 34px rgba(0,0,0,0.22);
+                }
+
+                .mobile-ui .yj-mobile-brand-title {
+                    color: #ffffff;
+                    font-size: 23px;
+                    line-height: 1.05;
+                    font-weight: 900;
+                    letter-spacing: 0.02em;
+                }
+
+                .mobile-ui .yj-mobile-brand-subtitle {
+                    margin-top: 5px;
+                    color: rgba(255,255,255,0.52);
+                    font-size: 10px;
+                    line-height: 1.35;
+                    font-weight: 700;
+                    letter-spacing: 0.01em;
+                }
+
+                .mobile-ui #securityStatus {
+                    color: rgba(191, 219, 254, 0.68) !important;
+                    margin-bottom: 18px !important;
+                }
+
+                .mobile-ui .google-login-panel {
+                    border: 1px solid rgba(255,255,255,0.10);
+                    background: rgba(15,23,42,0.34);
+                    box-shadow: inset 0 1px 0 rgba(255,255,255,0.055);
+                }
+
+                .mobile-ui .google-login-panel > div:first-child {
+                    color: rgba(219,234,254,0.82) !important;
+                }
+
+                .mobile-ui .login-action-btn {
+                    border-color: rgba(255,255,255,0.24);
+                    background: linear-gradient(180deg, rgba(255,255,255,0.13) 0%, rgba(255,255,255,0.075) 100%);
+                    color: #ffffff;
+                    box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 12px 28px rgba(0,0,0,0.22);
+                }
+
+                .mobile-ui .login-action-btn::after {
+                    border-color: rgba(255,255,255,0.10);
+                }
+
+                .mobile-ui .login-action-btn:hover {
+                    border-color: rgba(191, 219, 254, 0.42);
+                    background: linear-gradient(180deg, rgba(255,255,255,0.17) 0%, rgba(255,255,255,0.095) 100%);
+                    box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 14px 30px rgba(0,0,0,0.26);
+                }
+
+                .mobile-ui .pin-collapse-toggle {
+                    border-color: rgba(255,255,255,0.12);
+                    background: linear-gradient(180deg, rgba(255,255,255,0.060) 0%, rgba(255,255,255,0.035) 100%);
+                    color: rgba(255,255,255,0.74) !important;
+                    box-shadow: inset 0 1px 0 rgba(255,255,255,0.055);
+                }
+
+                .mobile-ui .pin-collapse-toggle:hover {
+                    border-color: rgba(255,255,255,0.20);
+                    background: linear-gradient(180deg, rgba(255,255,255,0.085) 0%, rgba(255,255,255,0.052) 100%);
+                    color: rgba(255,255,255,0.88) !important;
+                }
+
+                .mobile-ui .login-pin-panel {
+                    border-color: rgba(255,255,255,0.10);
+                    background: rgba(15,23,42,0.34);
+                    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+                }
+
+                .mobile-ui .role-sel-btn,
+                .mobile-ui .kp-btn {
+                    border-color: rgba(255,255,255,0.12);
+                    background: rgba(255,255,255,0.06);
+                    color: rgba(255,255,255,0.78);
+                }
+
+                .mobile-ui .role-sel-btn.chosen,
+                .mobile-ui .pin-dot.on {
+                    border-color: rgba(147,197,253,0.72);
+                    background: #2563eb;
+                    color: #ffffff;
+                }
+
+                .mobile-ui.login-gateway-layer .system-footer {
+                    position: absolute;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    z-index: 1;
+                    margin-top: 0;
+                    padding: 16px 24px calc(18px + env(safe-area-inset-bottom));
+                    text-align: center;
+                    color: rgba(255,255,255,0.32) !important;
+                }
+
+                .mobile-ui.login-gateway-layer .system-footer p {
+                    font-size: 9px;
+                    letter-spacing: 1.2px;
+                }
+
+                .yj-inventory-beta-badge,
+                .yj-inventory-status-badge {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 999px;
+                    border: 1px solid rgba(251,191,36,0.32);
+                    background: rgba(251,191,36,0.11);
+                    color: #fbbf24;
+                    font-size: 9px;
+                    font-weight: 900;
+                    letter-spacing: 0.08em;
+                    text-transform: uppercase;
+                    padding: 2px 7px;
+                    line-height: 1.1;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    function applyMobileLoginBranding() {
+        const mobileLogin = document.getElementById('loginMobile');
+        const card = mobileLogin?.querySelector('.login-card');
+        if (!card) return;
+
+        const brand = card.querySelector('.yj-mobile-brand-lockup') || card.firstElementChild;
+        if (brand && !brand.classList.contains('yj-mobile-brand-lockup')) {
+            brand.className = 'yj-mobile-brand-lockup';
+            brand.innerHTML = `
+                <span class="yj-mobile-mark" aria-hidden="true">YJ</span>
+                <span>
+                    <span class="yj-mobile-brand-title">YJ Flow</span>
+                    <span class="yj-mobile-brand-subtitle">Smart Accounting Operating System</span>
+                </span>
+            `;
+        }
+
+        const securityStatus = document.getElementById('securityStatus');
+        if (securityStatus && securityStatus.textContent.trim() === 'Authority Required') {
+            securityStatus.textContent = 'Authority Required';
+        }
+    }
+
+    function applyReleaseText() {
+        const releaseLine = document.querySelector('#loginMobile .system-footer p:first-child');
+        if (releaseLine && releaseLine.textContent.trim() !== RELEASE_TEXT) {
+            releaseLine.textContent = RELEASE_TEXT;
+        }
+    }
+
+    function applyInventoryBetaState() {
+        const inventoryTab = document.getElementById('pc-tab-inventory');
+        const inventoryLabel = inventoryTab?.querySelector('span:last-child');
+        if (inventoryLabel && !inventoryLabel.querySelector('.yj-inventory-beta-badge')) {
+            inventoryLabel.innerHTML = 'Inventory <span class="yj-inventory-beta-badge">Beta</span>';
+            inventoryLabel.style.display = 'inline-flex';
+            inventoryLabel.style.alignItems = 'center';
+            inventoryLabel.style.gap = '6px';
+        }
+
+        const inventoryPage = document.getElementById('pc-page-inventory');
+        const title = inventoryPage?.querySelector('h2');
+        if (title && !title.querySelector('.yj-inventory-status-badge')) {
+            title.innerHTML = '재고관리 대시보드 <span class="yj-inventory-status-badge">수정중</span>';
+            title.style.display = 'flex';
+            title.style.alignItems = 'center';
+            title.style.gap = '10px';
+            title.style.flexWrap = 'wrap';
+        }
+
+        const desc = inventoryPage?.querySelector('p.text-xs');
+        if (desc && !desc.dataset.work25InventoryBeta) {
+            desc.dataset.work25InventoryBeta = 'true';
+            desc.textContent = '재고 데이터 소스 연결 전 단계의 표시 전용 Beta 화면입니다. 정식 업무 메뉴가 아니라 후순위 검증 메뉴입니다.';
+        }
+    }
+
+    function applyWork25MobileLoginUi02() {
+        installStyle();
+        applyMobileLoginBranding();
+        applyReleaseText();
+        applyInventoryBetaState();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyWork25MobileLoginUi02);
+    } else {
+        applyWork25MobileLoginUi02();
+    }
+
+    let attempts = 0;
+    const timer = setInterval(() => {
+        attempts += 1;
+        applyWork25MobileLoginUi02();
+        if (attempts >= 40) clearInterval(timer);
+    }, 250);
+})();
