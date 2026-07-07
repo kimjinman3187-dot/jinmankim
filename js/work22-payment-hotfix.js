@@ -438,6 +438,44 @@
                     line-height: 1.1;
                 }
             }
+
+            .yj-inventory-beta-badge {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 999px;
+                border: 1px solid rgba(255,255,255,0.18);
+                background: rgba(255,255,255,0.055);
+                font-size: 9px;
+                font-weight: 900;
+                letter-spacing: 0.08em;
+                padding: 2px 7px;
+                line-height: 1.1;
+            }
+
+            .yj-beta-rainbow-text {
+                background: linear-gradient(90deg, #ff3b30 0%, #ff9500 16%, #ffcc00 32%, #34c759 48%, #00c7be 64%, #007aff 80%, #af52de 100%);
+                -webkit-background-clip: text;
+                background-clip: text;
+                color: transparent;
+                font-weight: 900;
+            }
+
+            .yj-inventory-status-badge {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 999px;
+                border: 1px solid rgba(251,191,36,0.32);
+                background: rgba(251,191,36,0.11);
+                color: #fbbf24;
+                font-size: 9px;
+                font-weight: 900;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                padding: 2px 7px;
+                line-height: 1.1;
+            }
         `;
         document.head.appendChild(style);
     }
@@ -491,7 +529,7 @@
         const inventoryTab = document.getElementById('pc-tab-inventory');
         const inventoryLabel = inventoryTab?.querySelector('span:last-child');
         if (inventoryLabel && !inventoryLabel.querySelector('.yj-inventory-beta-badge')) {
-            inventoryLabel.innerHTML = 'Inventory <span class="yj-inventory-beta-badge">Beta</span>';
+            inventoryLabel.innerHTML = 'Inventory <span class="yj-inventory-beta-badge"><span class="yj-beta-rainbow-text">(BETA)</span></span>';
             inventoryLabel.style.display = 'inline-flex';
             inventoryLabel.style.alignItems = 'center';
             inventoryLabel.style.gap = '6px';
