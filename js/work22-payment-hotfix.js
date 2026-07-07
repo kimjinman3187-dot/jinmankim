@@ -298,21 +298,33 @@
                     box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 16px 34px rgba(0,0,0,0.22);
                 }
 
+                .mobile-ui .yj-mobile-brand-text {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: flex-start;
+                    justify-content: center;
+                    min-width: 0;
+                }
+
                 .mobile-ui .yj-mobile-brand-title {
+                    display: block;
                     color: #ffffff;
                     font-size: 23px;
                     line-height: 1.05;
                     font-weight: 900;
                     letter-spacing: 0.02em;
+                    white-space: nowrap;
                 }
 
                 .mobile-ui .yj-mobile-brand-subtitle {
+                    display: block;
                     margin-top: 5px;
                     color: rgba(255,255,255,0.52);
                     font-size: 10px;
                     line-height: 1.35;
                     font-weight: 700;
                     letter-spacing: 0.01em;
+                    white-space: normal;
                 }
 
                 .mobile-ui #securityStatus {
@@ -500,7 +512,7 @@
             brand.className = 'yj-mobile-brand-lockup';
             brand.innerHTML = `
                 <span class="yj-mobile-mark" aria-hidden="true">YJ</span>
-                <span>
+                <span class="yj-mobile-brand-text">
                     <span class="yj-mobile-brand-title">YJ Flow</span>
                     <span class="yj-mobile-brand-subtitle">Smart Accounting Operating System</span>
                 </span>
