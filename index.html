@@ -3169,8 +3169,13 @@ function processLoginSuccess() {
     }
     applyPCRoleAccess();
     initTabs();
-    enforceCurrentHashAccess();
-    if (window.innerWidth > 768 && !getHashTargetTab()) switchPCTab(getDefaultPCTab());
+    if (window.innerWidth > 768) {
+        sessionStorage.setItem('active_tab', 'dashboard');
+        location.hash = 'dashboard';
+        switchPCTab('dashboard', false);
+    } else {
+        enforceCurrentHashAccess();
+    }
     startOrdersListener(); checkNotiBanner(); startNotiPoller();
 }
 
@@ -5159,7 +5164,7 @@ window.addEventListener('load', () => {
 
             if (savedTab) {
                 setTimeout(() => {
-                    if (window.innerWidth > 768) switchPCTab(savedTab, false);
+                    if (window.innerWidth > 768) switchPCTab('dashboard', false);
                     else switchTab(savedTab, false);
                 }, 150);
             }
