@@ -454,7 +454,7 @@
 
 <div id="appPC" class="pc-ui hidden w-full h-screen flex-row bg-[#0b1120]">
     <aside class="w-64 bg-[#111827] border-r border-[#334155] flex-shrink-0 flex flex-col z-20">
-        <div class="h-16 flex items-center px-6 border-b border-[#334155]">
+        <div class="h-16 flex items-center px-6 border-b border-[#334155] cursor-pointer" role="button" tabindex="0" aria-label="LIVE 화면으로 이동" onclick="switchPCTab('dashboard')" onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); switchPCTab('dashboard'); }">
             <div class="text-blue-500 font-black text-2xl tracking-tighter">YJ<span class="text-white ml-2 tracking-widest text-lg">Flow</span></div>
         </div>
 
