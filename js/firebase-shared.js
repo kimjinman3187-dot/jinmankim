@@ -189,8 +189,9 @@ console.log('📦 firebase-shared.js 로드 완료');
         if (!invoiceBody) return;
         const invoiceTable = invoiceBody.closest('table');
         const invoiceWrapper = invoiceTable && invoiceTable.parentElement && invoiceTable.parentElement.parentElement;
-        if (!invoiceWrapper) return;
-        invoiceWrapper.insertAdjacentHTML('beforebegin', `
+        const invoiceSection = document.getElementById('pcFinanceInvoiceWaitSection') || invoiceWrapper;
+        if (!invoiceSection) return;
+        invoiceSection.insertAdjacentHTML('beforebegin', `
             <div id='pcFinanceProductionProgressSection' class='bg-[#1e293b] border border-[#334155] rounded-2xl shadow-xl overflow-hidden mb-8'>
                 <div class='p-5 border-b border-[#334155] bg-[#111827] flex justify-between items-center'>
                     <div>
