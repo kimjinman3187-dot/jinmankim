@@ -69,8 +69,14 @@ service cloud.firestore {
         || validAssignableRole(request.resource.data.assigned_role);
     }
 
+    // WORK25-AUTH-RULES-HARDENING-01:
+    // 익명/미승인 사용자의 데이터 접근 차단.
+    // users 읽기는 본인 문서(get) 또는 admin(list 포함)으로 제한해
+    // 타 직원 PIN/개인정보 노출 경로를 막는다.
     match /users/{userId} {
-      allow read: if request.auth != null;
+      allow get: if isSignedIn()
+        && (request.auth.uid == userId || arIsAdmin());
+      allow list: if arIsAdmin();
       allow create: if arIsAdmin()
         && hasValidUserWriteShape(userId);
       allow update: if (
@@ -80,26 +86,32 @@ service cloud.firestore {
       ) || (
         isSignedIn()
           && isUserLockStateUpdate()
+          && (arIsAdmin() || request.auth.uid == userId)
       );
       allow delete: if false;
     }
 
+    // 업무 데이터는 승인(active) 직원만. 삭제는 admin(Reset Data)만.
     match /orders/{orderId} {
-      allow read, create, update, delete: if request.auth != null;
+      allow read, create, update: if arIsActiveUser();
+      allow delete: if arIsAdmin();
     }
 
+    // 감사 로그: 기록은 Google 인증(승인 전 게이트 로그 포함) 또는 active 직원,
+    // 열람은 admin만. 익명 기록 불가.
     match /audit_logs/{logId} {
-      allow create, read: if request.auth != null;
+      allow create: if arIsGoogleUser() || arIsActiveUser();
+      allow read: if arIsAdmin();
       allow update, delete: if false;
     }
 
     match /notifications/{notiId} {
-      allow read, create, update: if request.auth != null;
+      allow read, create, update: if arIsActiveUser();
       allow delete: if false;
     }
 
     match /surveys/{surveyId} {
-      allow create: if request.auth != null;
+      allow create: if arIsActiveUser();
       allow read, update, delete: if false;
     }
 
