@@ -161,7 +161,7 @@ service cloud.firestore {
           && nextStatus == "cancelled"
       ) || (
         previousStatus == "on_hold"
-          && nextStatus in ["pending", "cancelled"]
+          && nextStatus == "pending"
       );
     }
 
@@ -194,8 +194,6 @@ service cloud.firestore {
         previousStatus == "on_hold" && nextStatus == "approved" && action == "approved"
       ) || (
         previousStatus == "on_hold" && nextStatus == "rejected" && action == "rejected"
-      ) || (
-        previousStatus == "on_hold" && nextStatus == "cancelled" && action == "cancelled"
       );
     }
 
