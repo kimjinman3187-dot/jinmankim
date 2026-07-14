@@ -186,13 +186,26 @@ service cloud.firestore {
     }
 
     function documentApprovalAdminTransitionAllowed() {
-      return (
-        resource.data.status == "pending"
-          && request.resource.data.status in ["approved", "rejected", "on_hold"]
-      ) || (
-        resource.data.status == "on_hold"
-          && request.resource.data.status in ["pending", "approved", "rejected"]
+      return documentApprovalAdminTransitionAllowedFrom(
+        resource.data.status,
+        request.resource.data.status
       );
+    }
+
+    function documentApprovalAdminTransitionAllowedFrom(previousStatus, nextStatus) {
+      return (
+        previousStatus == "pending"
+          && nextStatus in ["approved", "rejected", "on_hold"]
+      ) || (
+        previousStatus == "on_hold"
+          && nextStatus in ["pending", "approved", "rejected"]
+      );
+    }
+
+    function isValidDocumentApprovalReason(reason) {
+      return reason is string
+        && reason.size() >= 2
+        && reason.size() <= 500;
     }
 
     function hasValidDocumentApprovalAdminUpdateShape() {
@@ -222,7 +235,8 @@ service cloud.firestore {
         && request.resource.data.updatedAt == request.time
         && request.resource.data.reviewedAt == request.time
         && request.resource.data.reviewerUid == request.auth.uid
-        && request.resource.data.reviewerName is string
+        && request.resource.data.reviewerName == arUserDoc().get("name", "")
+        && request.resource.data.reviewerName != ""
         && request.resource.data.get("appliedAt", null) == resource.data.get("appliedAt", null)
         && request.resource.data.get("appliedByUid", null) == resource.data.get("appliedByUid", null)
         && (
@@ -231,7 +245,15 @@ service cloud.firestore {
         )
         && (
           request.resource.data.status != "rejected"
-          || request.resource.data.rejectionReason is string
+          || isValidDocumentApprovalReason(request.resource.data.rejectionReason)
+        )
+        && (
+          request.resource.data.status != "on_hold"
+          || isValidDocumentApprovalReason(request.resource.data.holdReason)
+        )
+        && (
+          request.resource.data.status != "approved"
+          || !request.resource.data.diff(resource.data).affectedKeys().hasAny(["rejectionReason", "holdReason"])
         );
     }
 
@@ -244,6 +266,7 @@ service cloud.firestore {
 
     function hasValidDocumentApprovalHistoryCreateShape(requestId) {
       return arIsAdmin()
+        && exists(/databases/$(database)/documents/document_approval_requests/$(requestId))
         && request.resource.data.keys().hasOnly(documentApprovalHistoryKeys())
         && request.resource.data.keys().hasAll(documentApprovalHistoryKeys())
         && request.resource.data.requestId == requestId
@@ -251,6 +274,13 @@ service cloud.firestore {
         && request.resource.data.actorRole == "admin"
         && validDocumentApprovalStatus(request.resource.data.previousStatus)
         && validDocumentApprovalStatus(request.resource.data.nextStatus)
+        && request.resource.data.previousStatus != request.resource.data.nextStatus
+        && documentApprovalAdminTransitionAllowedFrom(
+          request.resource.data.previousStatus,
+          request.resource.data.nextStatus
+        )
+        && request.resource.data.previousStatus == get(/databases/$(database)/documents/document_approval_requests/$(requestId)).data.status
+        && request.resource.data.nextStatus == getAfter(/databases/$(database)/documents/document_approval_requests/$(requestId)).data.status
         && request.resource.data.nextStatus != "applied"
         && request.resource.data.createdAt == request.time
         && request.resource.data.schemaVersion == 1;
