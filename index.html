@@ -570,6 +570,52 @@
                     <button id="pcPrepareInviteCodeBtn" type="button" onclick="handlePcAdminInviteCodePreview()" class="mt-3 h-10 px-5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-black shadow-sm transition-colors">초대코드 발급 준비</button>
                     <div id="pcInviteCodeAdminMessage" class="mt-3 min-h-[24px] text-[11px] font-bold text-slate-300 bg-[#0f1522] rounded-lg border border-[#334155] p-3"></div>
                 </section>
+                <section id="pcDocumentApprovalPanel" class="hidden bg-[#1e293b] border border-[#334155] rounded-xl p-5 mb-6 shadow-lg relative z-10">
+                    <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4 mb-4">
+                        <div>
+                            <h3 class="font-black text-white text-sm">문서 결재 요청 목록</h3>
+                            <p class="text-[10px] text-slate-400 font-bold mt-1 leading-5">document_approval_requests 기준의 관리자 전용 결재 처리 영역입니다. 상태 변경은 parent 요청과 history를 같은 transaction에서 기록합니다.</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <select id="pcDocumentApprovalStatusFilter" class="h-10 rounded-lg border border-[#334155] bg-[#0f1522] px-3 text-xs font-black text-slate-100 outline-none">
+                                <option value="active">pending + on_hold</option>
+                                <option value="pending">pending</option>
+                                <option value="on_hold">on_hold</option>
+                                <option value="approved">approved</option>
+                                <option value="rejected">rejected</option>
+                                <option value="cancelled">cancelled</option>
+                                <option value="all">all</option>
+                            </select>
+                            <button id="pcDocumentApprovalRefreshBtn" type="button" class="h-10 px-4 rounded-lg bg-[#0f1522] border border-[#334155] text-slate-200 hover:text-white hover:border-slate-500 text-xs font-black transition-colors">새로고침</button>
+                        </div>
+                    </div>
+                    <div id="pcDocumentApprovalMessage" class="mb-3 min-h-[28px] rounded-lg border border-[#334155] bg-[#0f1522] px-3 py-2 text-[11px] font-bold text-slate-400">관리자 로그인 후 문서 결재 요청을 조회합니다.</div>
+                    <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)] gap-4">
+                        <div class="overflow-x-auto rounded-lg border border-[#334155] bg-[#0f1522]">
+                            <table class="w-full min-w-[900px] text-left text-[11px]">
+                                <thead class="text-slate-400 uppercase tracking-wider border-b border-[#334155]">
+                                    <tr>
+                                        <th class="px-3 py-3 font-black">요청일</th>
+                                        <th class="px-3 py-3 font-black">문서</th>
+                                        <th class="px-3 py-3 font-black">요청자</th>
+                                        <th class="px-3 py-3 font-black">상태</th>
+                                        <th class="px-3 py-3 font-black">처리자</th>
+                                        <th class="px-3 py-3 font-black">처리일</th>
+                                        <th class="px-3 py-3 font-black">작업</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pcDocumentApprovalBody">
+                                    <tr>
+                                        <td colspan="7" class="px-3 py-8 text-center text-slate-500 font-bold">문서 결재 요청 데이터가 아직 로드되지 않았습니다.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <aside id="pcDocumentApprovalDetail" class="rounded-lg border border-[#334155] bg-[#0f1522] p-4 min-h-[240px]">
+                            <p class="text-[11px] text-slate-500 font-bold">목록에서 요청을 선택하면 상세 정보와 처리 사유 입력 영역이 표시됩니다.</p>
+                        </aside>
+                    </div>
+                </section>
                 <section id="pcApprovalRequestPanel" class="hidden bg-[#1e293b] border border-[#334155] rounded-xl p-5 mb-6 shadow-lg relative z-10">
                     <div class="flex justify-between items-start gap-4 mb-4">
                         <div>
@@ -3203,6 +3249,8 @@ function applyPCRoleAccess() {
     if (pcAdminInviteCodePanel) pcAdminInviteCodePanel.classList.toggle('hidden', currentUser?.role !== 'admin');
     const pcApprovalRequestPanel = document.getElementById('pcApprovalRequestPanel');
     if (pcApprovalRequestPanel) pcApprovalRequestPanel.classList.toggle('hidden', currentUser?.role !== 'admin');
+    const pcDocumentApprovalPanel = document.getElementById('pcDocumentApprovalPanel');
+    if (pcDocumentApprovalPanel) pcDocumentApprovalPanel.classList.toggle('hidden', currentUser?.role !== 'admin');
     // [WORK24-SEARCH01-A3] factory role: Live 재무성 정보(.yj-fin-only) 숨김
     document.body.classList.toggle('yj-hide-finance', currentUser?.role === 'factory');
 }
@@ -4636,6 +4684,7 @@ function switchPCTab(tabId, pushHistory = true) {
     }
     if (tabId === 'dashboard' && currentUser?.role === 'admin') {
         loadApprovalRequestsReadOnly();
+        window.YJApproval?.refresh?.();
     }
 
     sessionStorage.setItem('active_tab', tabId);
@@ -5180,5 +5229,6 @@ window.addEventListener('load', () => {
 });
 
 </script>
+<script src="js/approval.js"></script>
 </body>
 </html>
