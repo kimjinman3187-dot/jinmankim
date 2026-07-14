@@ -3,15 +3,7 @@
 
     const COLLECTION = 'document_approval_requests';
     const DEFAULT_FILTER = 'active';
-    const FILTER_STATUSES = {
-        active: ['pending', 'on_hold'],
-        pending: ['pending'],
-        on_hold: ['on_hold'],
-        approved: ['approved'],
-        rejected: ['rejected'],
-        cancelled: ['cancelled'],
-        all: null
-    };
+    const SORT_FIELD = 'createdAt';
     const STATUS_LABELS = {
         draft: '작성 중',
         pending: '승인 대기',
@@ -68,6 +60,10 @@
         return null;
     }
 
+    function authUser() {
+        return window.auth?.currentUser || null;
+    }
+
     function isAdminUser() {
         const user = currentUser();
         const canAdminWrite = typeof window.canWrite === 'function' ? window.canWrite('admin', user?.role) : user?.role === 'admin';
@@ -75,11 +71,7 @@
     }
 
     function getReviewerUid() {
-        return window.auth?.currentUser?.uid || currentUser()?.auth_uid || '';
-    }
-
-    function getReviewerName() {
-        return String(currentUser()?.name || '').trim();
+        return authUser()?.uid || '';
     }
 
     function setMessage(text, tone) {
@@ -126,22 +118,8 @@
         }
     }
 
-    function getSortMillis(request) {
-        const value = request.updatedAt || request.submittedAt || request.createdAt || request.reviewedAt;
-        try {
-            if (value?.toDate) return value.toDate().getTime();
-            if (typeof value === 'number') return value;
-            if (typeof value === 'string') return Date.parse(value) || 0;
-        } catch (error) { }
-        return 0;
-    }
-
     function statusLabel(status) {
         return STATUS_LABELS[status] || status || '-';
-    }
-
-    function selectedFilterStatuses() {
-        return FILTER_STATUSES[state.filter] === undefined ? FILTER_STATUSES[DEFAULT_FILTER] : FILTER_STATUSES[state.filter];
     }
 
     function canTransition(previousStatus, nextStatus) {
@@ -151,6 +129,7 @@
     function sanitizeError(error) {
         const code = error?.code || '';
         if (code === 'permission-denied') return '문서 결재 권한이 없습니다. Rules 배포 상태와 관리자 계정을 확인하세요.';
+        if (code === 'failed-precondition' && String(error?.message || '').toLowerCase().includes('index')) return '문서 결재 조회용 Firestore 인덱스가 아직 준비되지 않았습니다.';
         if (code === 'failed-precondition') return '요청 상태가 변경되었습니다. 새로고침 후 다시 확인하세요.';
         if (code === 'not-found') return '문서 결재 요청을 찾을 수 없습니다.';
         if (code === 'unavailable' || code === 'deadline-exceeded') return '네트워크 문제로 처리하지 못했습니다. 잠시 후 다시 시도하세요.';
@@ -356,6 +335,24 @@
         return state.requests.find(request => request.id === state.selectedId) || null;
     }
 
+    function buildRequestQuery() {
+        let query = window.db.collection(COLLECTION);
+        if (state.filter === 'active') {
+            query = query.where('status', 'in', ['pending', 'on_hold']);
+        } else if (state.filter !== 'all') {
+            query = query.where('status', '==', state.filter);
+        }
+        return query.orderBy(SORT_FIELD, 'desc').limit(150);
+    }
+
+    function getCurrentUserUidFields(user) {
+        return [user?.auth_uid, user?.uid, user?.id].filter(value => typeof value === 'string' && value.trim() !== '');
+    }
+
+    function validateAuthUserMatch(user, uid) {
+        return getCurrentUserUidFields(user).every(value => value === uid);
+    }
+
     function openDetail(id, action) {
         const request = state.requests.find(item => item.id === id);
         if (!request) return;
@@ -382,12 +379,9 @@
         tableMessage('문서 결재 요청을 불러오는 중입니다.');
         setMessage('조회 중...', 'info');
         try {
-            const snapshot = await window.db.collection(COLLECTION).limit(150).get();
-            const statuses = selectedFilterStatuses();
+            const snapshot = await buildRequestQuery().get();
             state.requests = snapshot.docs
-                .map(doc => ({ id: doc.id, ...doc.data() }))
-                .filter(request => !statuses || statuses.includes(String(request.status || '')))
-                .sort((a, b) => getSortMillis(b) - getSortMillis(a));
+                .map(doc => ({ id: doc.id, ...doc.data() }));
             if (!state.requests.some(request => request.id === state.selectedId)) state.selectedId = '';
             renderRows();
             const activeLabel = state.filter === 'active' ? 'pending + on_hold' : state.filter;
@@ -414,12 +408,11 @@
         return { ok: true, reason };
     }
 
-    function buildUpdatePayload(action, transitionId, reason, ts) {
-        const user = currentUser();
+    function buildUpdatePayload(action, transitionId, reason, ts, reviewer) {
         const payload = {
             status: action,
-            reviewerUid: getReviewerUid(),
-            reviewerName: getReviewerName(),
+            reviewerUid: reviewer.uid,
+            reviewerName: reviewer.name,
             reviewedAt: ts,
             updatedAt: ts,
             lastTransitionId: transitionId
@@ -430,21 +423,19 @@
         }
         if (action === 'rejected') payload.rejectionReason = reason;
         if (action === 'on_hold') payload.holdReason = reason;
-        if (!payload.reviewerUid && user?.auth_uid) payload.reviewerUid = user.auth_uid;
         return payload;
     }
 
-    function buildHistoryPayload(requestId, transitionId, previousStatus, nextStatus, reason, ts) {
-        const user = currentUser();
+    function buildHistoryPayload(requestId, transitionId, previousStatus, nextStatus, reason, ts, reviewer) {
         return {
             requestId,
             transitionId,
             action: ACTION_BY_TRANSITION[`${previousStatus}>${nextStatus}`],
             previousStatus,
             nextStatus,
-            actorUid: getReviewerUid(),
-            actorName: getReviewerName(),
-            actorRole: user?.role || '',
+            actorUid: reviewer.uid,
+            actorName: reviewer.name,
+            actorRole: reviewer.role,
             comment: reason || '',
             createdAt: ts,
             schemaVersion: 1
@@ -457,10 +448,10 @@
             setMessage('관리자만 문서 결재 요청을 처리할 수 있습니다.', 'error');
             return;
         }
-        const reviewerUid = getReviewerUid();
-        const reviewerName = getReviewerName();
-        if (!reviewerUid || !reviewerName) {
-            setMessage('관리자 UID와 이름을 확인할 수 없습니다. 다시 로그인 후 시도하세요.', 'error');
+        const user = currentUser();
+        const auth = authUser();
+        if (!auth?.uid || !validateAuthUserMatch(user, auth.uid)) {
+            setMessage('로그인 사용자 정보가 일치하지 않습니다. 다시 로그인해 주세요.', 'error');
             return;
         }
         const request = state.requests.find(item => item.id === requestId);
@@ -485,12 +476,20 @@
         setMessage('문서 결재를 처리하는 중입니다.', 'info');
         try {
             const requestRef = window.db.collection(COLLECTION).doc(requestId);
+            const userRef = window.db.collection('users').doc(auth.uid);
             const historyRef = requestRef.collection('history').doc();
             const transitionId = historyRef.id;
             const ts = window.firebase.firestore.FieldValue.serverTimestamp();
 
             await window.db.runTransaction(async transaction => {
+                const userSnap = await transaction.get(userRef);
                 const latestSnap = await transaction.get(requestRef);
+                if (!userSnap.exists) throw Object.assign(new Error('reviewer user not found'), { code: 'permission-denied' });
+                const userData = userSnap.data() || {};
+                const reviewerName = String(userData.name || '').trim();
+                if (userData.status !== 'active' || userData.role !== 'admin' || !reviewerName) {
+                    throw Object.assign(new Error('reviewer is not active admin'), { code: 'permission-denied' });
+                }
                 if (!latestSnap.exists) throw Object.assign(new Error('request not found'), { code: 'not-found' });
                 const latest = { id: latestSnap.id, ...latestSnap.data() };
                 const previousStatus = String(latest.status || '');
@@ -501,8 +500,9 @@
                     throw Object.assign(new Error('missing transition action'), { code: 'failed-precondition' });
                 }
 
-                transaction.update(requestRef, buildUpdatePayload(action, transitionId, validation.reason, ts));
-                transaction.set(historyRef, buildHistoryPayload(requestId, transitionId, previousStatus, action, validation.reason, ts));
+                const reviewer = { uid: auth.uid, name: reviewerName, role: userData.role };
+                transaction.update(requestRef, buildUpdatePayload(action, transitionId, validation.reason, ts, reviewer));
+                transaction.set(historyRef, buildHistoryPayload(requestId, transitionId, previousStatus, action, validation.reason, ts, reviewer));
             });
 
             if (typeof window.logAction === 'function') {
