@@ -69,6 +69,316 @@ service cloud.firestore {
         || validAssignableRole(request.resource.data.assigned_role);
     }
 
+    function validDocumentApprovalStatus(status) {
+      return status in ["draft", "pending", "approved", "rejected", "on_hold", "applied", "cancelled"];
+    }
+
+    function validDocumentApprovalRequestType(requestType) {
+      return requestType in ["document", "test_document"];
+    }
+
+    function documentApprovalRequestKeys() {
+      return [
+        "requestId", "requestType", "title", "documentType", "description",
+        "payload", "requesterUid", "requesterName", "requesterEmail",
+        "requesterRole", "requesterSite", "status", "createdAt",
+        "submittedAt", "updatedAt", "reviewerUid", "reviewerName",
+        "reviewedAt", "reviewComment", "rejectionReason", "holdReason",
+        "approvedAt", "appliedAt", "appliedByUid", "lastTransitionId",
+        "schemaVersion", "isTest"
+      ];
+    }
+
+    function documentApprovalRequiredKeys() {
+      return [
+        "requestType", "title", "payload", "requesterUid",
+        "requesterName", "requesterRole", "status", "createdAt",
+        "updatedAt", "schemaVersion"
+      ];
+    }
+
+    function documentApprovalImmutableKeys() {
+      return [
+        "requestId", "requestType", "title", "documentType", "description",
+        "payload", "requesterUid", "requesterName", "requesterEmail",
+        "requesterRole", "requesterSite", "createdAt", "schemaVersion", "isTest"
+      ];
+    }
+
+    function documentApprovalAdminUpdateKeys() {
+      return [
+        "status", "updatedAt", "reviewerUid", "reviewerName",
+        "reviewedAt", "reviewComment", "rejectionReason",
+        "holdReason", "approvedAt", "lastTransitionId"
+      ];
+    }
+
+    function isDocumentApprovalOwner() {
+      return arIsActiveUser()
+        && resource.data.requesterUid == request.auth.uid;
+    }
+
+    function isDocumentApprovalHistoryOwner(requestId) {
+      return arIsActiveUser()
+        && get(/databases/$(database)/documents/document_approval_requests/$(requestId)).data.requesterUid == request.auth.uid;
+    }
+
+    function hasValidDocumentApprovalCreateShape() {
+      return request.resource.data.keys().hasOnly(documentApprovalRequestKeys())
+        && request.resource.data.keys().hasAll(documentApprovalRequiredKeys())
+        && validDocumentApprovalRequestType(request.resource.data.requestType)
+        && request.resource.data.requesterUid == request.auth.uid
+        && request.resource.data.requesterRole == arUserDoc().get("role", "")
+        && request.resource.data.status in ["draft", "pending"]
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.get("reviewerUid", null) == null
+        && request.resource.data.get("reviewerName", null) == null
+        && request.resource.data.get("reviewedAt", null) == null
+        && request.resource.data.get("reviewComment", null) == null
+        && request.resource.data.get("rejectionReason", null) == null
+        && request.resource.data.get("holdReason", null) == null
+        && request.resource.data.get("approvedAt", null) == null
+        && request.resource.data.get("appliedAt", null) == null
+        && request.resource.data.get("appliedByUid", null) == null
+        && request.resource.data.get("lastTransitionId", null) == null;
+    }
+
+    function documentApprovalUserTransitionAllowed() {
+      return documentApprovalUserTransitionAllowedFrom(
+        resource.data.status,
+        request.resource.data.status
+      );
+    }
+
+    function documentApprovalUserTransitionAllowedFrom(previousStatus, nextStatus) {
+      return (
+        previousStatus == "draft"
+          && nextStatus in ["draft", "pending", "cancelled"]
+      ) || (
+        previousStatus == "pending"
+          && nextStatus == "cancelled"
+      ) || (
+        previousStatus == "on_hold"
+          && nextStatus == "pending"
+      );
+    }
+
+    function validDocumentApprovalTransitionId(transitionId) {
+      return transitionId is string
+        && transitionId.size() >= 16
+        && transitionId.size() <= 128;
+    }
+
+    function documentApprovalHistoryPath(requestId, transitionId) {
+      return /databases/$(database)/documents/document_approval_requests/$(requestId)/history/$(transitionId);
+    }
+
+    function validDocumentApprovalHistoryAction(previousStatus, nextStatus, action) {
+      return (
+        previousStatus == "draft" && nextStatus == "pending" && action == "submitted"
+      ) || (
+        previousStatus == "draft" && nextStatus == "cancelled" && action == "cancelled"
+      ) || (
+        previousStatus == "pending" && nextStatus == "cancelled" && action == "cancelled"
+      ) || (
+        previousStatus == "pending" && nextStatus == "approved" && action == "approved"
+      ) || (
+        previousStatus == "pending" && nextStatus == "rejected" && action == "rejected"
+      ) || (
+        previousStatus == "pending" && nextStatus == "on_hold" && action == "on_hold"
+      ) || (
+        previousStatus == "on_hold" && nextStatus == "pending" && action == "resumed"
+      ) || (
+        previousStatus == "on_hold" && nextStatus == "approved" && action == "approved"
+      ) || (
+        previousStatus == "on_hold" && nextStatus == "rejected" && action == "rejected"
+      );
+    }
+
+    function hasMatchingDocumentApprovalHistoryAfter(requestId) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasAny(["lastTransitionId"])
+        && validDocumentApprovalTransitionId(request.resource.data.get("lastTransitionId", ""))
+        && request.resource.data.get("lastTransitionId", null) != resource.data.get("lastTransitionId", null)
+        && !exists(documentApprovalHistoryPath(requestId, request.resource.data.lastTransitionId))
+        && existsAfter(documentApprovalHistoryPath(requestId, request.resource.data.lastTransitionId))
+        && getAfter(documentApprovalHistoryPath(requestId, request.resource.data.lastTransitionId)).data.requestId == requestId
+        && getAfter(documentApprovalHistoryPath(requestId, request.resource.data.lastTransitionId)).data.transitionId == request.resource.data.lastTransitionId
+        && getAfter(documentApprovalHistoryPath(requestId, request.resource.data.lastTransitionId)).data.previousStatus == resource.data.status
+        && getAfter(documentApprovalHistoryPath(requestId, request.resource.data.lastTransitionId)).data.nextStatus == request.resource.data.status
+        && getAfter(documentApprovalHistoryPath(requestId, request.resource.data.lastTransitionId)).data.actorUid == request.auth.uid
+        && validDocumentApprovalHistoryAction(
+          resource.data.status,
+          request.resource.data.status,
+          getAfter(documentApprovalHistoryPath(requestId, request.resource.data.lastTransitionId)).data.action
+        );
+    }
+
+    function hasValidDocumentApprovalTransitionHistoryState(requestId) {
+      return (
+        request.resource.data.status == resource.data.status
+          && request.resource.data.get("lastTransitionId", null) == resource.data.get("lastTransitionId", null)
+      ) || (
+        request.resource.data.status != resource.data.status
+          && hasMatchingDocumentApprovalHistoryAfter(requestId)
+      );
+    }
+
+    function hasValidDocumentApprovalUserUpdateShape(requestId) {
+      return isDocumentApprovalOwner()
+        && request.resource.data.keys().hasOnly(documentApprovalRequestKeys())
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "title", "documentType", "description", "payload", "status",
+          "submittedAt", "updatedAt", "lastTransitionId"
+        ])
+        && request.resource.data.diff(resource.data).affectedKeys().hasAny(["updatedAt"])
+        && request.resource.data.diff(resource.data).unchangedKeys().hasAll([
+          "requesterUid", "requesterName", "requesterRole", "createdAt", "schemaVersion"
+        ])
+        && validDocumentApprovalStatus(request.resource.data.status)
+        && documentApprovalUserTransitionAllowed()
+        && hasValidDocumentApprovalTransitionHistoryState(requestId)
+        && request.resource.data.updatedAt == request.time
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(["submittedAt"])
+          || request.resource.data.submittedAt == request.time
+        )
+        && request.resource.data.get("reviewerUid", null) == resource.data.get("reviewerUid", null)
+        && request.resource.data.get("reviewerName", null) == resource.data.get("reviewerName", null)
+        && request.resource.data.get("reviewedAt", null) == resource.data.get("reviewedAt", null)
+        && request.resource.data.get("reviewComment", null) == resource.data.get("reviewComment", null)
+        && request.resource.data.get("rejectionReason", null) == resource.data.get("rejectionReason", null)
+        && request.resource.data.get("holdReason", null) == resource.data.get("holdReason", null)
+        && request.resource.data.get("approvedAt", null) == resource.data.get("approvedAt", null)
+        && request.resource.data.get("appliedAt", null) == resource.data.get("appliedAt", null)
+        && request.resource.data.get("appliedByUid", null) == resource.data.get("appliedByUid", null);
+    }
+
+    function documentApprovalAdminTransitionAllowed() {
+      return documentApprovalAdminTransitionAllowedFrom(
+        resource.data.status,
+        request.resource.data.status
+      );
+    }
+
+    function documentApprovalAdminTransitionAllowedFrom(previousStatus, nextStatus) {
+      return (
+        previousStatus == "pending"
+          && nextStatus in ["approved", "rejected", "on_hold"]
+      ) || (
+        previousStatus == "on_hold"
+          && nextStatus in ["pending", "approved", "rejected"]
+      );
+    }
+
+    function isValidDocumentApprovalReason(reason) {
+      return reason is string
+        && reason.size() >= 2
+        && reason.size() <= 500;
+    }
+
+    function hasValidDocumentApprovalAdminUpdateShape(requestId) {
+      return arIsAdmin()
+        && request.resource.data.keys().hasOnly(documentApprovalRequestKeys())
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(documentApprovalAdminUpdateKeys())
+        && request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          "status", "updatedAt", "reviewerUid", "reviewerName", "reviewedAt"
+        ])
+        && request.resource.data.requestType == resource.data.requestType
+        && request.resource.data.title == resource.data.title
+        && request.resource.data.payload == resource.data.payload
+        && request.resource.data.requesterUid == resource.data.requesterUid
+        && request.resource.data.requesterName == resource.data.requesterName
+        && request.resource.data.requesterRole == resource.data.requesterRole
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.schemaVersion == resource.data.schemaVersion
+        && request.resource.data.get("requestId", null) == resource.data.get("requestId", null)
+        && request.resource.data.get("documentType", null) == resource.data.get("documentType", null)
+        && request.resource.data.get("description", null) == resource.data.get("description", null)
+        && request.resource.data.get("requesterEmail", null) == resource.data.get("requesterEmail", null)
+        && request.resource.data.get("requesterSite", null) == resource.data.get("requesterSite", null)
+        && request.resource.data.get("isTest", null) == resource.data.get("isTest", null)
+        && validDocumentApprovalStatus(request.resource.data.status)
+        && documentApprovalAdminTransitionAllowed()
+        && hasMatchingDocumentApprovalHistoryAfter(requestId)
+        && request.resource.data.status != "applied"
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.reviewedAt == request.time
+        && request.resource.data.reviewerUid == request.auth.uid
+        && request.resource.data.reviewerName == arUserDoc().get("name", "")
+        && request.resource.data.reviewerName != ""
+        && request.resource.data.get("appliedAt", null) == resource.data.get("appliedAt", null)
+        && request.resource.data.get("appliedByUid", null) == resource.data.get("appliedByUid", null)
+        && (
+          request.resource.data.status != "approved"
+          || request.resource.data.approvedAt == request.time
+        )
+        && (
+          request.resource.data.status != "rejected"
+          || isValidDocumentApprovalReason(request.resource.data.rejectionReason)
+        )
+        && (
+          request.resource.data.status != "on_hold"
+          || isValidDocumentApprovalReason(request.resource.data.holdReason)
+        )
+        && (
+          request.resource.data.status != "approved"
+          || !request.resource.data.diff(resource.data).affectedKeys().hasAny(["rejectionReason", "holdReason"])
+        );
+    }
+
+    function documentApprovalHistoryKeys() {
+      return [
+        "requestId", "action", "previousStatus", "nextStatus", "actorUid",
+        "actorName", "actorRole", "comment", "createdAt", "schemaVersion",
+        "transitionId"
+      ];
+    }
+
+    function hasValidDocumentApprovalHistoryCreateShape(requestId, historyId) {
+      return arIsActiveUser()
+        && exists(/databases/$(database)/documents/document_approval_requests/$(requestId))
+        && existsAfter(/databases/$(database)/documents/document_approval_requests/$(requestId))
+        && request.resource.data.keys().hasOnly(documentApprovalHistoryKeys())
+        && request.resource.data.keys().hasAll(documentApprovalHistoryKeys())
+        && validDocumentApprovalTransitionId(historyId)
+        && request.resource.data.transitionId == historyId
+        && request.resource.data.requestId == requestId
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.actorRole == arUserDoc().get("role", "")
+        && validDocumentApprovalStatus(request.resource.data.previousStatus)
+        && validDocumentApprovalStatus(request.resource.data.nextStatus)
+        && request.resource.data.previousStatus != request.resource.data.nextStatus
+        && (
+          (
+            isDocumentApprovalHistoryOwner(requestId)
+              && documentApprovalUserTransitionAllowedFrom(
+                request.resource.data.previousStatus,
+                request.resource.data.nextStatus
+              )
+          ) || (
+            arIsAdmin()
+              && documentApprovalAdminTransitionAllowedFrom(
+                request.resource.data.previousStatus,
+                request.resource.data.nextStatus
+              )
+          )
+        )
+        && request.resource.data.previousStatus == get(/databases/$(database)/documents/document_approval_requests/$(requestId)).data.status
+        && request.resource.data.nextStatus == getAfter(/databases/$(database)/documents/document_approval_requests/$(requestId)).data.status
+        && request.resource.data.transitionId == getAfter(/databases/$(database)/documents/document_approval_requests/$(requestId)).data.lastTransitionId
+        && get(/databases/$(database)/documents/document_approval_requests/$(requestId)).data.status != getAfter(/databases/$(database)/documents/document_approval_requests/$(requestId)).data.status
+        && validDocumentApprovalHistoryAction(
+          request.resource.data.previousStatus,
+          request.resource.data.nextStatus,
+          request.resource.data.action
+        )
+        && request.resource.data.nextStatus != "applied"
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.schemaVersion == 1;
+    }
+
     // WORK25-AUTH-RULES-HARDENING-01:
     // 익명/미승인 사용자의 데이터 접근 차단.
     // users 읽기는 본인 문서(get) 또는 admin(list 포함)으로 제한해
@@ -139,6 +449,21 @@ service cloud.firestore {
         && hasValidAssignedRole();
 
       allow delete: if arIsAdmin();
+    }
+
+    match /document_approval_requests/{requestId} {
+      allow read: if arIsAdmin() || isDocumentApprovalOwner();
+      allow create: if arIsActiveUser()
+        && hasValidDocumentApprovalCreateShape();
+      allow update: if hasValidDocumentApprovalUserUpdateShape(requestId)
+        || hasValidDocumentApprovalAdminUpdateShape(requestId);
+      allow delete: if false;
+
+      match /history/{historyId} {
+        allow read: if arIsAdmin() || isDocumentApprovalHistoryOwner(requestId);
+        allow create: if hasValidDocumentApprovalHistoryCreateShape(requestId, historyId);
+        allow update, delete: if false;
+      }
     }
   }
 }
