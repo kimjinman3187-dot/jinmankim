@@ -1,6 +1,118 @@
 {
   "indexes": [
     {
+      "collectionGroup": "notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "target_roles",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "read",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "client",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "paymentStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "dueDate",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "reportedBy",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sort_index",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "document_approval_requests",
       "queryScope": "COLLECTION",
       "fields": [
