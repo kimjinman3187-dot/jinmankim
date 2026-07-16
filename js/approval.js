@@ -6,7 +6,7 @@
     const SORT_FIELD = 'createdAt';
     const STATUS_LABELS = {
         draft: '작성 중',
-        pending: '승인 대기',
+        pending: '결재 대기',
         approved: '승인',
         rejected: '반려',
         on_hold: '보류',
@@ -28,6 +28,7 @@
         pending: ['approved', 'rejected', 'on_hold'],
         on_hold: ['approved', 'rejected']
     };
+    const FILTER_OPTIONS = ['active', 'pending', 'on_hold', 'approved', 'rejected', 'cancelled', 'all'];
 
     const state = {
         initialized: false,
@@ -120,6 +121,26 @@
 
     function statusLabel(status) {
         return STATUS_LABELS[status] || status || '-';
+    }
+
+    function filterLabel(filter) {
+        if (filter === 'active') return `${statusLabel('pending')} + ${statusLabel('on_hold')}`;
+        if (filter === 'all') return '전체';
+        return statusLabel(filter);
+    }
+
+    function syncFilterOptions() {
+        if (!dom.filter) return;
+        const currentValue = dom.filter.value || DEFAULT_FILTER;
+        clearNode(dom.filter);
+        FILTER_OPTIONS.forEach(value => {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = filterLabel(value);
+            dom.filter.appendChild(option);
+        });
+        dom.filter.value = FILTER_OPTIONS.includes(currentValue) ? currentValue : DEFAULT_FILTER;
+        state.filter = dom.filter.value || DEFAULT_FILTER;
     }
 
     function canTransition(previousStatus, nextStatus) {
@@ -384,8 +405,7 @@
                 .map(doc => ({ id: doc.id, ...doc.data() }));
             if (!state.requests.some(request => request.id === state.selectedId)) state.selectedId = '';
             renderRows();
-            const activeLabel = state.filter === 'active' ? 'pending + on_hold' : state.filter;
-            setMessage(`${activeLabel} 기준 ${state.requests.length}건을 표시합니다.`, 'success');
+            setMessage(`${filterLabel(state.filter)} 기준 ${state.requests.length}건을 표시합니다.`, 'success');
         } catch (error) {
             console.warn('Document approval requests load failed:', error);
             tableMessage(sanitizeError(error));
@@ -511,7 +531,7 @@
                     transitionId
                 });
             }
-            setMessage('문서 결재 처리가 완료되었습니다.', 'success');
+            setMessage(`${statusLabel(action)} 처리가 완료되었습니다.`, 'success');
             await refresh();
         } catch (error) {
             console.warn('Document approval transaction failed:', error);
@@ -526,6 +546,7 @@
 
     function bindEvents() {
         if (!cacheDom()) return false;
+        syncFilterOptions();
         if (state.initialized) return true;
         state.initialized = true;
         dom.filter.addEventListener('change', () => {
