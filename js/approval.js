@@ -572,6 +572,7 @@
     window.YJApproval = {
         init,
         refresh,
-        openDetail
+        openDetail,
+        getStatusLabel: statusLabel
     };
 })();
