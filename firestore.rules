@@ -131,7 +131,9 @@ service cloud.firestore {
         && request.resource.data.keys().hasAll(documentApprovalRequiredKeys())
         && request.resource.data.requestType == "document"
         && request.resource.data.documentType == "GENERAL_APPROVAL"
-        && !request.resource.data.keys().hasAny(["isTest"])
+        && !request.resource.data.keys().hasAny([
+          "requestId", "requesterEmail", "requesterSite", "isTest"
+        ])
         && request.resource.data.payload is map
         && request.resource.data.payload.keys().hasOnly(["kind", "body"])
         && request.resource.data.payload.keys().hasAll(["kind", "body"])
@@ -145,6 +147,9 @@ service cloud.firestore {
         && request.resource.data.description.size() >= 2
         && request.resource.data.description.size() <= 1000
         && request.resource.data.requesterUid == request.auth.uid
+        && request.resource.data.requesterName is string
+        && request.resource.data.requesterName != ""
+        && request.resource.data.requesterName == arUserDoc().get("name", "")
         && request.resource.data.requesterRole == arUserDoc().get("role", "")
         && request.resource.data.status == "pending"
         && request.resource.data.createdAt == request.time
