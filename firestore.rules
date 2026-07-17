@@ -93,7 +93,10 @@ service cloud.firestore {
       return [
         "requestType", "title", "documentType", "description", "payload",
         "requesterUid", "requesterName", "requesterRole", "status",
-        "createdAt", "submittedAt", "updatedAt", "schemaVersion"
+        "createdAt", "submittedAt", "updatedAt", "reviewerUid",
+        "reviewerName", "reviewedAt", "reviewComment", "rejectionReason",
+        "holdReason", "approvedAt", "appliedAt", "appliedByUid",
+        "lastTransitionId", "schemaVersion"
       ];
     }
 
@@ -128,8 +131,13 @@ service cloud.firestore {
         && request.resource.data.keys().hasAll(documentApprovalRequiredKeys())
         && request.resource.data.requestType == "document"
         && request.resource.data.documentType == "GENERAL_APPROVAL"
+        && !request.resource.data.keys().hasAny(["isTest"])
         && request.resource.data.payload is map
+        && request.resource.data.payload.keys().hasOnly(["kind", "body"])
+        && request.resource.data.payload.keys().hasAll(["kind", "body"])
         && request.resource.data.payload.get("kind", "") == "general_approval"
+        && request.resource.data.payload.body is map
+        && request.resource.data.payload.body.keys().hasOnly([])
         && request.resource.data.title is string
         && request.resource.data.title.size() >= 2
         && request.resource.data.title.size() <= 80
@@ -143,16 +151,16 @@ service cloud.firestore {
         && request.resource.data.submittedAt == request.time
         && request.resource.data.updatedAt == request.time
         && request.resource.data.schemaVersion == 1
-        && request.resource.data.get("reviewerUid", null) == null
-        && request.resource.data.get("reviewerName", null) == null
-        && request.resource.data.get("reviewedAt", null) == null
-        && request.resource.data.get("reviewComment", null) == null
-        && request.resource.data.get("rejectionReason", null) == null
-        && request.resource.data.get("holdReason", null) == null
-        && request.resource.data.get("approvedAt", null) == null
-        && request.resource.data.get("appliedAt", null) == null
-        && request.resource.data.get("appliedByUid", null) == null
-        && request.resource.data.get("lastTransitionId", null) == null;
+        && request.resource.data.reviewerUid == null
+        && request.resource.data.reviewerName == null
+        && request.resource.data.reviewedAt == null
+        && request.resource.data.reviewComment == null
+        && request.resource.data.rejectionReason == null
+        && request.resource.data.holdReason == null
+        && request.resource.data.approvedAt == null
+        && request.resource.data.appliedAt == null
+        && request.resource.data.appliedByUid == null
+        && request.resource.data.lastTransitionId == null;
     }
 
     function documentApprovalUserTransitionAllowed() {
