@@ -105,15 +105,7 @@
 
     function statusLabel(status) {
         if (typeof window.YJApproval?.getStatusLabel === 'function') return window.YJApproval.getStatusLabel(status);
-        const labels = {
-            pending: '결재 대기',
-            approved: '승인',
-            rejected: '반려',
-            on_hold: '보류',
-            cancelled: '취소',
-            applied: '적용 완료'
-        };
-        return labels[status] || status || '-';
+        return status || '-';
     }
 
     function renderStatusBadge(parent, status) {
@@ -135,6 +127,17 @@
         return state.requests.filter(request => request.status === state.filter);
     }
 
+    function selectedVisibleRequest() {
+        if (!state.selectedId) return null;
+        return filteredRequests().find(request => request.id === state.selectedId) || null;
+    }
+
+    function syncSelectionWithVisibleRows() {
+        const selected = selectedVisibleRequest();
+        if (!selected) state.selectedId = '';
+        return selected;
+    }
+
     function requestTitle(request) {
         return request?.title || '제목 없음';
     }
@@ -145,7 +148,6 @@
         clearNode(dom.body);
         if (!rows.length) {
             tableMessage('표시할 본인 문서 결재 요청이 없습니다.');
-            renderDetail(null);
             return;
         }
         rows.forEach(request => {
@@ -332,9 +334,9 @@
                 .limit(LIMIT)
                 .get();
             state.requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            if (!state.requests.some(request => request.id === state.selectedId)) state.selectedId = '';
+            const selected = syncSelectionWithVisibleRows();
             renderRows();
-            if (!state.selectedId) renderDetail(null);
+            renderDetail(selected || null);
             setMessage(`본인 요청 ${state.requests.length}건을 표시합니다.`, 'success');
         } catch (error) {
             console.warn('Employee document requests load failed:', error);
@@ -355,8 +357,8 @@
         dom.refresh.addEventListener('click', refresh);
         dom.filter.addEventListener('change', () => {
             state.filter = FILTERS.includes(dom.filter.value) ? dom.filter.value : 'all';
+            const selected = syncSelectionWithVisibleRows();
             renderRows();
-            const selected = state.requests.find(request => request.id === state.selectedId);
             renderDetail(selected || null);
         });
         return true;
