@@ -91,9 +91,9 @@ service cloud.firestore {
 
     function documentApprovalRequiredKeys() {
       return [
-        "requestType", "title", "payload", "requesterUid",
-        "requesterName", "requesterRole", "status", "createdAt",
-        "updatedAt", "schemaVersion"
+        "requestType", "title", "documentType", "description", "payload",
+        "requesterUid", "requesterName", "requesterRole", "status",
+        "createdAt", "submittedAt", "updatedAt", "schemaVersion"
       ];
     }
 
@@ -126,11 +126,21 @@ service cloud.firestore {
     function hasValidDocumentApprovalCreateShape() {
       return request.resource.data.keys().hasOnly(documentApprovalRequestKeys())
         && request.resource.data.keys().hasAll(documentApprovalRequiredKeys())
-        && validDocumentApprovalRequestType(request.resource.data.requestType)
+        && request.resource.data.requestType == "document"
+        && request.resource.data.documentType == "GENERAL_APPROVAL"
+        && request.resource.data.payload is map
+        && request.resource.data.payload.get("kind", "") == "general_approval"
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 2
+        && request.resource.data.title.size() <= 80
+        && request.resource.data.description is string
+        && request.resource.data.description.size() >= 2
+        && request.resource.data.description.size() <= 1000
         && request.resource.data.requesterUid == request.auth.uid
         && request.resource.data.requesterRole == arUserDoc().get("role", "")
-        && request.resource.data.status in ["draft", "pending"]
+        && request.resource.data.status == "pending"
         && request.resource.data.createdAt == request.time
+        && request.resource.data.submittedAt == request.time
         && request.resource.data.updatedAt == request.time
         && request.resource.data.schemaVersion == 1
         && request.resource.data.get("reviewerUid", null) == null
