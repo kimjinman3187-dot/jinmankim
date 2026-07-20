@@ -403,6 +403,7 @@
             const snapshot = await buildRequestQuery().get();
             state.requests = snapshot.docs
                 .map(doc => ({ id: doc.id, ...doc.data() }));
+            window.YJLiveOperationsHub?.updateDocumentApprovals?.(state.requests, state.filter);
             if (!state.requests.some(request => request.id === state.selectedId)) state.selectedId = '';
             renderRows();
             setMessage(`${filterLabel(state.filter)} 기준 ${state.requests.length}건을 표시합니다.`, 'success');
