@@ -424,6 +424,11 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /invite_codes/{inviteCodeId} {
+      allow get, list: if arIsAdmin();
+      allow create, update, delete: if false;
+    }
+
     // 업무 데이터는 승인(active) 직원만. 삭제는 admin(Reset Data)만.
     match /orders/{orderId} {
       allow read, create, update: if arIsActiveUser();
