@@ -8,13 +8,11 @@
         orders: []
     };
 
-    const STATUS_LABELS = {
+    const ORDER_STATUS_LABELS = {
         pending: '승인 대기',
         approved: '생산 진행',
         completed: '생산 완료',
-        rejected: '반려',
-        on_hold: '보류',
-        cancelled: '취소'
+        rejected: '반려'
     };
 
     function $(id) {
@@ -89,6 +87,13 @@
         return request?.reviewedAt || request?.submittedAt || request?.createdAt || request?.updatedAt;
     }
 
+    function documentStatusLabel(status) {
+        if (typeof window.YJApproval?.getStatusLabel === 'function') {
+            return window.YJApproval.getStatusLabel(status);
+        }
+        return status || '-';
+    }
+
     function renderDocumentItem(list, request, compact) {
         const item = document.createElement('li');
         item.className = compact
@@ -111,7 +116,7 @@
 
         const status = document.createElement('span');
         status.className = 'shrink-0 text-[10px] font-black text-cyan-300';
-        status.textContent = STATUS_LABELS[request?.status] || request?.status || '-';
+        status.textContent = documentStatusLabel(request?.status);
         item.append(main, status);
         list.appendChild(item);
     }
@@ -168,7 +173,7 @@
         client.textContent = displayValue(order, ['client', 'clientName', 'company'], '거래처 정보 없음');
         const status = document.createElement('span');
         status.className = 'shrink-0 text-[10px] font-black text-blue-300';
-        status.textContent = STATUS_LABELS[order?.status] || order?.status || '-';
+        status.textContent = ORDER_STATUS_LABELS[order?.status] || order?.status || '-';
         top.append(client, status);
         const meta = document.createElement('p');
         meta.className = 'mt-1 truncate text-[10px] font-bold text-slate-500';
@@ -245,8 +250,12 @@
         renderApprovalRequests();
     }
 
-    function updateDocumentApprovals(requests) {
-        state.documentApprovals = Array.isArray(requests) ? requests.slice() : [];
+    function updateDocumentApprovals(requests, filter) {
+        if (filter !== 'active' && filter !== 'all') return;
+        const nextRequests = Array.isArray(requests) ? requests.slice() : [];
+        state.documentApprovals = filter === 'all'
+            ? nextRequests.filter(request => request?.status === 'pending' || request?.status === 'on_hold')
+            : nextRequests;
         renderDocumentApprovals();
     }
 
