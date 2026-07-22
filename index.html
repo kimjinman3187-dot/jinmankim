@@ -16,6 +16,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage-compat.js"></script>
     <script src="js/firebase-shared.js"></script>
     <script src="js/work22-payment-hotfix.js?v=20260529"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -683,6 +684,16 @@
                             <input id="pcEmployeeDocumentTitleInput" type="text" maxlength="80" class="w-full h-10 rounded-lg border border-[#334155] bg-[#111827] px-3 text-xs font-bold text-white outline-none focus:border-cyan-400" placeholder="2~80자">
                             <label for="pcEmployeeDocumentDescriptionInput" class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mt-4 mb-2">상세 내용</label>
                             <textarea id="pcEmployeeDocumentDescriptionInput" maxlength="1000" rows="8" class="w-full rounded-lg border border-[#334155] bg-[#111827] px-3 py-2 text-xs font-bold text-white outline-none focus:border-cyan-400 resize-none" placeholder="2~1000자"></textarea>
+                            <div class="mt-4">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="block text-[10px] font-black text-slate-400 uppercase tracking-wider">증빙 파일 첨부 <span class="text-slate-500 normal-case">(선택)</span></span>
+                                    <button id="pcEmployeeDocumentAttachmentSelectBtn" type="button" class="h-8 px-3 rounded-lg bg-[#111827] border border-[#334155] text-slate-200 hover:text-white hover:border-slate-500 text-[11px] font-black transition-colors">파일 선택</button>
+                                </div>
+                                <input id="pcEmployeeDocumentAttachmentInput" type="file" multiple class="hidden" accept=".pdf,.png,.jpg,.jpeg,.xls,.xlsx,.csv,.doc,.docx,.hwp,.hwpx,application/pdf,image/png,image/jpeg">
+                                <p id="pcEmployeeDocumentAttachmentHint" class="mt-2 text-[10px] text-slate-500 font-bold leading-4">PDF·PNG·JPG·XLS(X)·CSV·DOC(X)·HWP(X) / 최대 5개 · 개당 10MB · 합계 30MB</p>
+                                <ul id="pcEmployeeDocumentAttachmentList" class="mt-2 space-y-1"></ul>
+                                <div id="pcEmployeeDocumentAttachmentProgress" class="mt-2 min-h-[0px]"></div>
+                            </div>
                             <button id="pcEmployeeDocumentSubmitBtn" type="submit" class="mt-4 w-full h-10 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-black transition-colors disabled:cursor-not-allowed disabled:opacity-50">결재 대기 제출</button>
                         </form>
                         <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.7fr)] gap-4">

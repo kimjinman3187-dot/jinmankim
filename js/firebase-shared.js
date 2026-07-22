@@ -23,6 +23,13 @@ function initializeFirebase() {
     auth = firebase.auth();
     window.db = db;
     window.auth = auth;
+    // WORK29: 문서결재 첨부파일용 Storage. SDK 미로드 시에도 기존 기능은 유지.
+    if (typeof firebase.storage === 'function') {
+        window.storage = firebase.storage();
+    } else {
+        window.storage = null;
+        console.warn('⚠️ firebase-storage-compat 미로드 — 문서결재 첨부 업로드 비활성');
+    }
     console.log('✅ Firebase 초기화 완료 (전역 공유됨)');
 }
 

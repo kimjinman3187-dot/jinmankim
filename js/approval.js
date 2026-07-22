@@ -246,6 +246,10 @@
             docCell.className = 'px-3 py-3 align-top min-w-[220px]';
             appendText(docCell, 'div', requestTitle(request), 'font-black text-white text-[12px] leading-snug');
             appendText(docCell, 'div', displayValue(request, ['documentType', 'requestType'], '문서'), 'text-[10px] text-slate-500 font-bold mt-1');
+            const attCount = attachmentSlots(request).length;
+            if (attCount > 0) {
+                appendText(docCell, 'div', `첨부 ${attCount}개`, 'inline-flex items-center rounded border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 px-2 py-0.5 text-[9px] font-black mt-1');
+            }
             row.appendChild(docCell);
 
             const requesterCell = document.createElement('td');
@@ -273,6 +277,79 @@
             });
             dom.body.appendChild(row);
         });
+    }
+
+    const ATTACH_SLOTS = ['a0', 'a1', 'a2', 'a3', 'a4'];
+
+    function storageAvailable() {
+        return Boolean(window.storage && typeof window.storage.ref === 'function');
+    }
+
+    function formatBytes(bytes) {
+        const n = Number(bytes) || 0;
+        if (n < 1024) return `${n} B`;
+        if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+        return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    function attachmentSlots(request) {
+        const attachments = request && request.attachments;
+        if (!attachments || typeof attachments !== 'object') return [];
+        return ATTACH_SLOTS.filter(slot => attachments[slot] && typeof attachments[slot] === 'object');
+    }
+
+    async function downloadAttachment(storagePath, name) {
+        if (!storageAvailable() || !storagePath) {
+            setMessage('첨부파일을 불러올 수 없습니다.', 'error');
+            return;
+        }
+        try {
+            const url = await window.storage.ref(storagePath).getDownloadURL();
+            const a = document.createElement('a');
+            a.href = url;
+            a.target = '_blank';
+            a.rel = 'noopener';
+            a.download = name || '';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        } catch (error) {
+            console.warn('Attachment download failed:', error);
+            setMessage('첨부파일을 불러오지 못했습니다. 권한 또는 파일 상태를 확인하세요.', 'error');
+        }
+    }
+
+    function renderAttachments(parent, request) {
+        const slots = attachmentSlots(request);
+        if (!slots.length) return;
+        const attachments = request.attachments;
+        const box = document.createElement('div');
+        box.className = 'mt-3 rounded-lg border border-[#334155] bg-[#111827] p-3';
+        appendText(box, 'p', `첨부파일 (${slots.length})`, 'text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2');
+        slots.forEach(slot => {
+            const meta = attachments[slot];
+            const row = document.createElement('div');
+            row.className = 'flex items-center justify-between gap-2 py-1 border-b border-[#334155]/40 last:border-b-0';
+            const info = document.createElement('div');
+            info.className = 'min-w-0';
+            const nameEl = document.createElement('p');
+            nameEl.className = 'truncate text-[11px] font-bold text-slate-200';
+            nameEl.textContent = meta.name || '(이름 없음)';
+            const metaEl = document.createElement('p');
+            metaEl.className = 'text-[10px] font-bold text-slate-500';
+            metaEl.textContent = `${formatBytes(meta.size)} · ${meta.contentType || '-'}`;
+            info.appendChild(nameEl);
+            info.appendChild(metaEl);
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'shrink-0 h-7 px-3 rounded-md bg-slate-700 hover:bg-slate-600 text-white text-[10px] font-black transition-colors';
+            btn.textContent = '다운로드';
+            btn.addEventListener('click', () => downloadAttachment(meta.storagePath, meta.name));
+            row.appendChild(info);
+            row.appendChild(btn);
+            box.appendChild(row);
+        });
+        parent.appendChild(box);
     }
 
     function renderPayload(parent, request) {
@@ -333,6 +410,7 @@
         renderStatusBadge(statusLine, request.status);
         dom.detail.appendChild(statusLine);
         renderPayload(dom.detail, request);
+        renderAttachments(dom.detail, request);
 
         const description = displayValue(request, ['description'], '');
         if (description && description !== '-') {
