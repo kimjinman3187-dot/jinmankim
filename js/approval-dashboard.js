@@ -1,10 +1,15 @@
 /*
- * WORK31-DOCUMENT-APPROVAL-DASHBOARD-IMPLEMENTATION-01
+ * WORK31-DOCUMENT-APPROVAL-DASHBOARD-IMPLEMENTATION-01 (+ REVIEW-FIX-01)
  * 독립 PC 문서결재 "조회 전용" 대시보드 로직.
  * - 기존 결재 계약을 그대로 재사용(document_approval_requests + history).
  * - 읽기 전용: 승인/반려/보류/수정 등 어떠한 쓰기(Write)도 수행하지 않는다.
  * - Firestore 쓰기 API / Storage API / 신규 컬렉션 / 신규 Rules·index 사용 없음.
  * - 권한은 현행 Security Rules의 read 제한을 그대로 따른다(클라이언트 표시 제어를 신뢰하지 않음).
+ *
+ * REVIEW-FIX-01 보정:
+ * D1 로딩 종료 후 페이지 버튼 재렌더 / D2 PAGE_SIZE+1 로 hasNext 정확 판정 /
+ * D3 목록·요약 request sequence 로 최신 응답만 반영 / D4 상세 이력 seq+선택ID 검증·인쇄 정합 /
+ * D5 페이지 이동·새로고침 후 선택 상세 정합 / D6 기간 종료 endExclusive(<) / D7 요약 CAP+1 정확 표기.
  */
 (function installApprovalDashboard() {
     'use strict';
@@ -22,7 +27,6 @@
         applied: '적용 완료',
         cancelled: '취소'
     };
-    var STATUS_ORDER = ['draft', 'pending', 'approved', 'rejected', 'on_hold', 'applied', 'cancelled'];
     var REQUEST_TYPE_LABELS = { document: '문서', test_document: '테스트 문서' };
     var ATTACH_SLOTS = ['a0', 'a1', 'a2', 'a3', 'a4'];
 
@@ -33,10 +37,17 @@
         startCursors: [],   // startCursors[i] = startAfter 커서(스냅샷) for 페이지 i (i=0 은 커서 없음)
         pageIndex: 0,
         hasNext: false,
-        rows: [],           // 현재 페이지에서 서버로 불러온 원본 문서
+        rows: [],           // 현재 페이지에서 서버로 불러온 원본 문서(최대 PAGE_SIZE)
         selectedId: '',
         loading: false,
-        lastQueryAt: null
+        lastQueryAt: null,
+        // 비동기 경합 방지용 최신 요청 식별자 (D3/D4)
+        listSeq: 0,
+        summarySeq: 0,
+        historySeq: 0,
+        // 인쇄 정합용 이력 캐시 (D4)
+        _lastHistory: null,
+        _historyForId: ''
     };
 
     var dom = {};
@@ -88,7 +99,6 @@
         return 'DA-' + ymd(d) + '-' + idPart;
     }
     function statusLabel(s) { return STATUS_LABELS[s] || s || '-'; }
-    function typeLabel(t) { return REQUEST_TYPE_LABELS[t] || t || '-'; }
     function fmtBytes(n) {
         n = Number(n) || 0;
         if (n < 1024) return n + ' B';
@@ -98,33 +108,39 @@
 
     function ts(dateObj) { return firebase.firestore.Timestamp.fromDate(dateObj); }
 
-    // ---------- 기간 → createdAt 범위 ----------
+    // ---------- 기간 → createdAt 범위 (D6: endExclusive 반환, Firestore 는 '<' 사용) ----------
     function periodRange() {
         var f = state.filters;
         var now = new Date();
-        if (f.period === '7d') { var s = new Date(now); s.setDate(s.getDate() - 7); return { start: s, end: null }; }
-        if (f.period === 'lastMonth') {
-            return { start: new Date(now.getFullYear(), now.getMonth() - 1, 1), end: new Date(now.getFullYear(), now.getMonth(), 1) };
+        if (f.period === '7d') {
+            return { start: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000), endExclusive: null, invalid: false };
         }
-        if (f.period === 'thisYear') { return { start: new Date(now.getFullYear(), 0, 1), end: null }; }
-        if (f.period === 'custom') {
+        if (f.period === 'lastMonth') {
             return {
-                start: f.start ? new Date(f.start + 'T00:00:00') : null,
-                end: f.end ? new Date(f.end + 'T23:59:59') : null
+                start: new Date(now.getFullYear(), now.getMonth() - 1, 1),
+                endExclusive: new Date(now.getFullYear(), now.getMonth(), 1), // 이번 달 1일 00:00 (exclusive)
+                invalid: false
             };
         }
-        return { start: null, end: null }; // 전체
+        if (f.period === 'thisYear') {
+            return { start: new Date(now.getFullYear(), 0, 1), endExclusive: null, invalid: false };
+        }
+        if (f.period === 'custom') {
+            var s = f.start ? new Date(f.start + 'T00:00:00') : null;
+            var e = null;
+            if (f.end) { e = new Date(f.end + 'T00:00:00'); e.setDate(e.getDate() + 1); } // 종료일 다음 날 00:00 (exclusive)
+            var invalid = !!(f.start && f.end && f.start > f.end); // YYYY-MM-DD 문자열 비교
+            return { start: s, endExclusive: e, invalid: invalid };
+        }
+        return { start: null, endExclusive: null, invalid: false };
     }
 
     // ---------- Firestore 쿼리 (읽기 전용) ----------
-    // 인덱스 안전: 관리자=status(선택시)+createdAt / 직원=requesterUid+createdAt.
-    // 직원 상태 필터는 신규 복합 index 없이 클라이언트에서 처리한다.
-    function baseListQuery() {
+    function baseListQuery(range) {
         var q = window.db.collection(COLLECTION);
         if (!state.isAdmin) q = q.where('requesterUid', '==', state.user.uid);
-        var r = periodRange();
-        if (r.start) q = q.where('createdAt', '>=', ts(r.start));
-        if (r.end) q = q.where('createdAt', '<=', ts(r.end));
+        if (range.start) q = q.where('createdAt', '>=', ts(range.start));
+        if (range.endExclusive) q = q.where('createdAt', '<', ts(range.endExclusive));
         if (state.isAdmin && state.filters.status !== 'all') q = q.where('status', '==', state.filters.status);
         return q.orderBy('createdAt', 'desc');
     }
@@ -148,58 +164,76 @@
         state.startCursors = [];
         state.pageIndex = 0;
         state.hasNext = false;
-        state.selectedId = '';
-        renderDetail(null);
+        clearSelection();
         loadSummary();
         loadList();
     }
 
+    // 목록: PAGE_SIZE+1 조회로 다음 페이지 존재를 정확히 판정하고(D2),
+    // request sequence 로 최신 응답만 반영하며(D3), 종료 후 페이지 버튼을 다시 렌더한다(D1).
     async function loadList() {
-        if (!state.user || state.loading) return;
+        if (!state.user) return;
+        var range = periodRange();
+        if (range.invalid) {
+            state.rows = []; state.hasNext = false;
+            tableMessage('시작일이 종료일보다 늦습니다. 기간을 다시 선택하세요.');
+            renderPageInfo();
+            return;
+        }
+        var seq = ++state.listSeq;
         state.loading = true;
+        renderPageInfo();
         tableMessage('불러오는 중...');
         try {
-            var q = baseListQuery().limit(PAGE_SIZE);
+            var q = baseListQuery(range).limit(PAGE_SIZE + 1);
             var cur = state.startCursors[state.pageIndex];
             if (cur) q = q.startAfter(cur);
             var snap = await q.get();
-            var docs = snap.docs.map(function (d) {
-                var obj = d.data(); obj.id = d.id; obj._snap = d; return obj;
-            });
-            state.rows = docs;
-            if (docs.length === PAGE_SIZE) {
-                state.startCursors[state.pageIndex + 1] = docs[docs.length - 1]._snap;
-                state.hasNext = true;
-            } else {
-                state.hasNext = false;
+            if (seq !== state.listSeq) return; // 최신 요청만 반영
+            var docs = snap.docs.map(function (d) { var o = d.data(); o.id = d.id; o._snap = d; return o; });
+            state.hasNext = docs.length > PAGE_SIZE;         // 26번째 존재 시에만 다음 페이지 있음
+            state.rows = docs.slice(0, PAGE_SIZE);           // 화면/상태에는 앞 25건만
+            if (state.hasNext && state.rows.length) {
+                state.startCursors[state.pageIndex + 1] = state.rows[state.rows.length - 1]._snap;
             }
             state.lastQueryAt = new Date();
             renderTable();
-            renderPageInfo();
             updateLastQuery();
+            reconcileSelectionAfterList();                    // D5
         } catch (e) {
+            if (seq !== state.listSeq) return;
+            state.hasNext = false;
             handleQueryError(e);
         } finally {
-            state.loading = false;
+            if (seq === state.listSeq) {                       // 최신 요청만 로딩/버튼 상태 복구 (D1)
+                state.loading = false;
+                renderPageInfo();
+            }
         }
     }
 
     async function loadSummary() {
-        // 기간 + 역할 범위 기준(최대 SUMMARY_CAP건) 상태별 집계. 상태/유형/검색 필터는 반영하지 않음.
+        // 기간 + 역할 범위 기준 상태별 집계. 상태/유형/검색 필터는 반영하지 않음.
+        var range = periodRange();
+        if (range.invalid) { renderSummary(null, false, { code: 'range' }); return; }
+        var seq = ++state.summarySeq;
         try {
             var q = window.db.collection(COLLECTION);
             if (!state.isAdmin) q = q.where('requesterUid', '==', state.user.uid);
-            var r = periodRange();
-            if (r.start) q = q.where('createdAt', '>=', ts(r.start));
-            if (r.end) q = q.where('createdAt', '<=', ts(r.end));
-            var snap = await q.orderBy('createdAt', 'desc').limit(SUMMARY_CAP).get();
-            var counts = { total: snap.size, pending: 0, on_hold: 0, approved: 0, rejected: 0 };
-            snap.forEach(function (d) {
+            if (range.start) q = q.where('createdAt', '>=', ts(range.start));
+            if (range.endExclusive) q = q.where('createdAt', '<', ts(range.endExclusive));
+            var snap = await q.orderBy('createdAt', 'desc').limit(SUMMARY_CAP + 1).get(); // D7: CAP+1
+            if (seq !== state.summarySeq) return;
+            var over = snap.size > SUMMARY_CAP;                // 501번째 존재 시에만 초과
+            var docs = snap.docs.slice(0, SUMMARY_CAP);
+            var counts = { total: docs.length, pending: 0, on_hold: 0, approved: 0, rejected: 0 };
+            docs.forEach(function (d) {
                 var s = (d.data() || {}).status;
                 if (counts[s] != null) counts[s]++;
             });
-            renderSummary(counts, snap.size >= SUMMARY_CAP, null);
+            renderSummary(counts, over, null);
         } catch (e) {
+            if (seq !== state.summarySeq) return;
             renderSummary(null, false, e);
         }
     }
@@ -227,32 +261,33 @@
         }
     }
 
-    function renderSummary(counts, capped, error) {
+    function renderSummary(counts, over, error) {
         if (!dom.summary) return;
         clearNode(dom.summary);
         if (error) {
             var code = (error && error.code) || '';
-            dom.summary.appendChild(el('div', 'dash-summary-err',
-                code === 'permission-denied' ? '요약 조회 권한이 없습니다.' : '요약 집계를 불러오지 못했습니다.'));
-            console.warn('[approval-dashboard] summary error:', error);
+            var m = code === 'permission-denied' ? '요약 조회 권한이 없습니다.'
+                : code === 'range' ? '기간 범위가 올바르지 않습니다.'
+                    : '요약 집계를 불러오지 못했습니다.';
+            dom.summary.appendChild(el('div', 'dash-summary-err', m));
+            if (code !== 'range' && code !== 'permission-denied') console.warn('[approval-dashboard] summary error:', error);
             return;
         }
         var tiles = [
-            ['전체', counts.total], ['대기', counts.pending], ['보류', counts.on_hold],
-            ['승인', counts.approved], ['반려', counts.rejected]
+            ['전체', counts.total, over], ['대기', counts.pending, false], ['보류', counts.on_hold, false],
+            ['승인', counts.approved, false], ['반려', counts.rejected, false]
         ];
         tiles.forEach(function (t) {
             var tile = el('div', 'dash-tile');
             tile.appendChild(el('div', 'dash-tile-label', t[0]));
-            tile.appendChild(el('div', 'dash-tile-value', String(t[1]) + (capped && t[0] === '전체' ? '+' : '')));
+            tile.appendChild(el('div', 'dash-tile-value', String(t[1]) + (t[2] ? '+' : '')));
             dom.summary.appendChild(tile);
         });
-        if (capped) dom.summary.appendChild(el('div', 'dash-summary-cap', '기간 기준 최대 ' + SUMMARY_CAP + '건까지 집계'));
+        if (over) dom.summary.appendChild(el('div', 'dash-summary-cap', '기간 기준 ' + SUMMARY_CAP + '건 초과(정확 집계는 상한까지만 표시)'));
     }
 
     function statusBadge(parent, status) {
-        var span = el('span', 'dash-badge dash-badge-' + (status || 'unknown'), statusLabel(status));
-        parent.appendChild(span);
+        parent.appendChild(el('span', 'dash-badge dash-badge-' + (status || 'unknown'), statusLabel(status)));
     }
 
     function tableMessage(msg) {
@@ -273,7 +308,7 @@
         if (!visible.length) {
             tableMessage(state.rows.length ? '현재 페이지에 필터 조건과 일치하는 요청이 없습니다.' : '표시할 문서결재 요청이 없습니다.');
             if (dom.listNote && state.rows.length) {
-                dom.listNote.textContent = '현재 페이지 ' + state.rows.length + '건 중 0건 표시 (필터는 현재 페이지 기준).';
+                dom.listNote.textContent = '현재 페이지 ' + state.rows.length + '건 중 0건 표시 (상태/유형/검색은 현재 페이지 기준).';
             }
             return;
         }
@@ -297,8 +332,8 @@
 
     function renderPageInfo() {
         if (dom.pageInfo) dom.pageInfo.textContent = '페이지 ' + (state.pageIndex + 1);
-        if (dom.prevBtn) dom.prevBtn.disabled = state.pageIndex === 0 || state.loading;
-        if (dom.nextBtn) dom.nextBtn.disabled = !state.hasNext || state.loading;
+        if (dom.prevBtn) dom.prevBtn.disabled = state.loading || state.pageIndex === 0;
+        if (dom.nextBtn) dom.nextBtn.disabled = state.loading || !state.hasNext;
     }
 
     function updateLastQuery() {
@@ -346,9 +381,8 @@
         clearNode(container);
         container.appendChild(el('p', 'dash-detail-title', req.title || '제목 없음'));
         container.appendChild(el('p', 'dash-detail-sub', docNumber(req)));
-        var meta = el('p', 'dash-detail-meta',
-            (req.requesterName || req.requesterUid || '-') + ' · ' + (req.requesterRole || '-') + ' · 요청 ' + fmtDateTime(req.submittedAt || req.createdAt));
-        container.appendChild(meta);
+        container.appendChild(el('p', 'dash-detail-meta',
+            (req.requesterName || req.requesterUid || '-') + ' · ' + (req.requesterRole || '-') + ' · 요청 ' + fmtDateTime(req.submittedAt || req.createdAt)));
         var stLine = el('div', 'dash-detail-status'); statusBadge(stLine, req.status); container.appendChild(stLine);
 
         var desc = box('상세 내용');
@@ -364,7 +398,6 @@
 
         renderResult(container, req);
 
-        // 이력
         var hb = box('결재 이력');
         if (historyError) {
             hb.appendChild(el('p', 'dash-box-text',
@@ -386,52 +419,88 @@
         container.appendChild(hb);
     }
 
+    // renderDetail 은 화면만 그린다. 이력 캐시/인쇄 버튼 상태는 openDetail 이 관리.
     function renderDetail(req, historyDocs, historyError) {
         if (!dom.detail) return;
-        if (historyDocs) state._lastHistory = historyDocs; // 인쇄용 이력 보관
         if (!req) {
-            state._lastHistory = null;
             clearNode(dom.detail);
             dom.detail.appendChild(el('p', 'dash-hint', '목록에서 요청을 선택하면 상세와 결재 이력을 표시합니다.'));
             if (dom.printBtn) dom.printBtn.disabled = true;
             return;
         }
         buildDetailInto(dom.detail, req, historyDocs, historyError);
-        if (dom.printBtn) dom.printBtn.disabled = false;
     }
 
+    function clearSelection() {
+        state.selectedId = '';
+        state._lastHistory = null;
+        state._historyForId = '';
+        renderDetail(null);
+    }
+
+    // 페이지 이동/새로고침 후 선택 상세 정합성 (D5)
+    function reconcileSelectionAfterList() {
+        if (!state.selectedId) return;
+        var still = state.rows.find(function (r) { return r.id === state.selectedId; });
+        if (!still) { clearSelection(); return; }
+        openDetail(state.selectedId); // 최신 row + history 로 상세 갱신
+    }
+
+    // 상세 + 이력. 이력은 seq + 선택ID 로 최신·정합만 반영 (D4).
     async function openDetail(id) {
         var req = state.rows.find(function (r) { return r.id === id; });
         if (!req) return;
         state.selectedId = id;
-        renderTable();
-        renderDetail(req, null, null); // 로딩 표시
+        state._lastHistory = null;        // 이전 문서 이력 즉시 폐기 (D4)
+        state._historyForId = '';
+        var seq = ++state.historySeq;
+        renderTable();                    // 선택 하이라이트
+        renderDetail(req, null, null);    // 이력 로딩 표시
+        if (dom.printBtn) dom.printBtn.disabled = true; // 이력 로딩 중 인쇄 OFF
         try {
             var snap = await window.db.collection(COLLECTION).doc(id).collection('history').orderBy('createdAt', 'asc').get();
+            if (seq !== state.historySeq || state.selectedId !== id) return; // 늦은 응답/선택 변경 무시
             var hist = snap.docs.map(function (d) { var o = d.data(); o.id = d.id; return o; });
+            state._lastHistory = hist;
+            state._historyForId = id;
             renderDetail(req, hist, null);
+            if (dom.printBtn) dom.printBtn.disabled = false;
         } catch (e) {
+            if (seq !== state.historySeq || state.selectedId !== id) return;
             console.warn('[approval-dashboard] history error:', e);
+            state._lastHistory = null;
+            state._historyForId = '';
             renderDetail(req, null, e);
+            if (dom.printBtn) dom.printBtn.disabled = false; // 오류도 인쇄 허용(오류 포함), 이전 이력 재사용 안 함
         }
     }
 
     function doPrint() {
-        var req = state.rows.find(function (r) { return r.id === state.selectedId; });
-        if (!req || !dom.printArea) return;
-        // 인쇄 영역에 현재 상세(+이력)를 복제 렌더 후 인쇄.
+        var id = state.selectedId;
+        var req = state.rows.find(function (r) { return r.id === id; });
+        if (!id || !req || !dom.printArea) return;
+        // 저장된 이력이 현재 선택 문서 것일 때만 사용 (D4). 아니면 이력 미포함으로 인쇄.
+        var hist = (state._historyForId === id) ? state._lastHistory : null;
+        var histErr = (state._historyForId === id) ? null : { code: 'stale' };
         clearNode(dom.printArea);
-        var header = el('div', 'dash-print-head', '용진FLOW 문서결재');
-        dom.printArea.appendChild(header);
+        dom.printArea.appendChild(el('div', 'dash-print-head', '용진FLOW 문서결재'));
         var body = el('div');
-        // 상세를 다시 그리되, 이력은 현재 dom.detail 에 이미 로드된 내용을 재조회.
-        buildDetailInto(body, req, state._lastHistory || null, null);
+        buildDetailInto(body, req, hist, hist ? null : histErr);
         dom.printArea.appendChild(body);
         window.print();
     }
 
     // ---------- 인증/부트스트랩 ----------
+    function resetDashboardState() {
+        state.user = null; state.isAdmin = false;
+        state.rows = []; state.startCursors = []; state.pageIndex = 0; state.hasNext = false;
+        state.selectedId = ''; state._lastHistory = null; state._historyForId = '';
+        state.lastQueryAt = null; state.loading = false;
+        state.listSeq++; state.summarySeq++; state.historySeq++; // 진행 중 응답 무효화
+    }
+
     function showAuthState(msg) {
+        resetDashboardState(); // 숨겨진 이전 데이터가 재인증/reload 시 재사용되지 않게 초기화 (H2.8)
         if (dom.authState) { dom.authState.textContent = msg; dom.authState.style.display = 'block'; }
         if (dom.body) dom.body.style.display = 'none';
     }
@@ -455,7 +524,10 @@
         });
         if (dom.filterType) dom.filterType.addEventListener('change', function () { state.filters.requestType = dom.filterType.value; renderTable(); });
         if (dom.search) dom.search.addEventListener('input', function () { state.filters.search = dom.search.value; renderTable(); });
-        if (dom.refreshBtn) dom.refreshBtn.addEventListener('click', function () { loadSummary(); loadList(); });
+        if (dom.refreshBtn) dom.refreshBtn.addEventListener('click', function () {
+            // 현재 페이지·선택 유지하고 최신값으로 갱신 (선택 정합은 reconcile 이 처리)
+            loadSummary(); loadList();
+        });
         if (dom.prevBtn) dom.prevBtn.addEventListener('click', function () { if (state.pageIndex > 0 && !state.loading) { state.pageIndex--; loadList(); } });
         if (dom.nextBtn) dom.nextBtn.addEventListener('click', function () { if (state.hasNext && !state.loading) { state.pageIndex++; loadList(); } });
         if (dom.printBtn) dom.printBtn.addEventListener('click', doPrint);
@@ -491,7 +563,6 @@
                 state.user = { uid: u.uid, name: d.name || '', role: d.role || '' };
                 state.isAdmin = (d.role === 'admin');
                 renderUserInfo();
-                // 직원은 상태 서버필터 미사용 안내(옵션 유지, 클라이언트 필터)
                 showDashboard();
                 resetAndLoad();
             } catch (e) {
@@ -508,5 +579,8 @@
     }
 
     // 디버깅/테스트용 최소 노출 (쓰기 API 없음)
-    window.YJApprovalDashboard = { reload: function () { loadSummary(); loadList(); } };
+    window.YJApprovalDashboard = {
+        reload: function () { loadSummary(); loadList(); },
+        __test: { periodRange: periodRange, computeHasNext: function (fetched) { return fetched > PAGE_SIZE; }, PAGE_SIZE: PAGE_SIZE, SUMMARY_CAP: SUMMARY_CAP }
+    };
 })();
