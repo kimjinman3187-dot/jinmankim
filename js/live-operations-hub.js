@@ -352,12 +352,31 @@
         renderDocCardRecent();
     }
 
+    // 최근 조회(승인·반려·최근 요청) 결과만 초기화. 대기·보류는 별도 활성 조회 소관.
+    function resetAdminRecentData() {
+        const c = state.docCard;
+        c.approved7 = 0;
+        c.rejected7 = 0;
+        c.recent = [];
+        c.adminRecentPartial = false;
+    }
+
     // 관리자 전용 단발 bounded 조회 1회 (실시간 Listener 아님, 신규 index 불필요)
     function fetchAdminRecentOnce() {
         const c = state.docCard;
         if (!isAdmin()) return;                 // 관리자 권한 확인 후에만 조회
-        if (c.inflight) return;                 // 진행 중이면 중복 실행 금지
-        if (!window.db || typeof window.db.collection !== 'function') return;
+        if (c.inflight) return;                 // 진행 중이면 상태 유지 (중복 실행 금지)
+        if (!window.db || typeof window.db.collection !== 'function') {
+            // Firestore 미준비: 조용히 반환하지 않고 카드 내부 오류로 종료 (무한 로딩 방지)
+            resetAdminRecentData();
+            c.status = 'error';
+            renderDocCard();
+            return;                             // Firestore 호출 0건
+        }
+        // 재조회 시작: 이전 최근 조회 결과를 먼저 제거하고 로딩 상태를 명확히 표시
+        resetAdminRecentData();
+        c.status = 'loading';
+        renderDocCard();
         const seq = ++c.seq;
         c.inflight = true;
         window.db.collection(DOC_CARD.COLLECTION)
@@ -383,6 +402,8 @@
             })
             .catch(error => {
                 if (seq !== c.seq) return;
+                // 실패한 조회의 과거 결과를 재사용하지 않는다 (대기·보류는 활성 조회 소관이라 유지)
+                resetAdminRecentData();
                 c.status = (error && error.code === 'permission-denied') ? 'denied' : 'error';
                 console.warn('[live-hub] document approval card query failed:', error);
                 renderDocCard();   // 오류는 카드 내부에서만 처리 (LIVE 전체 렌더 중단 없음)
@@ -391,16 +412,19 @@
     }
 
     // 관리자: approval.js 기존 결과 재사용(대기·보류) + 단발 조회로 7일 지표·최신 5건
-    function feedAdminDocCard() {
+    // activeAuthoritative=false(=`all` 등 다른 필터)면 대기·보류·150건 상한을 덮어쓰지 않는다.
+    // `all` 결과는 상태 무관 최신 150건이라, 그중 활성 건만 세면 누적 활성 요청을 과소 집계한다.
+    function feedAdminDocCard(activeAuthoritative) {
         const c = state.docCard;
         if (!isAdmin()) return;
         c.role = 'admin';
         c.employeeCapped = false;
-        const active = state.documentApprovals;
-        c.pending = active.filter(request => request?.status === 'pending').length;
-        c.onHold = active.filter(request => request?.status === 'on_hold').length;
-        c.adminActiveCapped = active.length >= DOC_CARD.ADMIN_ACTIVE_LIMIT;
-        if (c.status === 'idle') c.status = 'loading';
+        if (activeAuthoritative) {
+            const active = state.documentApprovals;
+            c.pending = active.filter(request => request?.status === 'pending').length;
+            c.onHold = active.filter(request => request?.status === 'on_hold').length;
+            c.adminActiveCapped = active.length >= DOC_CARD.ADMIN_ACTIVE_LIMIT;
+        }
         renderDocCard();
         fetchAdminRecentOnce();
     }
@@ -470,7 +494,8 @@
             ? nextRequests.filter(request => request?.status === 'pending' || request?.status === 'on_hold')
             : nextRequests;
         renderDocumentApprovals();
-        feedAdminDocCard(); // WORK32: 기존 관리자 결과 재사용 + 단발 조회 1회
+        // WORK32: 카드의 대기·보류·상한은 `active` 결과일 때만 갱신 (기존 hub 동작은 그대로)
+        feedAdminDocCard(filter === 'active');
     }
 
     // WORK32: 직원 경로 — 기존 본인 요청 조회 결과만 전달받아 계산(신규 Firestore 쿼리 0건)
@@ -484,6 +509,10 @@
         c.adminRecentPartial = false;
         c.seq += 1;                                   // 진행 중 관리자 응답 무효화(역할 전환 대비)
         if (opts.error) {
+            // 조회 실패 시 이전 성공 데이터를 화면에 남기지 않는다 (마지막 조회 시각 표기가 없으므로)
+            c.pending = 0; c.onHold = 0; c.approved7 = 0; c.rejected7 = 0;
+            c.recent = [];
+            c.employeeCapped = false;
             c.status = (opts.code === 'permission-denied') ? 'denied' : 'error';
             renderDocCard();
             return;
