@@ -41,10 +41,11 @@
         selectedId: '',
         loading: false,
         lastQueryAt: null,
-        // 비동기 경합 방지용 최신 요청 식별자 (D3/D4)
+        // 비동기 경합 방지용 최신 요청 식별자 (D3/D4/R1/R2)
         listSeq: 0,
         summarySeq: 0,
         historySeq: 0,
+        authSeq: 0,
         // 인쇄 정합용 이력 캐시 (D4)
         _lastHistory: null,
         _historyForId: ''
@@ -173,14 +174,15 @@
     // request sequence 로 최신 응답만 반영하며(D3), 종료 후 페이지 버튼을 다시 렌더한다(D1).
     async function loadList() {
         if (!state.user) return;
+        var seq = ++state.listSeq; // R1: 새 호출 즉시 증가시켜 진행 중 이전 응답을 무효화
         var range = periodRange();
         if (range.invalid) {
-            state.rows = []; state.hasNext = false;
+            state.rows = []; state.hasNext = false; state.loading = false;
+            if (dom.lastQuery) dom.lastQuery.textContent = ''; // 오해 소지 있는 이전 조회 시각 제거
             tableMessage('시작일이 종료일보다 늦습니다. 기간을 다시 선택하세요.');
             renderPageInfo();
             return;
         }
-        var seq = ++state.listSeq;
         state.loading = true;
         renderPageInfo();
         tableMessage('불러오는 중...');
@@ -214,9 +216,9 @@
 
     async function loadSummary() {
         // 기간 + 역할 범위 기준 상태별 집계. 상태/유형/검색 필터는 반영하지 않음.
+        var seq = ++state.summarySeq; // R1: 새 호출 즉시 증가시켜 진행 중 이전 응답을 무효화
         var range = periodRange();
         if (range.invalid) { renderSummary(null, false, { code: 'range' }); return; }
-        var seq = ++state.summarySeq;
         try {
             var q = window.db.collection(COLLECTION);
             if (!state.isAdmin) q = q.where('requesterUid', '==', state.user.uid);
@@ -496,7 +498,19 @@
         state.rows = []; state.startCursors = []; state.pageIndex = 0; state.hasNext = false;
         state.selectedId = ''; state._lastHistory = null; state._historyForId = '';
         state.lastQueryAt = null; state.loading = false;
-        state.listSeq++; state.summarySeq++; state.historySeq++; // 진행 중 응답 무효화
+        state.listSeq++; state.summarySeq++; state.historySeq++; // 진행 중 list/summary/history 응답 무효화
+        // R3: 렌더된 이전 사용자 데이터도 함께 초기화(계정 전환 시 재노출 방지)
+        if (dom.userInfo) clearNode(dom.userInfo);
+        if (dom.scopeNote) dom.scopeNote.textContent = '';
+        if (dom.summary) clearNode(dom.summary);
+        if (dom.lastQuery) dom.lastQuery.textContent = '';
+        if (dom.listNote) dom.listNote.textContent = '';
+        if (dom.tbody) clearNode(dom.tbody);
+        if (dom.printArea) clearNode(dom.printArea);
+        if (dom.pageInfo) dom.pageInfo.textContent = '페이지 1';
+        if (dom.prevBtn) dom.prevBtn.disabled = true;
+        if (dom.nextBtn) dom.nextBtn.disabled = true;
+        renderDetail(null); // 상세 + 인쇄 버튼 초기화
     }
 
     function showAuthState(msg) {
@@ -551,12 +565,17 @@
         if (!window.auth || !window.db) { showAuthState('Firebase 연결이 준비되지 않았습니다.'); return; }
         showAuthState('로그인 확인 중...');
         window.auth.onAuthStateChanged(async function (u) {
+            var aseq = ++state.authSeq;        // R2: 인증 콜백마다 최신 토큰 증가
+            showAuthState('로그인 확인 중...');  // R3: 이전 사용자 상태·DOM 즉시 fail-closed 초기화 + 본문 숨김
             if (!u) {
+                if (aseq !== state.authSeq) return;
                 showAuthState('로그인이 필요합니다. 메인 앱에서 로그인한 뒤 이 대시보드에 접속하세요.');
                 return;
             }
             try {
                 var snap = await window.db.collection('users').doc(u.uid).get();
+                // R2: 최신 인증 콜백이고 현재 로그인 사용자가 여전히 u 일 때만 반영
+                if (aseq !== state.authSeq || !window.auth.currentUser || window.auth.currentUser.uid !== u.uid) return;
                 if (!snap.exists) { showAuthState('사용자 프로필을 찾을 수 없습니다. 관리자에게 문의하세요.'); return; }
                 var d = snap.data() || {};
                 if ((d.status || '') !== 'active') { showAuthState('비활성 계정입니다. 활성 승인 후 이용할 수 있습니다.'); return; }
@@ -566,6 +585,7 @@
                 showDashboard();
                 resetAndLoad();
             } catch (e) {
+                if (aseq !== state.authSeq || !window.auth.currentUser || window.auth.currentUser.uid !== u.uid) return;
                 console.warn('[approval-dashboard] profile error:', e);
                 showAuthState((e && e.code === 'permission-denied') ? '프로필 조회 권한이 없습니다.' : '프로필 조회 중 오류가 발생했습니다.');
             }
