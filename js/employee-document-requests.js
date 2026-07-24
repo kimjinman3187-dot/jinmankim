@@ -338,8 +338,12 @@
             renderRows();
             renderDetail(selected || null);
             setMessage(`본인 요청 ${state.requests.length}건을 표시합니다.`, 'success');
+            // WORK32: 기존 본인 요청 조회 결과를 LIVE 문서결재 카드로 전달 (신규 쿼리 없음)
+            window.YJLiveOperationsHub?.updateEmployeeDocumentApprovals?.(state.requests);
         } catch (error) {
             console.warn('Employee document requests load failed:', error);
+            // WORK32: 조회 실패를 LIVE 카드 내부 상태로만 전달
+            window.YJLiveOperationsHub?.updateEmployeeDocumentApprovals?.([], { error: true, code: error?.code });
             state.requests = [];
             tableMessage(error?.code === 'failed-precondition' ? '본인 요청 조회 index가 아직 준비되지 않았습니다.' : '본인 요청을 불러오지 못했습니다.');
             renderDetail(null);

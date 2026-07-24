@@ -61,7 +61,7 @@
             'filterPeriod', 'customRange', 'startDate', 'endDate',
             'filterStatus', 'filterType', 'search', 'refreshBtn', 'lastQuery',
             'tbody', 'listNote', 'pageInfo', 'prevBtn', 'nextBtn',
-            'detail', 'printArea', 'printBtn'
+            'detail', 'printArea', 'printBtn', 'backBtn'
         ].forEach(function (k) { dom[k] = $('dash_' + k); });
     }
 
@@ -545,6 +545,8 @@
         if (dom.prevBtn) dom.prevBtn.addEventListener('click', function () { if (state.pageIndex > 0 && !state.loading) { state.pageIndex--; loadList(); } });
         if (dom.nextBtn) dom.nextBtn.addEventListener('click', function () { if (state.hasNext && !state.loading) { state.pageIndex++; loadList(); } });
         if (dom.printBtn) dom.printBtn.addEventListener('click', doPrint);
+        // WORK32: 용진FLOW 복귀 (현재 창 이동, 동일 오리진 세션 재사용)
+        if (dom.backBtn) dom.backBtn.addEventListener('click', function () { window.location.href = 'index.html'; });
     }
 
     function init() {

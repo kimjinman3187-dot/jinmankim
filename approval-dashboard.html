@@ -21,6 +21,7 @@
             font-size: 13px; }
         a { color: var(--cyan); }
         .wrap { max-width: 1280px; margin: 0 auto; padding: 20px; }
+        .topbar { display: flex; justify-content: flex-start; margin-bottom: 12px; }
 
         header.top { display: flex; justify-content: space-between; align-items: center;
             gap: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
@@ -120,6 +121,8 @@
 </head>
 <body>
     <div class="wrap">
+        <!-- WORK32: 용진FLOW 복귀 (로그인 상태와 무관하게 항상 노출) -->
+        <div class="topbar"><button id="dash_backBtn" class="btn" type="button">← 용진FLOW로 돌아가기</button></div>
         <div id="dash_authState">로딩 중...</div>
 
         <div id="dash_body" style="display:none;">

@@ -853,6 +853,27 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- WORK32: LIVE 문서결재 현황 요약 카드 (PC 전용, 관리자/직원 공통 노출·데이터는 역할별 제한) -->
+                <section id="pcLiveDocApprovalCard" class="hidden mt-6 rounded-xl border border-[#334155] bg-[#1e293b] p-5 shadow-lg relative z-10">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="text-[10px] font-black uppercase tracking-wider text-slate-500">Document Approval</p>
+                            <h3 class="mt-1 text-sm font-black text-white">문서결재 현황</h3>
+                        </div>
+                        <span id="pcLiveDocScopeBadge" class="shrink-0 rounded-lg bg-cyan-500/10 px-2 py-1 text-[10px] font-black text-cyan-300">-</span>
+                    </div>
+                    <div class="mt-4 grid grid-cols-2 gap-2 text-center lg:grid-cols-4">
+                        <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[10px] font-bold text-slate-500">결재 대기</p><p id="pcLiveDocPending" class="mt-1 text-xl font-black text-amber-300">0</p></div>
+                        <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[10px] font-bold text-slate-500">보류</p><p id="pcLiveDocHold" class="mt-1 text-xl font-black text-cyan-300">0</p></div>
+                        <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[10px] font-bold text-slate-500">승인 · 최근 7일</p><p id="pcLiveDocApproved7" class="mt-1 text-xl font-black text-emerald-300">0</p></div>
+                        <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[10px] font-bold text-slate-500">반려 · 최근 7일</p><p id="pcLiveDocRejected7" class="mt-1 text-xl font-black text-rose-300">0</p></div>
+                    </div>
+                    <p id="pcLiveDocBasis" class="mt-3 text-[10px] font-bold leading-4 text-slate-500">대기·보류는 누적, 승인·반려는 최근 7일 기준입니다.</p>
+                    <p id="pcLiveDocState" class="mt-2 min-h-[16px] text-[11px] font-bold text-slate-400"></p>
+                    <ul id="pcLiveDocRecent" class="mt-3 min-h-[78px] space-y-2 text-[11px] font-bold text-slate-400"><li>조회 결과 대기 중</li></ul>
+                    <button id="pcLiveDocOpenBtn" type="button" class="mt-4 w-full rounded-lg border border-[#334155] bg-[#0f1522] px-3 py-2 text-xs font-black text-slate-200 transition-colors hover:border-blue-400 hover:text-white">상세 대시보드 열기</button>
+                </section>
             </div>
 
             <div id="pc-page-sales" class="pc-page hidden">
