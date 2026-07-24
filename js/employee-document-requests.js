@@ -55,6 +55,12 @@
         attachmentsOwnerUid: '',
         // WORK29-CORRECTION-02 R3: 첨부 유무와 무관한 계정 컨텍스트 추적
         contextUid: '',
+        // WORK29-CORRECTION-03 R3: 사용자 컨텍스트 세대. 유효 사용자 변경·로그아웃·비활성·
+        // Auth 불일치가 발생할 때마다 증가하며, 진행 중인 비동기 작업의 결과를 폐기하는 기준이 된다.
+        contextVersion: 0,
+        refreshSeq: 0,        // 각 조회 작업의 고유 토큰
+        loadingSeq: 0,        // 현재 loading 을 점유한 조회 토큰
+        loadingVersion: -1,   // 그 조회가 시작된 컨텍스트 세대
         authWatchBound: false
     };
 
@@ -392,13 +398,47 @@
     // WORK29-CORRECTION D5 / CORRECTION-02 R3:
     // Auth UID 변경 / 업무 사용자 UID 변경 / 로그아웃 / 비활성 전환 / Auth·업무 사용자 불일치 시
     // 첨부 유무와 관계없이 폼·파일·목록·상세를 초기화한다.
+    // WORK29-CORRECTION-03 R3: 컨텍스트 세대를 올려 진행 중인 비동기 작업의 결과를 무효화한다.
+    function invalidateContext() {
+        state.contextVersion += 1;
+        state.refreshSeq += 1;   // 진행 중이던 조회 토큰 무효화
+        // 오래된 조회의 finally 가 새 조회의 loading 을 건드리지 못하도록 점유를 해제한다.
+        state.loading = false;
+        state.loadingSeq = 0;
+        state.loadingVersion = -1;
+    }
+
+    // 제출·조회 시작 시점의 컨텍스트를 캡처한다.
+    function captureContext() {
+        return { uid: currentContextUid(), version: state.contextVersion };
+    }
+
+    // 사용자 변경으로 현재 화면에서 결과를 확정 표시할 수 없을 때의 공통 안내.
+    function contextChangedNotice(requestId) {
+        return `사용자가 변경되어 현재 화면에서 결과를 확정 표시하지 않습니다. 요청 ID(${requestId || '알 수 없음'}) 처리 상태를 관리자에게 확인하세요.`;
+    }
+
+    // 캡처 시점과 현재 컨텍스트가 동일한지 확인한다(비동기 완료 지점마다 호출).
+    function contextUnchanged(captured) {
+        return Boolean(captured)
+            && captured.version === state.contextVersion
+            && captured.uid !== ''
+            && captured.uid === currentContextUid();
+    }
+
     function enforceUserContext() {
         const uid = currentContextUid();
-        const changed = state.contextUid !== '' && uid !== state.contextUid;
+        const previous = state.contextUid;
         state.contextUid = uid;
-        if (changed) {
-            resetUserScopedState();
-            setMessage('사용자가 변경되어 이전 사용자의 입력과 조회 결과를 초기화했습니다.', 'error');
+        if (uid !== previous) {
+            // R3: 유효 사용자 식별자가 달라졌으면(빈 컨텍스트 → 사용자 포함) 항상 세대를 올려
+            // 진행 중인 비동기 작업의 결과를 폐기 대상으로 만든다.
+            invalidateContext();
+            if (previous !== '') {
+                // 이전 사용자가 있던 경우에만 화면 초기화와 안내를 수행한다.
+                resetUserScopedState();
+                setMessage('사용자가 변경되어 이전 사용자의 입력과 조회 결과를 초기화했습니다.', 'error');
+            }
             return Boolean(uid);
         }
         if (!uid) {
@@ -685,8 +725,10 @@
             setMessage('첨부 개수/용량 제한을 초과했습니다.', 'error');
             return;
         }
-        // WORK29-CORRECTION D5: 제출 시작 시점의 UID 를 캡처한다.
+        // WORK29-CORRECTION D5 / CORRECTION-03 R3-C:
+        // 제출 시작 시점의 UID 와 컨텍스트 세대를 함께 캡처한다(Auth UID 단독 비교로는 부족).
         const submitUid = ready.auth.uid;
+        const captured = captureContext();
         if (state.attachmentsOwnerUid && state.attachmentsOwnerUid !== submitUid) {
             clearAttachments();
             setMessage('사용자가 변경되어 선택한 첨부파일을 초기화했습니다. 다시 선택하세요.', 'error');
@@ -718,6 +760,12 @@
                 throw Object.assign(new Error(`attachment verification failed: ${verification.reason}`), { code: 'attachment-mismatch' });
             }
 
+            // R3-C: metadata 확인 중 사용자가 바뀌었으면 pending 전환을 실행하지 않는다.
+            // (draft 상태이므로 이후 정리 경로에서 안전하게 처리된다.)
+            if (!contextUnchanged(captured)) {
+                throw Object.assign(new Error('user context changed before transition'), { code: 'context-changed' });
+            }
+
             setAttachProgress('결재 제출 처리 중...');
             const historyRef = docRef.collection('history').doc();
             const transitionId = historyRef.id;
@@ -734,11 +782,11 @@
                 transaction.set(historyRef, buildSubmitHistoryPayload(requestId, transitionId, ready.user, ready.auth));
             });
 
-            // D5: 제출 완료 시점의 UID 가 시작 시점과 다르면 성공으로 처리하지 않는다.
-            if (authUser()?.uid !== submitUid) {
-                clearAttachments();
+            // D5 / R3-C: 완료 시점의 컨텍스트(UID + 활성 상태 + Auth 일치 + 세대)를 검사한다.
+            // 이미 pending 으로 전이된 요청은 사용자 변경을 이유로 삭제하지 않는다.
+            if (!contextUnchanged(captured)) {
                 setAttachProgress('');
-                setMessage(`제출 중 사용자가 변경됐습니다. 요청 ID(${requestId}) 처리 결과를 관리자에게 확인하세요.`, 'error');
+                setMessage(contextChangedNotice(requestId), 'error');
                 return;
             }
             dom.form.reset();
@@ -746,7 +794,9 @@
             // WORK29-CORRECTION-02 R4: 제출 결과 문구가 조회 결과 문구에 덮이지 않도록
             // refresh() 이후에 최종 표시하고, 조회 실패는 별도 문구로 구분한다.
             const listed = await refresh();
-            if (listed.ok) {
+            if (listed.reason === 'context-changed' || !contextUnchanged(captured)) {
+                setMessage(contextChangedNotice(requestId), 'error');
+            } else if (listed.ok) {
                 setMessage('첨부파일을 포함한 문서 결재 요청을 결재 대기로 제출했습니다.', 'success');
             } else {
                 setMessage(`제출 완료 · 목록 갱신 실패 — 요청 ID(${requestId})는 정상 접수됐습니다. 새로고침으로 다시 조회하세요.`, 'error');
@@ -754,16 +804,33 @@
         } catch (error) {
             console.warn('Employee document attachment submit failed:', error);
             setAttachProgress('업로드 실패 — 정리 중...', 'error');
+            // R3-C: 사용자가 바뀐 뒤에는 이전 사용자 문서를 파괴적으로 정리하지 않는다
+            // (현재 사용자 권한으로는 삭제가 불가능하며, 결과도 확정 표시할 수 없다).
+            if (!contextUnchanged(captured)) {
+                setAttachProgress('');
+                setMessage(contextChangedNotice(requestId), 'error');
+                return;
+            }
             // D3: 상태 재확인 기반 정리. 불확실하면 파괴적 삭제를 하지 않는다.
             const result = draftCreated ? await rollbackDraft(docRef, registeredPaths) : { outcome: 'cleaned' };
             if (result.outcome === 'submitted') {
                 // 업로드·전이는 실제로 완료됐고 응답만 유실된 경우 — 삭제하지 않는다.
+                // R3-C: 이 시점에도 컨텍스트가 같을 때만 성공 tone 으로 확정 표시한다.
+                if (!contextUnchanged(captured)) {
+                    setAttachProgress('');
+                    setMessage(contextChangedNotice(requestId), 'error');
+                    return;
+                }
                 dom.form.reset();
                 clearAttachments();
                 setAttachProgress('');
                 // 안내 문구는 refresh() 의 조회 메시지에 덮이지 않도록 조회 이후에 표시한다.
-                await refresh();
-                setMessage(`요청이 이미 결재 대기로 제출됐습니다. 요청 ID(${requestId}) 목록에서 상태를 확인하세요.`, 'success');
+                const listedAfterSubmit = await refresh();
+                if (listedAfterSubmit.reason === 'context-changed' || !contextUnchanged(captured)) {
+                    setMessage(contextChangedNotice(requestId), 'error');
+                } else {
+                    setMessage(`요청이 이미 결재 대기로 제출됐습니다. 요청 ID(${requestId}) 목록에서 상태를 확인하세요.`, 'success');
+                }
                 return;
             }
             if (result.outcome === 'cleanup-failed') {
@@ -812,12 +879,21 @@
                 await submitWithAttachments(ready, form);
             } else {
                 const ts = serverTimestamp();
+                // WORK29-CORRECTION-03 R3-B: 첨부 없는 제출도 시작 컨텍스트를 캡처한다.
+                const captured = captureContext();
                 // R4: 첨부 없는 제출도 생성된 문서 reference 를 받아 요청 ID 를 확보한다.
                 const createdRef = await window.db.collection(COLLECTION).add(buildCreatePayload(ready.user, ready.auth, ts, form.title, form.description));
                 const requestId = createdRef?.id || '';
+                // R3-B: 쓰기 완료 후 컨텍스트가 바뀌었으면 새 사용자 화면을 이전 작업 결과로 바꾸지 않는다.
+                if (!contextUnchanged(captured)) {
+                    setMessage(contextChangedNotice(requestId), 'error');
+                    return;
+                }
                 dom.form.reset();
                 const listed = await refresh();
-                if (listed.ok) {
+                if (listed.reason === 'context-changed' || !contextUnchanged(captured)) {
+                    setMessage(contextChangedNotice(requestId), 'error');
+                } else if (listed.ok) {
                     setMessage('문서 결재 요청을 결재 대기로 제출했습니다.', 'success');
                 } else {
                     setMessage(`제출 완료 · 목록 갱신 실패 — 요청 ID(${requestId})는 정상 접수됐습니다. 새로고침으로 다시 조회하세요.`, 'error');
@@ -838,7 +914,11 @@
     // 기존 호출자(새로고침 버튼 등)는 반환값을 사용하지 않아도 동작한다.
     async function refresh() {
         if (!cacheDom()) return { ok: false, count: 0, reason: 'dom' };
-        if (state.loading) return { ok: false, count: 0, reason: 'loading' };
+        // WORK29-CORRECTION-03 R3: 같은 컨텍스트의 조회만 중복으로 막는다.
+        // 사용자가 바뀐 뒤라면 이전 사용자의 조회가 진행 중이어도 새 조회를 시작한다.
+        if (state.loading && state.loadingVersion === state.contextVersion) {
+            return { ok: false, count: 0, reason: 'loading' };
+        }
         const ready = requireReady();
         if (!ready.ok) {
             state.requests = [];
@@ -847,7 +927,14 @@
             setMessage(ready.message, 'error');
             return { ok: false, count: 0, reason: 'not-ready' };
         }
+        // 조회 시작 컨텍스트와 고유 토큰을 캡처한다.
+        const captured = captureContext();
+        const token = ++state.refreshSeq;
         state.loading = true;
+        state.loadingSeq = token;
+        state.loadingVersion = captured.version;
+        // 이 조회의 결과·오류·finally 가 현재 화면 주인인지 판정한다.
+        const isCurrent = () => token === state.refreshSeq && contextUnchanged(captured);
         tableMessage('본인 문서 결재 요청을 불러오는 중입니다.');
         setMessage('조회 중...', 'info');
         try {
@@ -856,6 +943,10 @@
                 .orderBy(SORT_FIELD, 'desc')
                 .limit(LIMIT)
                 .get();
+            // R3: 사용자가 바뀐 뒤 도착한 오래된 응답은 state·DOM·LIVE 카드 어디에도 반영하지 않는다.
+            if (!isCurrent()) {
+                return { ok: false, count: 0, reason: 'context-changed' };
+            }
             state.requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             const selected = syncSelectionWithVisibleRows();
             renderRows();
@@ -866,6 +957,10 @@
             return { ok: true, count: state.requests.length, reason: '' };
         } catch (error) {
             console.warn('Employee document requests load failed:', error);
+            // R3: 오래된 조회의 오류도 새 사용자 화면·LIVE 카드를 덮지 않는다.
+            if (!isCurrent()) {
+                return { ok: false, count: 0, reason: 'context-changed' };
+            }
             // WORK32: 조회 실패를 LIVE 카드 내부 상태로만 전달
             window.YJLiveOperationsHub?.updateEmployeeDocumentApprovals?.([], { error: true, code: error?.code });
             state.requests = [];
@@ -874,7 +969,12 @@
             setMessage(error?.code === 'permission-denied' ? '본인 요청 조회 권한이 없습니다.' : '본인 요청을 불러오지 못했습니다.', 'error');
             return { ok: false, count: 0, reason: error?.code || 'error' };
         } finally {
-            state.loading = false;
+            // R3: 자신이 점유한 loading 만 해제한다(오래된 조회가 새 조회의 상태를 바꾸지 못하게).
+            if (state.loadingSeq === token) {
+                state.loading = false;
+                state.loadingSeq = 0;
+                state.loadingVersion = -1;
+            }
         }
     }
 
