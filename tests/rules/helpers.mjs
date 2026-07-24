@@ -64,7 +64,9 @@ export function attachmentEntry(requesterUid, requestId, slot, overrides = {}) {
 
 // A valid schemaVersion-2 draft request payload for the given requester.
 // `sv` = the imported firestore module (for serverTimestamp).
-export function draftRequest(sv, requesterUid, requestId, attachments) {
+// `overrides` 로 attachmentCount / attachmentsTotalSize 를 조작해 (정직하지 않은 클라이언트)
+// Rules 가 실제 항목 합계를 독립 검증하는지 테스트할 수 있다. (WORK29-CORRECTION D1)
+export function draftRequest(sv, requesterUid, requestId, attachments, overrides = {}) {
   const attMap = attachments || {
     a0: attachmentEntry(requesterUid, requestId, 'a0')
   };
@@ -95,8 +97,19 @@ export function draftRequest(sv, requesterUid, requestId, attachments) {
     lastTransitionId: null,
     attachments: attMap,
     attachmentCount: Object.keys(attMap).length,
-    attachmentsTotalSize: totalSize
+    attachmentsTotalSize: totalSize,
+    ...overrides
   };
+}
+
+// n개의 첨부 엔트리 맵 생성 (각 size 지정)
+export function attachmentMap(requesterUid, requestId, sizes) {
+  const map = {};
+  sizes.forEach((size, index) => {
+    const slot = `a${index}`;
+    map[slot] = attachmentEntry(requesterUid, requestId, slot, { size });
+  });
+  return map;
 }
 
 // A valid schemaVersion-1 pending (no-attachment) request payload.

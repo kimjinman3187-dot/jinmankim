@@ -1,9 +1,10 @@
 import { test, before, after, beforeEach, describe } from 'node:test';
+import assert from 'node:assert/strict';
 import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
 import * as fs from 'firebase/firestore';
 import {
   makeFirestoreEnv, seedUsers, seedRequest,
-  draftRequest, pendingV1Request, attachmentEntry, HISTORY_ID
+  draftRequest, pendingV1Request, attachmentEntry, attachmentMap, HISTORY_ID
 } from './helpers.mjs';
 
 let env;
@@ -111,6 +112,55 @@ describe('document_approval_requests create', () => {
     base.attachmentCount = 3; // 실제 1개
     await assertFails(fs.setDoc(reqRef(ctx, 'r1'), base));
   });
+
+  // ── WORK29-CORRECTION D1: attachmentsTotalSize 우회 차단 ──────────────
+  test('D1: 첨부 1개 + 합계 정확 → 허용', async () => {
+    const ctx = env.authenticatedContext('emp1');
+    const att = attachmentMap('emp1', 'r1', [4096]);
+    await assertSucceeds(fs.setDoc(reqRef(ctx, 'r1'), draftRequest(fs, 'emp1', 'r1', att)));
+  });
+
+  test('D1: 첨부 5개 + 합계 정확히 30MB → 허용', async () => {
+    const ctx = env.authenticatedContext('emp1');
+    const each = 6 * 1024 * 1024; // 5 × 6MB = 30MB (파일당 10MB 이하)
+    const att = attachmentMap('emp1', 'r1', [each, each, each, each, each]);
+    const payload = draftRequest(fs, 'emp1', 'r1', att);
+    assert.equal(payload.attachmentsTotalSize, 31457280);
+    await assertSucceeds(fs.setDoc(reqRef(ctx, 'r1'), payload));
+  });
+
+  test('D1: 실제 합계가 30MB를 초과하면 차단 (정직한 합계여도)', async () => {
+    const ctx = env.authenticatedContext('emp1');
+    const each = 6 * 1024 * 1024 + 1; // 5 × (6MB+1) > 30MB
+    const att = attachmentMap('emp1', 'r1', [each, each, each, each, each]);
+    await assertFails(fs.setDoc(reqRef(ctx, 'r1'), draftRequest(fs, 'emp1', 'r1', att)));
+  });
+
+  test('D1: attachmentsTotalSize 를 실제보다 작게 조작하면 차단 (30MB 우회 시도)', async () => {
+    const ctx = env.authenticatedContext('emp1');
+    const each = 10 * 1024 * 1024; // 5 × 10MB = 50MB 실제
+    const att = attachmentMap('emp1', 'r1', [each, each, each, each, each]);
+    // 합계를 1바이트로 위장 → 실제 합계 검증에서 차단돼야 한다
+    await assertFails(fs.setDoc(reqRef(ctx, 'r1'), draftRequest(fs, 'emp1', 'r1', att, { attachmentsTotalSize: 1 })));
+  });
+
+  test('D1: attachmentsTotalSize 를 실제보다 크게 조작해도 차단', async () => {
+    const ctx = env.authenticatedContext('emp1');
+    const att = attachmentMap('emp1', 'r1', [2048]);
+    await assertFails(fs.setDoc(reqRef(ctx, 'r1'), draftRequest(fs, 'emp1', 'r1', att, { attachmentsTotalSize: 4096 })));
+  });
+
+  test('D1: 첨부 이름이 빈 문자열이면 차단', async () => {
+    const ctx = env.authenticatedContext('emp1');
+    const att = { a0: attachmentEntry('emp1', 'r1', 'a0', { name: '' }) };
+    await assertFails(fs.setDoc(reqRef(ctx, 'r1'), draftRequest(fs, 'emp1', 'r1', att)));
+  });
+
+  test('D1: 첨부 contentType 이 빈 문자열이면 차단', async () => {
+    const ctx = env.authenticatedContext('emp1');
+    const att = { a0: attachmentEntry('emp1', 'r1', 'a0', { contentType: '' }) };
+    await assertFails(fs.setDoc(reqRef(ctx, 'r1'), draftRequest(fs, 'emp1', 'r1', att)));
+  });
 });
 
 describe('document_approval_requests read', () => {
@@ -137,6 +187,28 @@ describe('document_approval_requests read', () => {
 describe('draft → pending 제출 (요청자 트랜잭션)', () => {
   beforeEach(async () => {
     await seedRequest(env, 'r1', draftRequest(fs, 'emp1', 'r1'));
+  });
+
+  // 첨부 5개(최대치) 문서에서도 update 경로가 1000-expression 한도 안에서 평가되는지 확인.
+  test('D1: 첨부 5개 요청도 draft→pending 전이 허용 (update 경로 한도 회귀)', async () => {
+    const each = 6 * 1024 * 1024;
+    const att = attachmentMap('emp1', 'r5', [each, each, each, each, each]);
+    await seedRequest(env, 'r5', draftRequest(fs, 'emp1', 'r5', att));
+    const ctx = env.authenticatedContext('emp1');
+    const batch = fs.writeBatch(ctx.firestore());
+    batch.update(reqRef(ctx, 'r5'), {
+      status: 'pending',
+      submittedAt: fs.serverTimestamp(),
+      updatedAt: fs.serverTimestamp(),
+      lastTransitionId: HISTORY_ID
+    });
+    batch.set(histRef(ctx, 'r5', HISTORY_ID), {
+      requestId: 'r5', transitionId: HISTORY_ID, action: 'submitted',
+      previousStatus: 'draft', nextStatus: 'pending',
+      actorUid: 'emp1', actorName: '홍길동', actorRole: 'sales',
+      comment: '', createdAt: fs.serverTimestamp(), schemaVersion: 1
+    });
+    await assertSucceeds(batch.commit());
   });
 
   test('요청자는 draft→pending 전이 + submitted history 생성 허용', async () => {
@@ -190,7 +262,10 @@ describe('draft → pending 제출 (요청자 트랜잭션)', () => {
 describe('admin 결재 처리', () => {
   beforeEach(async () => {
     // 첨부 포함 pending 요청 (draft 에서 제출된 상태를 시뮬레이션)
-    const pending = draftRequest(fs, 'emp1', 'r1');
+    // 첨부 5개(최대치)로 seed 해 admin update 경로의 1000-expression 한도까지 함께 검증한다.
+    const each = 6 * 1024 * 1024;
+    const att = attachmentMap('emp1', 'r1', [each, each, each, each, each]);
+    const pending = draftRequest(fs, 'emp1', 'r1', att);
     pending.status = 'pending';
     pending.submittedAt = fs.serverTimestamp();
     pending.lastTransitionId = 'seed0000000000000001';

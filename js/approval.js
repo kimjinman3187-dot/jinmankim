@@ -298,25 +298,19 @@
         return ATTACH_SLOTS.filter(slot => attachments[slot] && typeof attachments[slot] === 'object');
     }
 
+    // WORK29-CORRECTION D4: 공용 다운로드 처리 사용 (새 탭 없음 · Blob 저장 · URL 미보관)
     async function downloadAttachment(storagePath, name) {
-        if (!storageAvailable() || !storagePath) {
-            setMessage('첨부파일을 불러올 수 없습니다.', 'error');
+        if (typeof window.yjDownloadAttachment !== 'function') {
+            setMessage('첨부 다운로드 기능이 준비되지 않았습니다.', 'error');
             return;
         }
-        try {
-            const url = await window.storage.ref(storagePath).getDownloadURL();
-            const a = document.createElement('a');
-            a.href = url;
-            a.target = '_blank';
-            a.rel = 'noopener';
-            a.download = name || '';
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-        } catch (error) {
-            console.warn('Attachment download failed:', error);
-            setMessage('첨부파일을 불러오지 못했습니다. 권한 또는 파일 상태를 확인하세요.', 'error');
+        setMessage('첨부파일을 내려받는 중입니다...', 'info');
+        const result = await window.yjDownloadAttachment(storagePath, name);
+        if (result.ok) {
+            setMessage(`첨부파일을 저장했습니다: ${name || ''}`.trim(), 'success');
+            return;
         }
+        setMessage(window.yjAttachmentDownloadMessage(result.code), 'error');
     }
 
     function renderAttachments(parent, request) {

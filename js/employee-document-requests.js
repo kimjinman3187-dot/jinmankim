@@ -50,7 +50,10 @@
         requests: [],
         selectedId: '',
         filter: 'all',
-        attachments: []
+        attachments: [],
+        // WORK29-CORRECTION D5: 선택한 로컬 파일의 소유 UID. 계정 전환 시 초기화 판단에 사용한다.
+        attachmentsOwnerUid: '',
+        authWatchBound: false
     };
 
     const dom = {};
@@ -313,6 +316,15 @@
     function addFiles(fileList) {
         const files = Array.from(fileList || []);
         if (!files.length) return;
+        // D5: 파일 선택은 현재 활성 사용자 본인만 가능하며, 선택 즉시 소유 UID 를 기록한다.
+        if (!enforceAttachmentOwner()) return;
+        const ready = requireReady();
+        if (!ready.ok) {
+            clearAttachments();
+            setMessage(ready.message, 'error');
+            return;
+        }
+        state.attachmentsOwnerUid = ready.auth.uid;
         let added = 0;
         for (const file of files) {
             if (state.attachments.length >= ATTACH_MAX_FILES) {
@@ -346,9 +358,32 @@
 
     function clearAttachments() {
         state.attachments = [];
+        state.attachmentsOwnerUid = '';
         if (dom.attachInput) dom.attachInput.value = '';
         renderAttachmentList();
         setAttachProgress('');
+    }
+
+    // WORK29-CORRECTION D5: 선택한 로컬 파일은 선택한 사용자에게만 속한다.
+    // Auth UID 변경 / 업무 사용자 UID 변경 / 로그아웃 / 비활성 전환 /
+    // Auth·업무 사용자 불일치 시 파일 선택·폼·진행 상태를 모두 초기화한다.
+    function enforceAttachmentOwner() {
+        if (!state.attachments.length) {
+            state.attachmentsOwnerUid = '';
+            return true;
+        }
+        const user = currentUser();
+        const auth = authUser();
+        const uid = auth?.uid || '';
+        const ownerValid = Boolean(uid)
+            && isActiveUser(user)
+            && hasMatchingAuth(user, auth)
+            && uid === state.attachmentsOwnerUid;
+        if (ownerValid) return true;
+        clearAttachments();
+        if (dom.form) dom.form.reset();
+        setMessage('사용자가 변경되어 선택한 첨부파일과 입력 내용을 초기화했습니다.', 'error');
+        return false;
     }
 
     function renderAttachmentList() {
@@ -423,25 +458,19 @@
         parent.appendChild(box);
     }
 
+    // WORK29-CORRECTION D4: 공용 다운로드 처리 사용 (새 탭 없음 · Blob 저장 · URL 미보관)
     async function downloadAttachment(storagePath, name) {
-        if (!storageAvailable() || !storagePath) {
-            setMessage('첨부파일을 불러올 수 없습니다.', 'error');
+        if (typeof window.yjDownloadAttachment !== 'function') {
+            setMessage('첨부 다운로드 기능이 준비되지 않았습니다.', 'error');
             return;
         }
-        try {
-            const url = await window.storage.ref(storagePath).getDownloadURL();
-            const a = document.createElement('a');
-            a.href = url;
-            a.target = '_blank';
-            a.rel = 'noopener';
-            a.download = name || '';
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-        } catch (error) {
-            console.warn('Attachment download failed:', error);
-            setMessage('첨부파일을 불러오지 못했습니다.', 'error');
+        setMessage('첨부파일을 내려받는 중입니다...', 'info');
+        const result = await window.yjDownloadAttachment(storagePath, name);
+        if (result.ok) {
+            setMessage(`첨부파일을 저장했습니다: ${name || ''}`.trim(), 'success');
+            return;
         }
+        setMessage(window.yjAttachmentDownloadMessage(result.code), 'error');
     }
 
     function validateForm() {
@@ -552,21 +581,50 @@
         };
     }
 
-    async function rollbackDraft(docRef, uploadedPaths) {
-        // 성공한 업로드 파일 정리 시도 (draft 단계에서만 삭제 허용)
-        for (const path of uploadedPaths) {
+    // WORK29-CORRECTION D3: 정리 결과를 단계별로 판정한다.
+    // 반환 outcome:
+    //   'submitted'      — 재조회 결과 이미 pending (응답만 유실). 파괴적 삭제를 하지 않는다.
+    //   'cleaned'        — 등록된 모든 Storage 객체 제거(또는 원래 없음) + draft 문서 삭제 완료.
+    //   'cleanup-failed' — Storage 객체가 남았거나 draft 삭제 실패. 성공으로 표시하지 않는다.
+    //   'unknown'        — 상태 확인 자체가 실패. 파괴적 삭제를 하지 않는다.
+    async function rollbackDraft(docRef, registeredPaths) {
+        // 1) 트랜잭션 결과가 불명확할 수 있으므로 현재 상태를 먼저 재확인한다.
+        let snap = null;
+        try {
+            snap = await docRef.get();
+        } catch (error) {
+            console.error('Rollback state check failed; requestId=', docRef.id, error);
+            return { outcome: 'unknown' };
+        }
+        if (!snap.exists) return { outcome: 'cleaned' }; // 이미 정리됨
+        const status = (snap.data() || {}).status;
+        if (status !== 'draft') {
+            // pending 등으로 이미 전이됨 = 제출이 실제로 완료된 경우. 삭제 금지.
+            return { outcome: status === 'pending' ? 'submitted' : 'unknown' };
+        }
+
+        // 2) uploadedPaths 만 신뢰하지 않고 요청에 등록된 모든 첨부 경로에 삭제를 시도한다.
+        //    (업로드 성공 후 응답만 유실된 경로도 정리 대상에 포함)
+        let allRemoved = true;
+        for (const path of registeredPaths) {
             try {
                 await window.storage.ref(path).delete();
             } catch (error) {
+                if (error?.code === 'storage/object-not-found') continue; // 이미 없음 = 정리 완료
+                allRemoved = false;
                 console.warn('Rollback storage delete failed:', path, error);
             }
         }
+        // 3) Storage 객체가 하나라도 남아 있으면 draft 문서를 삭제하지 않는다.
+        //    (문서를 먼저 지우면 사용자 권한으로 지울 수 없는 orphan 이 된다.)
+        if (!allRemoved) return { outcome: 'cleanup-failed' };
+
         try {
             await docRef.delete();
-            return true;
+            return { outcome: 'cleaned' };
         } catch (error) {
             console.error('Draft rollback delete failed; requestId=', docRef.id, error);
-            return false;
+            return { outcome: 'cleanup-failed' };
         }
     }
 
@@ -579,10 +637,18 @@
             setMessage('첨부 개수/용량 제한을 초과했습니다.', 'error');
             return;
         }
+        // WORK29-CORRECTION D5: 제출 시작 시점의 UID 를 캡처한다.
+        const submitUid = ready.auth.uid;
+        if (state.attachmentsOwnerUid && state.attachmentsOwnerUid !== submitUid) {
+            clearAttachments();
+            setMessage('사용자가 변경되어 선택한 첨부파일을 초기화했습니다. 다시 선택하세요.', 'error');
+            return;
+        }
         const docRef = window.db.collection(COLLECTION).doc();
         const requestId = docRef.id;
-        const meta = buildAttachmentMeta(ready.auth.uid, requestId);
-        const uploadedPaths = [];
+        const meta = buildAttachmentMeta(submitUid, requestId);
+        // 등록된 전체 첨부 경로 (업로드 응답 유실 대비 — 정리는 이 목록 전체를 대상으로 한다)
+        const registeredPaths = Object.values(meta.attachments).map(entry => entry.storagePath);
         let draftCreated = false;
         try {
             await docRef.set(buildDraftPayload(ready.user, ready.auth, form.title, form.description, meta));
@@ -593,7 +659,6 @@
                 const att = state.attachments[i];
                 setAttachProgress(`파일 업로드 중 ${i + 1}/${state.attachments.length} · ${att.name}`);
                 await window.storage.ref(meta.attachments[slot].storagePath).put(att.file, { contentType: att.contentType });
-                uploadedPaths.push(meta.attachments[slot].storagePath);
             }
 
             setAttachProgress('결재 제출 처리 중...');
@@ -612,6 +677,13 @@
                 transaction.set(historyRef, buildSubmitHistoryPayload(requestId, transitionId, ready.user, ready.auth));
             });
 
+            // D5: 제출 완료 시점의 UID 가 시작 시점과 다르면 성공으로 처리하지 않는다.
+            if (authUser()?.uid !== submitUid) {
+                clearAttachments();
+                setAttachProgress('');
+                setMessage(`제출 중 사용자가 변경됐습니다. 요청 ID(${requestId}) 처리 결과를 관리자에게 확인하세요.`, 'error');
+                return;
+            }
             dom.form.reset();
             clearAttachments();
             setMessage('첨부파일을 포함한 문서 결재 요청을 결재 대기로 제출했습니다.', 'success');
@@ -619,10 +691,22 @@
         } catch (error) {
             console.warn('Employee document attachment submit failed:', error);
             setAttachProgress('업로드 실패 — 정리 중...', 'error');
-            let cleaned = true;
-            if (draftCreated) cleaned = await rollbackDraft(docRef, uploadedPaths);
-            if (!cleaned) {
+            // D3: 상태 재확인 기반 정리. 불확실하면 파괴적 삭제를 하지 않는다.
+            const result = draftCreated ? await rollbackDraft(docRef, registeredPaths) : { outcome: 'cleaned' };
+            if (result.outcome === 'submitted') {
+                // 업로드·전이는 실제로 완료됐고 응답만 유실된 경우 — 삭제하지 않는다.
+                dom.form.reset();
+                clearAttachments();
+                setAttachProgress('');
+                // 안내 문구는 refresh() 의 조회 메시지에 덮이지 않도록 조회 이후에 표시한다.
+                await refresh();
+                setMessage(`요청이 이미 결재 대기로 제출됐습니다. 요청 ID(${requestId}) 목록에서 상태를 확인하세요.`, 'success');
+                return;
+            }
+            if (result.outcome === 'cleanup-failed') {
                 setMessage(`첨부 업로드에 실패했고 임시 요청 정리에도 실패했습니다. 관리자에게 요청 ID(${requestId})를 전달하세요.`, 'error');
+            } else if (result.outcome === 'unknown') {
+                setMessage(`첨부 업로드 처리 결과를 확인하지 못했습니다. 임의로 삭제하지 않았으니 관리자에게 요청 ID(${requestId})를 전달하세요.`, 'error');
             } else {
                 setMessage(error?.code === 'permission-denied' ? '첨부 업로드 권한이 없습니다.' : '첨부 업로드에 실패해 요청이 제출되지 않았습니다. 다시 시도하세요.', 'error');
             }
@@ -643,6 +727,8 @@
     async function submit(event) {
         event.preventDefault();
         if (state.submitting) return;
+        // D5: 제출 직전에도 첨부 소유자와 현재 사용자가 일치하는지 확인한다.
+        if (!enforceAttachmentOwner()) return;
         const ready = requireReady();
         if (!ready.ok) {
             setMessage(ready.message, 'error');
@@ -745,6 +831,14 @@
 
     function init() {
         if (!bindEvents()) return;
+        // D5: 계정 전환·로그아웃 감시 (1회만 바인딩)
+        if (!state.authWatchBound && typeof window.auth?.onAuthStateChanged === 'function') {
+            state.authWatchBound = true;
+            window.auth.onAuthStateChanged(() => {
+                if (cacheDom()) enforceAttachmentOwner();
+            });
+        }
+        enforceAttachmentOwner();
         const user = currentUser();
         if (isActiveUser(user)) refresh();
     }

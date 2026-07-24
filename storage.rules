@@ -45,9 +45,13 @@ service firebase.storage {
         );
 
       // 쓰기: 요청자 본인의 draft 요청 경로에서만 허용.
-      // - 업로드(생성): 기존 객체가 없을 때만 (덮어쓰기 차단), 크기/형식 검증.
+      // - 업로드(생성): 기존 객체가 없을 때만 (덮어쓰기 차단), 크기/형식 검증 +
+      //   WORK29-CORRECTION D2: Firestore 요청 문서에 등록된 첨부 메타와의 결속 검증.
+      //   (등록되지 않은 슬롯 / storagePath·contentType·size 불일치 업로드를 모두 차단)
       // - 삭제(rollback 정리): draft 단계의 기존 객체 제거만 허용.
       // status != "draft" (pending 이후)이면 업로드·삭제 모두 차단된다.
+      //
+      // NOTE: firestore.get 경로는 헬퍼로 감싸지 않고 매번 인라인한다(에뮬레이터 제약).
       allow write: if request.auth != null
         && request.auth.uid == requesterUid
         && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
@@ -63,6 +67,14 @@ service firebase.storage {
             && request.resource.size >= 1
             && request.resource.size <= 10 * 1024 * 1024
             && allowedAttachmentContentType(request.resource.contentType)
+            // D2: 업로드 슬롯이 Firestore attachments 맵에 실제로 등록돼 있어야 한다.
+            && slot in firestore.get(/databases/(default)/documents/document_approval_requests/$(requestId)).data.attachments
+            // D2: 등록 메타의 slot / storagePath / contentType / size 가 모두 실제 객체와 일치해야 한다.
+            && firestore.get(/databases/(default)/documents/document_approval_requests/$(requestId)).data.attachments[slot].slot == slot
+            && firestore.get(/databases/(default)/documents/document_approval_requests/$(requestId)).data.attachments[slot].storagePath
+                 == "document-approval-attachments/" + requesterUid + "/" + requestId + "/" + slot
+            && firestore.get(/databases/(default)/documents/document_approval_requests/$(requestId)).data.attachments[slot].contentType == request.resource.contentType
+            && firestore.get(/databases/(default)/documents/document_approval_requests/$(requestId)).data.attachments[slot].size == request.resource.size
           )
           || (
             request.resource == null

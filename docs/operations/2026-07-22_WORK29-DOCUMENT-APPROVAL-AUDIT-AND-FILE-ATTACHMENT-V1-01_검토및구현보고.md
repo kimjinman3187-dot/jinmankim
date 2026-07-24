@@ -149,3 +149,33 @@ Storage 경로: `document-approval-attachments/{requesterUid}/{requestId}/{slot}
 ## 12. 후속 인벤토리 엑셀 승인 기능과의 경계
 
 본 작업의 "문서 업로드" 는 일반 문서결재 증빙 첨부까지다. 인벤토리 엑셀을 파싱해 재고 변경안을 만들고 승인 후 재고에 반영하는 기능은 별도 후속 작업이며 본 범위에 포함하지 않는다. 첨부 스키마(schemaVersion 2)는 향후 엑셀 승인 payload 확장과 독립적으로 설계되었다.
+
+---
+
+## 13. WORK29 PR #166 코드 검토 보정 (2026-07-24)
+
+`main f0a4ba8` 통합 후 검토 지적 D1~D5 를 보정했다. 아래는 기존 서술 중 **과장된 표현의 정정**과 실제 잔여 위험이다.
+
+### 13.1 기존 서술 정정
+
+| 위치 | 기존 서술 | 정정 |
+| --- | --- | --- |
+| 4장 / 9장 (첨부 검증) | 확장자 + MIME type 동시 검증 | **Storage Rules 는 실제 파일 바이트 형식(시그니처)을 검증하지 않는다.** 검증 대상은 클라이언트가 선언한 확장자·contentType 메타데이터와, 보정 이후 추가된 Firestore 등록 메타(slot·storagePath·contentType·size)와 실제 Storage 객체의 일치 여부다. 바이너리 시그니처 검사와 악성코드 검사는 V1 범위 밖이다. |
+| 5장 (rollback) | 성공한 업로드 파일 삭제 시도 후 draft 문서 삭제 / pending 요청을 남기지 않는다 | **모든 실패에서 orphan 을 방지한다는 의미가 아니었다.** 보정 전에는 Storage 삭제 실패를 경고로만 남기고 draft 문서를 삭제해, 사용자 권한으로 지울 수 없는 orphan 객체가 남을 수 있었다. 보정 후에는 Storage 객체가 하나라도 남으면 draft 문서를 삭제하지 않는다. |
+| 4장 (다운로드) | (첨부 다운로드를 새 탭 링크로 처리) | **새 탭 방식은 실제 파일 저장을 보장하지 않았다.** 교차 출처 URL 에서 `download` 속성이 무시될 수 있고 토큰 URL 이 새 탭·브라우저 기록에 노출된다. 보정 후에는 Blob 다운로드 공용 함수로 대체했다. |
+| 9장 (Firestore 검증 범위) | 구조/경로/크기/개수만 검증 | 보정으로 **선언 합계(`attachmentsTotalSize`)와 실제 항목 size 합계의 일치**, 첨부 이름·contentType 의 빈 문자열 금지가 추가됐다. |
+
+### 13.2 보정 내용
+
+- **D1** `firestore.rules`: `attachmentsTotalSize == 실제 항목 size 합계` 강제(과소·과대 신고 모두 차단), 이름·contentType 빈 문자열 금지. 1000-expression 한도 대응으로 per-entry `hasOnly`→`keys().size()==5`, 중복 `is` 타입 검사 제거(타입 불일치는 평가 오류로 동일하게 거부), storagePath 접두어 1회 생성으로 축소.
+- **D2** `storage.rules`: 업로드 슬롯이 Firestore `attachments` 맵에 등록돼 있고 `slot`·`storagePath`·`contentType`·`size` 가 실제 객체와 모두 일치할 때만 허용. 미등록 슬롯·경로/형식/크기 불일치 업로드 차단.
+- **D3** `js/employee-document-requests.js`: rollback 을 상태 재확인 기반으로 재설계. 이미 `pending` 이면 삭제하지 않고 제출 완료로 안내, 상태 확인 실패 시 파괴적 삭제 금지, 등록된 전체 첨부 경로에 삭제 시도, `object-not-found` 는 정리 완료로 처리, Storage 객체가 남으면 draft 문서를 삭제하지 않음.
+- **D4** `js/firebase-shared.js` + 직원·관리자 화면: 공용 `window.yjDownloadAttachment()` 로 통합. `target="_blank"` 미사용, Blob→Object URL→원래 파일명 저장→즉시 revoke, 다운로드 URL 미보관, CORS 실패 시 새 탭 fallback 없이 `CORS GATE FAILED` 보고.
+- **D5** `js/employee-document-requests.js`: 선택 파일에 소유 UID 를 기록하고 Auth UID 변경·로그아웃·비활성 전환·Auth/업무 사용자 불일치 시 파일·폼·진행 상태를 초기화. 제출 시작 UID 와 완료 시점 UID 가 다르면 성공 처리하지 않음.
+
+### 13.3 실제 잔여 위험 (V1 범위 밖)
+
+1. 실제 파일 바이트 시그니처 검증·악성코드 검사 없음 (확장자/contentType 메타 기반 검증까지가 범위).
+2. Storage 객체 삭제까지 실패하는 극단적 경우, draft 문서와 객체가 함께 남는다(보정 후에는 orphan 이 아니라 **정리 가능한 draft 상태**로 남고 사용자에게 요청 ID 를 안내한다). 운영 시 서버측 lifecycle 정리 권장.
+3. Blob 다운로드는 Storage 버킷 CORS 설정에 의존한다. 미설정 시 다운로드가 `CORS GATE FAILED` 로 실패하며, 이 경우 버킷 CORS 설정이 선행돼야 한다.
+4. Rules 는 에뮬레이터 검증만 완료됐고 **운영 배포되지 않았다**. 관리자·직원 실계정 운영 E2E 는 미수행(PENDING).

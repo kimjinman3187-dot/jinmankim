@@ -110,34 +110,46 @@ service cloud.firestore {
     // NOTE: contentType allow-list(확장자↔MIME) 강제는 실제 업로드 경계인 storage.rules
     // 에서 수행한다. Firestore 규칙은 1000-expression 한도 때문에 첨부 항목당 구조/경로/
     // 크기만 검증하고 contentType 은 문자열 존재만 확인한다.
-    function attachmentEntryKeys() {
-      return ["slot", "name", "storagePath", "contentType", "size"];
-    }
-
-    function attachmentEntryValid(entry, expectedSlot, requesterUid, requestId) {
-      // keys().hasOnly + 아래 필드 접근/타입 검사로 5개 키의 존재·형식을 모두 강제.
-      return entry is map
-        && entry.keys().hasOnly(attachmentEntryKeys())
-        && entry.slot == expectedSlot
-        && entry.name is string
+    // basePath = "document-approval-attachments/{requesterUid}/{requestId}/" (호출부에서 1회 생성)
+    //
+    // 1000-expression 한도 때문에 다음 원칙으로 최소 표현식만 사용한다.
+    // - 키 수 == 5 + 5개 필드 접근 => "정확히 이 5개 키" (keys().hasOnly 와 동등, 더 저렴)
+    //   (누락 키는 필드 접근 자체가 평가 오류 → 거부, 추가 키는 size()==5 에서 거부)
+    // - `is string` / `is int` 는 생략한다. 타입이 다르면 아래 size()/비교 연산이
+    //   평가 오류를 일으켜 동일하게 거부되므로 보안 의미가 같다.
+    // - slot 필드는 storagePath 접미사(expectedSlot)로 이미 고정되고 storage.rules 가
+    //   업로드 시점에 다시 대조하므로 여기서 중복 검사하지 않는다.
+    function attachmentEntryValid(entry, expectedSlot, basePath) {
+      return entry.keys().size() == 5
+        && entry.name.size() >= 1
         && entry.name.size() <= 255
-        && entry.contentType is string
-        && entry.size is int
+        && entry.contentType.size() >= 1
         && entry.size >= 1
         && entry.size <= 10485760
-        && entry.storagePath == "document-approval-attachments/" + requesterUid + "/" + requestId + "/" + expectedSlot;
+        && entry.storagePath == basePath + expectedSlot;
     }
 
-    function attachmentsMapValid(attachments, requesterUid, requestId) {
-      return attachments is map
-        && attachments.keys().hasOnly(["a0", "a1", "a2", "a3", "a4"])
-        && attachments.keys().size() >= 1
-        && attachments.keys().size() <= 5
-        && (!("a0" in attachments) || attachmentEntryValid(attachments.a0, "a0", requesterUid, requestId))
-        && (!("a1" in attachments) || attachmentEntryValid(attachments.a1, "a1", requesterUid, requestId))
-        && (!("a2" in attachments) || attachmentEntryValid(attachments.a2, "a2", requesterUid, requestId))
-        && (!("a3" in attachments) || attachmentEntryValid(attachments.a3, "a3", requesterUid, requestId))
-        && (!("a4" in attachments) || attachmentEntryValid(attachments.a4, "a4", requesterUid, requestId));
+    // WORK29-CORRECTION D1: 등록된 첨부 size 의 실제 합계.
+    // 클라이언트가 보낸 attachmentsTotalSize 를 진실값으로 신뢰하지 않기 위해 사용한다.
+    // 호출 전에 attachmentsMapValid 로 각 entry.size 가 int 임이 이미 검증돼야 한다.
+    // (map.get(key, default) 사용 — 삼항+in 조합보다 평가 비용이 낮다.)
+    function attachmentsSizeSum(a) {
+      return a.get("a0", {"size": 0}).size
+        + a.get("a1", {"size": 0}).size
+        + a.get("a2", {"size": 0}).size
+        + a.get("a3", {"size": 0}).size
+        + a.get("a4", {"size": 0}).size;
+    }
+
+    function attachmentsMapValid(attachments, basePath) {
+      // keys().size() 범위는 attachmentCount(1~5) == keys().size() 와
+      // hasOnly(["a0".."a4"]) 로 이미 강제되므로 중복 검사하지 않는다.
+      return attachments.keys().hasOnly(["a0", "a1", "a2", "a3", "a4"])
+        && (!("a0" in attachments) || attachmentEntryValid(attachments.a0, "a0", basePath))
+        && (!("a1" in attachments) || attachmentEntryValid(attachments.a1, "a1", basePath))
+        && (!("a2" in attachments) || attachmentEntryValid(attachments.a2, "a2", basePath))
+        && (!("a3" in attachments) || attachmentEntryValid(attachments.a3, "a3", basePath))
+        && (!("a4" in attachments) || attachmentEntryValid(attachments.a4, "a4", basePath));
     }
 
     function hasValidDocumentApprovalAttachments(requestId) {
@@ -149,7 +161,11 @@ service cloud.firestore {
         && request.resource.data.attachmentsTotalSize is int
         && request.resource.data.attachmentsTotalSize >= 1
         && request.resource.data.attachmentsTotalSize <= 31457280
-        && attachmentsMapValid(request.resource.data.attachments, request.auth.uid, requestId);
+        && attachmentsMapValid(
+             request.resource.data.attachments,
+             "document-approval-attachments/" + request.auth.uid + "/" + requestId + "/")
+        // D1: 선언된 합계가 실제 항목 합계와 정확히 일치해야 한다 (과소·과대 신고 모두 차단).
+        && request.resource.data.attachmentsTotalSize == attachmentsSizeSum(request.resource.data.attachments);
     }
 
     // WORK29: v1(첨부 없음·pending)과 v2(첨부 있음·draft) 생성을 하나의 allow 로 검증.
