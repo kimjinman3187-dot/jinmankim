@@ -53,6 +53,8 @@
         attachments: [],
         // WORK29-CORRECTION D5: 선택한 로컬 파일의 소유 UID. 계정 전환 시 초기화 판단에 사용한다.
         attachmentsOwnerUid: '',
+        // WORK29-CORRECTION-02 R3: 첨부 유무와 무관한 계정 컨텍스트 추적
+        contextUid: '',
         authWatchBound: false
     };
 
@@ -317,7 +319,7 @@
         const files = Array.from(fileList || []);
         if (!files.length) return;
         // D5: 파일 선택은 현재 활성 사용자 본인만 가능하며, 선택 즉시 소유 UID 를 기록한다.
-        if (!enforceAttachmentOwner()) return;
+        if (!enforceUserContext()) return;
         const ready = requireReady();
         if (!ready.ok) {
             clearAttachments();
@@ -364,26 +366,53 @@
         setAttachProgress('');
     }
 
-    // WORK29-CORRECTION D5: 선택한 로컬 파일은 선택한 사용자에게만 속한다.
-    // Auth UID 변경 / 업무 사용자 UID 변경 / 로그아웃 / 비활성 전환 /
-    // Auth·업무 사용자 불일치 시 파일 선택·폼·진행 상태를 모두 초기화한다.
-    function enforceAttachmentOwner() {
-        if (!state.attachments.length) {
-            state.attachmentsOwnerUid = '';
-            return true;
-        }
+    // WORK29-CORRECTION-02 R3: 계정 컨텍스트는 첨부 존재 여부와 무관하게 추적한다.
+    // 유효한 사용자면 UID, 아니면 '' (로그아웃·비활성·Auth 불일치 포함).
+    function currentContextUid() {
         const user = currentUser();
         const auth = authUser();
-        const uid = auth?.uid || '';
-        const ownerValid = Boolean(uid)
-            && isActiveUser(user)
-            && hasMatchingAuth(user, auth)
-            && uid === state.attachmentsOwnerUid;
-        if (ownerValid) return true;
-        clearAttachments();
+        if (!auth?.uid || !isActiveUser(user) || !hasMatchingAuth(user, auth)) return '';
+        return auth.uid;
+    }
+
+    // 이전 사용자에게 속한 화면 상태를 모두 제거한다.
+    function resetUserScopedState() {
+        state.attachments = [];
+        state.attachmentsOwnerUid = '';
+        if (dom.attachInput) dom.attachInput.value = '';
+        renderAttachmentList();
+        setAttachProgress('');
         if (dom.form) dom.form.reset();
-        setMessage('사용자가 변경되어 선택한 첨부파일과 입력 내용을 초기화했습니다.', 'error');
-        return false;
+        state.requests = [];
+        state.selectedId = '';
+        if (dom.body) tableMessage('본인 문서 결재 요청을 조회하세요.');
+        renderDetail(null);
+    }
+
+    // WORK29-CORRECTION D5 / CORRECTION-02 R3:
+    // Auth UID 변경 / 업무 사용자 UID 변경 / 로그아웃 / 비활성 전환 / Auth·업무 사용자 불일치 시
+    // 첨부 유무와 관계없이 폼·파일·목록·상세를 초기화한다.
+    function enforceUserContext() {
+        const uid = currentContextUid();
+        const changed = state.contextUid !== '' && uid !== state.contextUid;
+        state.contextUid = uid;
+        if (changed) {
+            resetUserScopedState();
+            setMessage('사용자가 변경되어 이전 사용자의 입력과 조회 결과를 초기화했습니다.', 'error');
+            return Boolean(uid);
+        }
+        if (!uid) {
+            // 유효한 사용자 컨텍스트가 아니면 남아 있는 로컬 파일을 유지하지 않는다.
+            if (state.attachments.length) resetUserScopedState();
+            return false;
+        }
+        // 첨부 소유자와 현재 사용자가 다르면(비정상 경로) 파일만 폐기한다.
+        if (state.attachments.length && state.attachmentsOwnerUid !== uid) {
+            clearAttachments();
+            setMessage('첨부 소유자가 현재 사용자와 달라 선택 파일을 초기화했습니다.', 'error');
+            return false;
+        }
+        return true;
     }
 
     function renderAttachmentList() {
@@ -522,8 +551,8 @@
         state.attachments.forEach((att, index) => {
             const slot = ATTACH_SLOTS[index];
             const storagePath = `${ATTACH_STORAGE_PREFIX}/${uid}/${requestId}/${slot}`;
+            // WORK29-CORRECTION-02 R1: 슬롯은 맵 키(a0~a4)가 권위값이므로 중복 slot 필드를 두지 않는다.
             attachments[slot] = {
-                slot,
                 name: att.name,
                 storagePath,
                 contentType: att.contentType,
@@ -628,6 +657,25 @@
         }
     }
 
+    // WORK29-CORRECTION-02 R2: 등록된 모든 첨부 경로의 Storage metadata 를 조회해
+    // 존재·경로·크기·contentType 일치를 확인한다. 하나라도 불일치·누락·조회 실패면 실패로 판정한다.
+    async function verifyUploadedObjects(meta) {
+        const entries = Object.entries(meta.attachments);
+        for (const [slot, entry] of entries) {
+            let info = null;
+            try {
+                info = await window.storage.ref(entry.storagePath).getMetadata();
+            } catch (error) {
+                return { ok: false, reason: `${slot} metadata 조회 실패(${error?.code || 'unknown'})` };
+            }
+            if (!info) return { ok: false, reason: `${slot} metadata 없음` };
+            if (info.fullPath !== entry.storagePath) return { ok: false, reason: `${slot} 경로 불일치` };
+            if (Number(info.size) !== Number(entry.size)) return { ok: false, reason: `${slot} 크기 불일치` };
+            if (info.contentType !== entry.contentType) return { ok: false, reason: `${slot} contentType 불일치` };
+        }
+        return { ok: true, reason: '' };
+    }
+
     async function submitWithAttachments(ready, form) {
         if (!storageAvailable()) {
             setMessage('첨부 업로드 기능을 사용할 수 없습니다. 첨부 없이 제출하거나 관리자에게 문의하세요.', 'error');
@@ -661,6 +709,15 @@
                 await window.storage.ref(meta.attachments[slot].storagePath).put(att.file, { contentType: att.contentType });
             }
 
+            // WORK29-CORRECTION-02 R2: 제출 직전 등록된 전체 객체의 metadata 를 재확인한다.
+            // 정상 클라이언트의 데이터 무결성 보조 장치이며 보안 경계가 아니다
+            // (악의적 클라이언트는 이 검사를 건너뛸 수 있다 — 잔여 위험으로 문서화).
+            setAttachProgress('업로드 결과 확인 중...');
+            const verification = await verifyUploadedObjects(meta);
+            if (!verification.ok) {
+                throw Object.assign(new Error(`attachment verification failed: ${verification.reason}`), { code: 'attachment-mismatch' });
+            }
+
             setAttachProgress('결재 제출 처리 중...');
             const historyRef = docRef.collection('history').doc();
             const transitionId = historyRef.id;
@@ -686,8 +743,14 @@
             }
             dom.form.reset();
             clearAttachments();
-            setMessage('첨부파일을 포함한 문서 결재 요청을 결재 대기로 제출했습니다.', 'success');
-            await refresh();
+            // WORK29-CORRECTION-02 R4: 제출 결과 문구가 조회 결과 문구에 덮이지 않도록
+            // refresh() 이후에 최종 표시하고, 조회 실패는 별도 문구로 구분한다.
+            const listed = await refresh();
+            if (listed.ok) {
+                setMessage('첨부파일을 포함한 문서 결재 요청을 결재 대기로 제출했습니다.', 'success');
+            } else {
+                setMessage(`제출 완료 · 목록 갱신 실패 — 요청 ID(${requestId})는 정상 접수됐습니다. 새로고침으로 다시 조회하세요.`, 'error');
+            }
         } catch (error) {
             console.warn('Employee document attachment submit failed:', error);
             setAttachProgress('업로드 실패 — 정리 중...', 'error');
@@ -728,7 +791,7 @@
         event.preventDefault();
         if (state.submitting) return;
         // D5: 제출 직전에도 첨부 소유자와 현재 사용자가 일치하는지 확인한다.
-        if (!enforceAttachmentOwner()) return;
+        if (!enforceUserContext()) return;
         const ready = requireReady();
         if (!ready.ok) {
             setMessage(ready.message, 'error');
@@ -749,10 +812,16 @@
                 await submitWithAttachments(ready, form);
             } else {
                 const ts = serverTimestamp();
-                await window.db.collection(COLLECTION).add(buildCreatePayload(ready.user, ready.auth, ts, form.title, form.description));
+                // R4: 첨부 없는 제출도 생성된 문서 reference 를 받아 요청 ID 를 확보한다.
+                const createdRef = await window.db.collection(COLLECTION).add(buildCreatePayload(ready.user, ready.auth, ts, form.title, form.description));
+                const requestId = createdRef?.id || '';
                 dom.form.reset();
-                setMessage('문서 결재 요청을 결재 대기로 제출했습니다.', 'success');
-                await refresh();
+                const listed = await refresh();
+                if (listed.ok) {
+                    setMessage('문서 결재 요청을 결재 대기로 제출했습니다.', 'success');
+                } else {
+                    setMessage(`제출 완료 · 목록 갱신 실패 — 요청 ID(${requestId})는 정상 접수됐습니다. 새로고침으로 다시 조회하세요.`, 'error');
+                }
             }
         } catch (error) {
             console.warn('Employee document request create failed:', error);
@@ -765,16 +834,18 @@
         }
     }
 
+    // WORK29-CORRECTION-02 R4: 조회 성공 여부·건수를 반환한다.
+    // 기존 호출자(새로고침 버튼 등)는 반환값을 사용하지 않아도 동작한다.
     async function refresh() {
-        if (!cacheDom()) return;
-        if (state.loading) return;
+        if (!cacheDom()) return { ok: false, count: 0, reason: 'dom' };
+        if (state.loading) return { ok: false, count: 0, reason: 'loading' };
         const ready = requireReady();
         if (!ready.ok) {
             state.requests = [];
             tableMessage(ready.message);
             renderDetail(null);
             setMessage(ready.message, 'error');
-            return;
+            return { ok: false, count: 0, reason: 'not-ready' };
         }
         state.loading = true;
         tableMessage('본인 문서 결재 요청을 불러오는 중입니다.');
@@ -792,6 +863,7 @@
             setMessage(`본인 요청 ${state.requests.length}건을 표시합니다.`, 'success');
             // WORK32: 기존 본인 요청 조회 결과를 LIVE 문서결재 카드로 전달 (신규 쿼리 없음)
             window.YJLiveOperationsHub?.updateEmployeeDocumentApprovals?.(state.requests);
+            return { ok: true, count: state.requests.length, reason: '' };
         } catch (error) {
             console.warn('Employee document requests load failed:', error);
             // WORK32: 조회 실패를 LIVE 카드 내부 상태로만 전달
@@ -800,6 +872,7 @@
             tableMessage(error?.code === 'failed-precondition' ? '본인 요청 조회 index가 아직 준비되지 않았습니다.' : '본인 요청을 불러오지 못했습니다.');
             renderDetail(null);
             setMessage(error?.code === 'permission-denied' ? '본인 요청 조회 권한이 없습니다.' : '본인 요청을 불러오지 못했습니다.', 'error');
+            return { ok: false, count: 0, reason: error?.code || 'error' };
         } finally {
             state.loading = false;
         }
@@ -835,10 +908,10 @@
         if (!state.authWatchBound && typeof window.auth?.onAuthStateChanged === 'function') {
             state.authWatchBound = true;
             window.auth.onAuthStateChanged(() => {
-                if (cacheDom()) enforceAttachmentOwner();
+                if (cacheDom()) enforceUserContext();
             });
         }
-        enforceAttachmentOwner();
+        enforceUserContext();
         const user = currentUser();
         if (isActiveUser(user)) refresh();
     }

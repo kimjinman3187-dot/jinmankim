@@ -161,6 +161,97 @@ describe('document_approval_requests create', () => {
     const att = { a0: attachmentEntry('emp1', 'r1', 'a0', { contentType: '' }) };
     await assertFails(fs.setDoc(reqRef(ctx, 'r1'), draftRequest(fs, 'emp1', 'r1', att)));
   });
+
+  // ── WORK29-CORRECTION-02 R1: 정확한 4키 스키마·타입 강제 ────────────────
+  test('R1: 정확한 4개 필드 첨부 1개 → 허용', async () => {
+    const ctx = env.authenticatedContext('emp1');
+    const entry = attachmentEntry('emp1', 'r1', 'a0');
+    assert.deepEqual(Object.keys(entry).sort(), ['contentType', 'name', 'size', 'storagePath']);
+    await assertSucceeds(fs.setDoc(reqRef(ctx, 'r1'), draftRequest(fs, 'emp1', 'r1', { a0: entry })));
+  });
+
+  test('R1: 제거된 slot 필드를 다시 추가하면 차단 (키 5개)', async () => {
+    const ctx = env.authenticatedContext('emp1');
+    const att = { a0: attachmentEntry('emp1', 'r1', 'a0', { slot: 'a0' }) };
+    await assertFails(fs.setDoc(reqRef(ctx, 'r1'), draftRequest(fs, 'emp1', 'r1', att)));
+  });
+
+  test('R1: name 을 제거하고 임의 키로 교체해 총 4개를 유지해도 차단', async () => {
+    const ctx = env.authenticatedContext('emp1');
+    const entry = attachmentEntry('emp1', 'r1', 'a0');
+    delete entry.name;
+    entry.evil = 'x';
+    await assertFails(fs.setDoc(reqRef(ctx, 'r1'), draftRequest(fs, 'emp1', 'r1', { a0: entry })));
+  });
+
+  test('R1: contentType 을 제거하고 임의 키로 교체해 총 4개를 유지해도 차단', async () => {
+    const ctx = env.authenticatedContext('emp1');
+    const entry = attachmentEntry('emp1', 'r1', 'a0');
+    delete entry.contentType;
+    entry.evil = 'x';
+    await assertFails(fs.setDoc(reqRef(ctx, 'r1'), draftRequest(fs, 'emp1', 'r1', { a0: entry })));
+  });
+
+  test('R1: storagePath 를 제거하고 임의 키로 교체해도 차단', async () => {
+    const ctx = env.authenticatedContext('emp1');
+    const entry = attachmentEntry('emp1', 'r1', 'a0');
+    delete entry.storagePath;
+    entry.evil = 'x';
+    await assertFails(fs.setDoc(reqRef(ctx, 'r1'), draftRequest(fs, 'emp1', 'r1', { a0: entry })));
+  });
+
+  test('R1: name 이 배열이면 차단', async () => {
+    const ctx = env.authenticatedContext('emp1');
+    const att = { a0: attachmentEntry('emp1', 'r1', 'a0', { name: ['a', 'b'] }) };
+    await assertFails(fs.setDoc(reqRef(ctx, 'r1'), draftRequest(fs, 'emp1', 'r1', att)));
+  });
+
+  test('R1: name 이 맵이면 차단', async () => {
+    const ctx = env.authenticatedContext('emp1');
+    const att = { a0: attachmentEntry('emp1', 'r1', 'a0', { name: { x: 1, y: 2 } }) };
+    await assertFails(fs.setDoc(reqRef(ctx, 'r1'), draftRequest(fs, 'emp1', 'r1', att)));
+  });
+
+  test('R1: contentType 이 배열이면 차단', async () => {
+    const ctx = env.authenticatedContext('emp1');
+    const att = { a0: attachmentEntry('emp1', 'r1', 'a0', { contentType: ['application/pdf'] }) };
+    await assertFails(fs.setDoc(reqRef(ctx, 'r1'), draftRequest(fs, 'emp1', 'r1', att)));
+  });
+
+  test('R1: contentType 이 맵이면 차단', async () => {
+    const ctx = env.authenticatedContext('emp1');
+    const att = { a0: attachmentEntry('emp1', 'r1', 'a0', { contentType: { t: 'pdf' } }) };
+    await assertFails(fs.setDoc(reqRef(ctx, 'r1'), draftRequest(fs, 'emp1', 'r1', att)));
+  });
+
+  test('R1: size 가 실수(1.5+1.5)이고 합계를 정수 3 으로 신고하면 차단', async () => {
+    const ctx = env.authenticatedContext('emp1');
+    const att = {
+      a0: attachmentEntry('emp1', 'r1', 'a0', { size: 1.5 }),
+      a1: attachmentEntry('emp1', 'r1', 'a1', { size: 1.5 })
+    };
+    await assertFails(fs.setDoc(reqRef(ctx, 'r1'), draftRequest(fs, 'emp1', 'r1', att, { attachmentsTotalSize: 3 })));
+  });
+
+  test('R1: storagePath 가 다른 슬롯을 가리키면 차단', async () => {
+    const ctx = env.authenticatedContext('emp1');
+    const att = {
+      a0: attachmentEntry('emp1', 'r1', 'a0', {
+        storagePath: 'document-approval-attachments/emp1/r1/a1'
+      })
+    };
+    await assertFails(fs.setDoc(reqRef(ctx, 'r1'), draftRequest(fs, 'emp1', 'r1', att)));
+  });
+
+  test('R1: storagePath 가 타 사용자 경로면 차단', async () => {
+    const ctx = env.authenticatedContext('emp1');
+    const att = {
+      a0: attachmentEntry('emp1', 'r1', 'a0', {
+        storagePath: 'document-approval-attachments/emp2/r1/a0'
+      })
+    };
+    await assertFails(fs.setDoc(reqRef(ctx, 'r1'), draftRequest(fs, 'emp1', 'r1', att)));
+  });
 });
 
 describe('document_approval_requests read', () => {

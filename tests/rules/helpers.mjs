@@ -51,9 +51,9 @@ export async function seedUsers(env) {
   });
 }
 
+// WORK29-CORRECTION-02 R1: 첨부 항목은 정확히 name/storagePath/contentType/size 4개 키만 가진다.
 export function attachmentEntry(requesterUid, requestId, slot, overrides = {}) {
   return {
-    slot,
     name: `evidence-${slot}.pdf`,
     storagePath: `document-approval-attachments/${requesterUid}/${requestId}/${slot}`,
     contentType: 'application/pdf',

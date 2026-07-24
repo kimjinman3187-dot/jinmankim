@@ -68,9 +68,9 @@ service firebase.storage {
             && request.resource.size <= 10 * 1024 * 1024
             && allowedAttachmentContentType(request.resource.contentType)
             // D2: 업로드 슬롯이 Firestore attachments 맵에 실제로 등록돼 있어야 한다.
+            //     (슬롯의 권위값은 맵 키. WORK29-CORRECTION-02 에서 중복 slot 필드는 제거했다.)
             && slot in firestore.get(/databases/(default)/documents/document_approval_requests/$(requestId)).data.attachments
-            // D2: 등록 메타의 slot / storagePath / contentType / size 가 모두 실제 객체와 일치해야 한다.
-            && firestore.get(/databases/(default)/documents/document_approval_requests/$(requestId)).data.attachments[slot].slot == slot
+            // D2: 등록 메타의 storagePath / contentType / size 가 모두 실제 객체와 일치해야 한다.
             && firestore.get(/databases/(default)/documents/document_approval_requests/$(requestId)).data.attachments[slot].storagePath
                  == "document-approval-attachments/" + requesterUid + "/" + requestId + "/" + slot
             && firestore.get(/databases/(default)/documents/document_approval_requests/$(requestId)).data.attachments[slot].contentType == request.resource.contentType

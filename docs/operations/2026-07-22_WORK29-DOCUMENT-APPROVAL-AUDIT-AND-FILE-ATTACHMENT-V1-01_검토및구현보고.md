@@ -179,3 +179,37 @@ Storage 경로: `document-approval-attachments/{requesterUid}/{requestId}/{slot}
 2. Storage 객체 삭제까지 실패하는 극단적 경우, draft 문서와 객체가 함께 남는다(보정 후에는 orphan 이 아니라 **정리 가능한 draft 상태**로 남고 사용자에게 요청 ID 를 안내한다). 운영 시 서버측 lifecycle 정리 권장.
 3. Blob 다운로드는 Storage 버킷 CORS 설정에 의존한다. 미설정 시 다운로드가 `CORS GATE FAILED` 로 실패하며, 이 경우 버킷 CORS 설정이 선행돼야 한다.
 4. Rules 는 에뮬레이터 검증만 완료됐고 **운영 배포되지 않았다**. 관리자·직원 실계정 운영 E2E 는 미수행(PENDING).
+
+---
+
+## 14. WORK29 PR #166 2차 보정 (2026-07-24)
+
+1차 보정 diff 재검토에서 확인된 R1~R5 를 보정했다.
+
+### 14.1 첨부 스키마 변경 (schemaVersion 2, 운영 배포 전이므로 마이그레이션 불필요)
+
+첨부 항목에서 **중복 `slot` 필드를 제거**했다. 슬롯의 권위값은 첨부 맵의 키(`a0`~`a4`)이며 `storagePath` 접미사에도 포함된다.
+변경 후 항목은 **정확히 4개 키**만 가진다: `name` · `storagePath` · `contentType` · `size`.
+
+### 14.2 기존 서술 추가 정정
+
+| 기존 서술 | 정정 |
+| --- | --- |
+| "5개 필드를 모두 접근하므로 `keys().size() == 5` 가 `hasOnly()` 와 동등하다" (1차 보정 §13.2) | **사실이 아니었다.** 당시 `slot` 은 읽지 않아 실제 접근 필드는 4개였고, `slot` 을 임의 키로 교체해 총 개수를 유지하는 우회가 가능했다. 또한 `is string`/`is int` 를 제거해 `name`/`contentType` 에 배열·맵, `size` 에 실수를 넣는 우회가 가능했다. 2차 보정에서 **4키 고정 + 전 필드 타입 검사**로 교정했다. |
+| "Firestore 메타 ↔ Storage 객체 결속" | **단방향이다.** Storage 업로드 객체가 Firestore 등록 메타와 일치하는 방향만 Rules 로 강제된다. Firestore 의 `draft → pending` 전환이 실제 Storage 객체 존재까지 보장하지는 못한다(Rules 는 Storage 객체를 조회할 수 없다). 제출 직전 클라이언트 metadata 확인은 **정상 UI 의 무결성 보조 장치이며 보안 경계가 아니다.** |
+
+### 14.3 보정 내용
+
+- **R1** `firestore.rules`: 항목 키 정확히 4개 + `name is string`(1~255) + `contentType is string`(빈 문자열 금지) + `size is int`(1B~10MB) + `storagePath is string` 및 요청자 UID·requestId·맵 슬롯과 정확히 일치. 합계는 정수 `size` 의 정확한 합계(1B~30MB). 첨부 맵 키는 `a0~a4` 만 허용.
+- **R2** `js/employee-document-requests.js`: 업로드 완료 후 `draft → pending` 트랜잭션 **직전에** 등록된 전체 경로의 Storage metadata 를 조회해 존재·경로·크기·contentType 일치를 확인한다. 하나라도 불일치·누락·조회 실패면 트랜잭션을 실행하지 않고 기존 rollback 계약으로 진입한다.
+- **R3** 계정 컨텍스트(`contextUid`)를 첨부 존재 여부와 **독립적으로** 추적한다. Auth UID 변경·업무 사용자 UID 변경·로그아웃·비활성 전환·Auth/사용자 불일치 시 선택 파일·소유 UID·파일 input·제목/상세 폼·진행 문구·이전 직원 요청 목록·선택 요청 ID·상세 화면을 모두 초기화한다.
+- **R4** `refresh()` 가 `{ ok, count, reason }` 을 반환하도록 하고(기존 호출자는 반환값 미사용으로도 동작), 제출 성공 문구를 조회 **이후에** 최종 표시한다. 조회 실패 시 "제출 완료 · 목록 갱신 실패 + 요청 ID" 로 구분한다. 첨부 없는 제출도 생성된 문서 reference 에서 요청 ID 를 확보한다.
+- **R5** 운영 버킷 CORS 는 **읽기 전용 확인만** 시도했고 설정은 변경하지 않았다.
+
+### 14.4 잔여 위험 (재확인)
+
+1. **Storage → Firestore 방향만 Rules 로 강제된다.** Firestore `pending` 전환이 실제 Storage 객체 존재를 보장하지 못한다. 완전한 서버 측 존재 보장은 Cloud Functions 등 신뢰 가능한 백엔드가 필요하다.
+2. 제출 직전 metadata 확인은 정상 클라이언트용 보조 장치이며 악의적 클라이언트는 우회할 수 있다.
+3. 실제 파일 바이트 시그니처 검증·악성코드 검사는 V1 범위 밖이다.
+4. 운영 버킷 CORS 설정을 확인할 권한이 없어 `CORS GATE PENDING · READ ACCESS REQUIRED` 상태다.
+5. Rules 는 에뮬레이터 검증만 완료됐고 운영 배포되지 않았다. 관리자·직원 실계정 운영 E2E 는 PENDING 이다.
