@@ -61,6 +61,9 @@
         refreshSeq: 0,        // 각 조회 작업의 고유 토큰
         loadingSeq: 0,        // 현재 loading 을 점유한 조회 토큰
         loadingVersion: -1,   // 그 조회가 시작된 컨텍스트 세대
+        submitSeq: 0,         // 각 제출 작업의 고유 토큰
+        submittingSeq: 0,     // 현재 제출 잠금과 버튼 상태를 점유한 토큰
+        submittingVersion: -1,
         authWatchBound: false
     };
 
@@ -402,10 +405,17 @@
     function invalidateContext() {
         state.contextVersion += 1;
         state.refreshSeq += 1;   // 진행 중이던 조회 토큰 무효화
+        state.submitSeq += 1;    // 진행 중이던 제출 토큰 무효화
         // 오래된 조회의 finally 가 새 조회의 loading 을 건드리지 못하도록 점유를 해제한다.
         state.loading = false;
         state.loadingSeq = 0;
         state.loadingVersion = -1;
+        // 이전 사용자의 제출이 진행 중이어도 새 사용자는 즉시 자기 제출을 시작할 수 있다.
+        state.submitting = false;
+        state.submittingSeq = 0;
+        state.submittingVersion = -1;
+        if (dom.submit) dom.submit.disabled = false;
+        if (dom.attachSelectBtn) dom.attachSelectBtn.disabled = false;
     }
 
     // 제출·조회 시작 시점의 컨텍스트를 캡처한다.
@@ -424,6 +434,27 @@
             && captured.version === state.contextVersion
             && captured.uid !== ''
             && captured.uid === currentContextUid();
+    }
+
+    function captureSubmit() {
+        const context = captureContext();
+        const token = ++state.submitSeq;
+        return { uid: context.uid, version: context.version, token };
+    }
+
+    function submitOwns(captured) {
+        return contextUnchanged(captured)
+            && captured.token === state.submitSeq
+            && captured.token === state.submittingSeq
+            && captured.version === state.submittingVersion;
+    }
+
+    function setSubmitMessage(captured, text, tone) {
+        if (submitOwns(captured)) setMessage(text, tone);
+    }
+
+    function setSubmitProgress(captured, text, tone) {
+        if (submitOwns(captured)) setAttachProgress(text, tone);
     }
 
     function enforceUserContext() {
@@ -585,10 +616,10 @@
         return window.firebase.firestore.FieldValue.serverTimestamp();
     }
 
-    function buildAttachmentMeta(uid, requestId) {
+    function buildAttachmentMeta(uid, requestId, attachmentSnapshot) {
         const attachments = {};
         let total = 0;
-        state.attachments.forEach((att, index) => {
+        attachmentSnapshot.forEach((att, index) => {
             const slot = ATTACH_SLOTS[index];
             const storagePath = `${ATTACH_STORAGE_PREFIX}/${uid}/${requestId}/${slot}`;
             // WORK29-CORRECTION-02 R1: 슬롯은 맵 키(a0~a4)가 권위값이므로 중복 slot 필드를 두지 않는다.
@@ -716,27 +747,27 @@
         return { ok: true, reason: '' };
     }
 
-    async function submitWithAttachments(ready, form) {
+    async function submitWithAttachments(ready, form, captured, attachmentSnapshot) {
         if (!storageAvailable()) {
-            setMessage('첨부 업로드 기능을 사용할 수 없습니다. 첨부 없이 제출하거나 관리자에게 문의하세요.', 'error');
+            setSubmitMessage(captured, '첨부 업로드 기능을 사용할 수 없습니다. 첨부 없이 제출하거나 관리자에게 문의하세요.', 'error');
             return;
         }
-        if (currentAttachmentsTotal() > ATTACH_MAX_TOTAL_BYTES || state.attachments.length > ATTACH_MAX_FILES) {
-            setMessage('첨부 개수/용량 제한을 초과했습니다.', 'error');
+        const snapshotTotal = attachmentSnapshot.reduce((sum, att) => sum + att.size, 0);
+        if (snapshotTotal > ATTACH_MAX_TOTAL_BYTES || attachmentSnapshot.length > ATTACH_MAX_FILES) {
+            setSubmitMessage(captured, '첨부 개수/용량 제한을 초과했습니다.', 'error');
             return;
         }
         // WORK29-CORRECTION D5 / CORRECTION-03 R3-C:
         // 제출 시작 시점의 UID 와 컨텍스트 세대를 함께 캡처한다(Auth UID 단독 비교로는 부족).
         const submitUid = ready.auth.uid;
-        const captured = captureContext();
         if (state.attachmentsOwnerUid && state.attachmentsOwnerUid !== submitUid) {
-            clearAttachments();
-            setMessage('사용자가 변경되어 선택한 첨부파일을 초기화했습니다. 다시 선택하세요.', 'error');
+            if (submitOwns(captured)) clearAttachments();
+            setSubmitMessage(captured, '사용자가 변경되어 선택한 첨부파일을 초기화했습니다. 다시 선택하세요.', 'error');
             return;
         }
         const docRef = window.db.collection(COLLECTION).doc();
         const requestId = docRef.id;
-        const meta = buildAttachmentMeta(submitUid, requestId);
+        const meta = buildAttachmentMeta(submitUid, requestId, attachmentSnapshot);
         // 등록된 전체 첨부 경로 (업로드 응답 유실 대비 — 정리는 이 목록 전체를 대상으로 한다)
         const registeredPaths = Object.values(meta.attachments).map(entry => entry.storagePath);
         let draftCreated = false;
@@ -744,17 +775,23 @@
             await docRef.set(buildDraftPayload(ready.user, ready.auth, form.title, form.description, meta));
             draftCreated = true;
 
-            for (let i = 0; i < state.attachments.length; i += 1) {
+            for (let i = 0; i < attachmentSnapshot.length; i += 1) {
+                if (!contextUnchanged(captured)) {
+                    throw Object.assign(new Error('user context changed during upload'), { code: 'context-changed' });
+                }
                 const slot = ATTACH_SLOTS[i];
-                const att = state.attachments[i];
-                setAttachProgress(`파일 업로드 중 ${i + 1}/${state.attachments.length} · ${att.name}`);
+                const att = attachmentSnapshot[i];
+                setSubmitProgress(captured, `파일 업로드 중 ${i + 1}/${attachmentSnapshot.length} · ${att.name}`);
                 await window.storage.ref(meta.attachments[slot].storagePath).put(att.file, { contentType: att.contentType });
+                if (!contextUnchanged(captured)) {
+                    throw Object.assign(new Error('user context changed after upload'), { code: 'context-changed' });
+                }
             }
 
             // WORK29-CORRECTION-02 R2: 제출 직전 등록된 전체 객체의 metadata 를 재확인한다.
             // 정상 클라이언트의 데이터 무결성 보조 장치이며 보안 경계가 아니다
             // (악의적 클라이언트는 이 검사를 건너뛸 수 있다 — 잔여 위험으로 문서화).
-            setAttachProgress('업로드 결과 확인 중...');
+            setSubmitProgress(captured, '업로드 결과 확인 중...');
             const verification = await verifyUploadedObjects(meta);
             if (!verification.ok) {
                 throw Object.assign(new Error(`attachment verification failed: ${verification.reason}`), { code: 'attachment-mismatch' });
@@ -766,7 +803,7 @@
                 throw Object.assign(new Error('user context changed before transition'), { code: 'context-changed' });
             }
 
-            setAttachProgress('결재 제출 처리 중...');
+            setSubmitProgress(captured, '결재 제출 처리 중...');
             const historyRef = docRef.collection('history').doc();
             const transitionId = historyRef.id;
             await window.db.runTransaction(async transaction => {
@@ -785,8 +822,7 @@
             // D5 / R3-C: 완료 시점의 컨텍스트(UID + 활성 상태 + Auth 일치 + 세대)를 검사한다.
             // 이미 pending 으로 전이된 요청은 사용자 변경을 이유로 삭제하지 않는다.
             if (!contextUnchanged(captured)) {
-                setAttachProgress('');
-                setMessage(contextChangedNotice(requestId), 'error');
+                console.warn(contextChangedNotice(requestId));
                 return;
             }
             dom.form.reset();
@@ -795,20 +831,19 @@
             // refresh() 이후에 최종 표시하고, 조회 실패는 별도 문구로 구분한다.
             const listed = await refresh();
             if (listed.reason === 'context-changed' || !contextUnchanged(captured)) {
-                setMessage(contextChangedNotice(requestId), 'error');
+                console.warn(contextChangedNotice(requestId));
             } else if (listed.ok) {
-                setMessage('첨부파일을 포함한 문서 결재 요청을 결재 대기로 제출했습니다.', 'success');
+                setSubmitMessage(captured, '첨부파일을 포함한 문서 결재 요청을 결재 대기로 제출했습니다.', 'success');
             } else {
-                setMessage(`제출 완료 · 목록 갱신 실패 — 요청 ID(${requestId})는 정상 접수됐습니다. 새로고침으로 다시 조회하세요.`, 'error');
+                setSubmitMessage(captured, `제출 완료 · 목록 갱신 실패 — 요청 ID(${requestId})는 정상 접수됐습니다. 새로고침으로 다시 조회하세요.`, 'error');
             }
         } catch (error) {
             console.warn('Employee document attachment submit failed:', error);
-            setAttachProgress('업로드 실패 — 정리 중...', 'error');
+            setSubmitProgress(captured, '업로드 실패 — 정리 중...', 'error');
             // R3-C: 사용자가 바뀐 뒤에는 이전 사용자 문서를 파괴적으로 정리하지 않는다
             // (현재 사용자 권한으로는 삭제가 불가능하며, 결과도 확정 표시할 수 없다).
             if (!contextUnchanged(captured)) {
-                setAttachProgress('');
-                setMessage(contextChangedNotice(requestId), 'error');
+                console.warn(contextChangedNotice(requestId));
                 return;
             }
             // D3: 상태 재확인 기반 정리. 불확실하면 파괴적 삭제를 하지 않는다.
@@ -817,8 +852,7 @@
                 // 업로드·전이는 실제로 완료됐고 응답만 유실된 경우 — 삭제하지 않는다.
                 // R3-C: 이 시점에도 컨텍스트가 같을 때만 성공 tone 으로 확정 표시한다.
                 if (!contextUnchanged(captured)) {
-                    setAttachProgress('');
-                    setMessage(contextChangedNotice(requestId), 'error');
+                    console.warn(contextChangedNotice(requestId));
                     return;
                 }
                 dom.form.reset();
@@ -827,20 +861,20 @@
                 // 안내 문구는 refresh() 의 조회 메시지에 덮이지 않도록 조회 이후에 표시한다.
                 const listedAfterSubmit = await refresh();
                 if (listedAfterSubmit.reason === 'context-changed' || !contextUnchanged(captured)) {
-                    setMessage(contextChangedNotice(requestId), 'error');
+                    console.warn(contextChangedNotice(requestId));
                 } else {
-                    setMessage(`요청이 이미 결재 대기로 제출됐습니다. 요청 ID(${requestId}) 목록에서 상태를 확인하세요.`, 'success');
+                    setSubmitMessage(captured, `요청이 이미 결재 대기로 제출됐습니다. 요청 ID(${requestId}) 목록에서 상태를 확인하세요.`, 'success');
                 }
                 return;
             }
             if (result.outcome === 'cleanup-failed') {
-                setMessage(`첨부 업로드에 실패했고 임시 요청 정리에도 실패했습니다. 관리자에게 요청 ID(${requestId})를 전달하세요.`, 'error');
+                setSubmitMessage(captured, `첨부 업로드에 실패했고 임시 요청 정리에도 실패했습니다. 관리자에게 요청 ID(${requestId})를 전달하세요.`, 'error');
             } else if (result.outcome === 'unknown') {
-                setMessage(`첨부 업로드 처리 결과를 확인하지 못했습니다. 임의로 삭제하지 않았으니 관리자에게 요청 ID(${requestId})를 전달하세요.`, 'error');
+                setSubmitMessage(captured, `첨부 업로드 처리 결과를 확인하지 못했습니다. 임의로 삭제하지 않았으니 관리자에게 요청 ID(${requestId})를 전달하세요.`, 'error');
             } else {
-                setMessage(error?.code === 'permission-denied' ? '첨부 업로드 권한이 없습니다.' : '첨부 업로드에 실패해 요청이 제출되지 않았습니다. 다시 시도하세요.', 'error');
+                setSubmitMessage(captured, error?.code === 'permission-denied' ? '첨부 업로드 권한이 없습니다.' : '첨부 업로드에 실패해 요청이 제출되지 않았습니다. 다시 시도하세요.', 'error');
             }
-            setAttachProgress('');
+            setSubmitProgress(captured, '');
         }
     }
 
@@ -869,44 +903,50 @@
             setMessage(form.message, 'error');
             return;
         }
+        const captured = captureSubmit();
+        const attachmentSnapshot = state.attachments.map(att => Object.freeze({ ...att }));
         state.submitting = true;
+        state.submittingSeq = captured.token;
+        state.submittingVersion = captured.version;
         dom.submit.disabled = true;
         if (dom.attachSelectBtn) dom.attachSelectBtn.disabled = true;
         renderAttachmentList();
         setMessage('문서 결재 요청을 제출하는 중입니다.', 'info');
         try {
             if (state.attachments.length > 0) {
-                await submitWithAttachments(ready, form);
+                await submitWithAttachments(ready, form, captured, attachmentSnapshot);
             } else {
                 const ts = serverTimestamp();
-                // WORK29-CORRECTION-03 R3-B: 첨부 없는 제출도 시작 컨텍스트를 캡처한다.
-                const captured = captureContext();
                 // R4: 첨부 없는 제출도 생성된 문서 reference 를 받아 요청 ID 를 확보한다.
                 const createdRef = await window.db.collection(COLLECTION).add(buildCreatePayload(ready.user, ready.auth, ts, form.title, form.description));
                 const requestId = createdRef?.id || '';
                 // R3-B: 쓰기 완료 후 컨텍스트가 바뀌었으면 새 사용자 화면을 이전 작업 결과로 바꾸지 않는다.
                 if (!contextUnchanged(captured)) {
-                    setMessage(contextChangedNotice(requestId), 'error');
+                    console.warn(contextChangedNotice(requestId));
                     return;
                 }
                 dom.form.reset();
                 const listed = await refresh();
                 if (listed.reason === 'context-changed' || !contextUnchanged(captured)) {
-                    setMessage(contextChangedNotice(requestId), 'error');
+                    console.warn(contextChangedNotice(requestId));
                 } else if (listed.ok) {
-                    setMessage('문서 결재 요청을 결재 대기로 제출했습니다.', 'success');
+                    setSubmitMessage(captured, '문서 결재 요청을 결재 대기로 제출했습니다.', 'success');
                 } else {
-                    setMessage(`제출 완료 · 목록 갱신 실패 — 요청 ID(${requestId})는 정상 접수됐습니다. 새로고침으로 다시 조회하세요.`, 'error');
+                    setSubmitMessage(captured, `제출 완료 · 목록 갱신 실패 — 요청 ID(${requestId})는 정상 접수됐습니다. 새로고침으로 다시 조회하세요.`, 'error');
                 }
             }
         } catch (error) {
             console.warn('Employee document request create failed:', error);
-            setMessage(error?.code === 'permission-denied' ? '문서 결재 요청 생성 권한이 없습니다.' : '문서 결재 요청을 제출하지 못했습니다.', 'error');
+            setSubmitMessage(captured, error?.code === 'permission-denied' ? '문서 결재 요청 생성 권한이 없습니다.' : '문서 결재 요청을 제출하지 못했습니다.', 'error');
         } finally {
-            state.submitting = false;
-            dom.submit.disabled = false;
-            if (dom.attachSelectBtn) dom.attachSelectBtn.disabled = false;
-            renderAttachmentList();
+            if (submitOwns(captured)) {
+                state.submitting = false;
+                state.submittingSeq = 0;
+                state.submittingVersion = -1;
+                dom.submit.disabled = false;
+                if (dom.attachSelectBtn) dom.attachSelectBtn.disabled = false;
+                renderAttachmentList();
+            }
         }
     }
 
