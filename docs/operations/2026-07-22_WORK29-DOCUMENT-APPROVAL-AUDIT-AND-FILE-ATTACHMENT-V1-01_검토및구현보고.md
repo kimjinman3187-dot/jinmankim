@@ -297,3 +297,50 @@ Storage→Firestore 단방향 결속 / 제출 직전 metadata 확인은 보안 �
 - 사용자 전환이 파일 업로드 직후 발생하면 draft 문서와 일부 Storage 객체가 남을 수 있다. 새 사용자 권한으로 파괴적 정리를 시도하지 않고 요청 ID 기반의 관리자 점검 대상으로 보존한다.
 - 기존 37개 하네스는 재현 자산이 아니어서 이번 독립 검증에서는 신규 12개 하네스와 Rules·정적 회귀만 실제 재실행했다.
 - Storage→Firestore 단방향 결속, metadata 확인의 비보안 경계, 파일 바이트 시그니처·악성코드 검사 부재는 기존 V1 잔여 위험과 같다.
+
+---
+
+## 17. WORK29 PR #166 상시 경합 회귀 테스트 자산화 (2026-07-27)
+
+### 17.1 목적과 실행 방식
+
+삭제되는 임시 하네스에 의존하던 사용자 전환 경합 검증을 `tests/employee-document-requests-race.test.mjs`로 자산화했다. 테스트는 Node 기본 `node:test`와 `vm`만 사용하며 신규 패키지를 요구하지 않는다.
+
+테스트는 실제 생산 파일 `js/employee-document-requests.js`를 매 실행마다 직접 읽어 격리된 VM에서 실행한다. 테스트 훅은 읽어 온 문자열의 최종 공개 객체를 VM 메모리 안에서만 확장하며 저장소의 생산 파일에는 export·조건 분기·테스트 코드를 추가하지 않는다. Window, DOM, Firebase Auth, Firestore, Storage는 deferred promise로 완료 순서를 직접 제어하는 결정론 스텁을 사용하고 실제 네트워크·운영 Firebase·실제 Storage에는 접근하지 않는다.
+
+### 17.2 과거 임시 테스트와의 관계
+
+- 3차 임시 하네스 37개와 4차 임시 하네스 12개를 단순 합산하거나 재실행한 것으로 기록하지 않는다.
+- 새 상시 테스트는 과거 핵심 범위를 R3-A·R3-B·R3-C·R4·R5·R6·R7·D3·CONTRACT ID로 다시 매핑해 독립적으로 구현했다.
+- 과거 하네스가 없어도 `node --test tests/employee-document-requests-race.test.mjs` 한 명령으로 반복 실행할 수 있다.
+
+### 17.3 실제 실행 결과
+
+- 상시 클라이언트 경합 회귀: **30/30 PASS**
+  - 조회 경합: 오래된 성공·실패·로그아웃 결과 차단, B 결과·loading 유지, 목록·상세·선택 ID·LIVE 카드 보호, 동일 사용자 정상 조회
+  - 첨부 없는 제출: 늦은 성공·실패 차단, B 즉시 제출, 오래된 `finally`의 버튼·첨부 목록 변경 차단, A→B→A 세대 보호, 동일 사용자 중복 제출 차단, 제출/목록 갱신 결과 분리
+  - 첨부 제출: 스냅샷 분리, 첫·중간 파일 업로드 중 전환 시 잔여 업로드 중단, B 파일의 A 경로 유입 차단, metadata·트랜잭션·응답 유실 컨텍스트 보호
+  - rollback: pending 삭제 0건, 사용자 변경 후 파괴적 rollback 0건, 정상 draft 정리 유지, 불명확 상태·Storage 삭제 실패 시 draft 삭제 금지
+  - 계약: 정확한 첨부 4필드, 최대 5개·파일당 10MB·합계 30MB, metadata 확인, 가변 첨부 배열 업로드 순회 0건, `innerHTML`·`_blank` 0건
+- Firestore Rules: **46/46 PASS**, Firestore 단독 에뮬레이터 실행.
+- Storage Rules: **25/25 PASS**, 필요한 Firestore와 Storage 에뮬레이터를 별도 프로세스로 실행.
+- `node --check js/employee-document-requests.js`: PASS.
+- `node --check tests/employee-document-requests-race.test.mjs`: PASS.
+- `git diff --check`: PASS.
+- 중복 DOM ID 0건, 모바일 첨부 UI 참조 0건.
+- 에뮬레이터 debug log와 임시 하네스는 실행 후 제거했다.
+
+### 17.4 변경 범위와 상태
+
+- 신규 파일: `tests/employee-document-requests-race.test.mjs`
+- 수정 파일: 본 WORK29 검토·구현보고
+- 생산 코드, Firestore/Storage Rules, Rules 테스트, `index.html`, `js/approval.js`, `js/firebase-shared.js`, 모바일, WORK31·WORK32 변경 0건.
+- Firebase Console, CORS, Pages, Schedule, 운영 데이터 변경 0건.
+- 운영 CORS 권위 확인과 실계정 운영 E2E는 계속 PENDING이다.
+- 상시 회귀가 통과했지만 PR은 `OPEN · Draft · MERGE HOLD`를 유지하며 Ready 전환·병합·배포는 별도 Gene 승인 대상이다.
+
+### 17.5 잔여 위험
+
+- VM 테스트는 실제 브라우저·Firebase SDK·네트워크 타이밍을 대체하지 않으므로 실계정 운영 E2E가 필요하다.
+- Storage→Firestore 단방향 결속, metadata 확인의 비보안 경계, 파일 바이트 시그니처·악성코드 검사 부재는 기존 V1 잔여 위험과 같다.
+- 사용자 전환 직후 발생 가능한 부분 업로드와 draft는 파괴적으로 정리하지 않고 관리자 점검 대상으로 보존한다.
