@@ -85,18 +85,8 @@ service cloud.firestore {
         "submittedAt", "updatedAt", "reviewerUid", "reviewerName",
         "reviewedAt", "reviewComment", "rejectionReason", "holdReason",
         "approvedAt", "appliedAt", "appliedByUid", "lastTransitionId",
-        "schemaVersion", "isTest"
-      ];
-    }
-
-    function documentApprovalRequiredKeys() {
-      return [
-        "requestType", "title", "documentType", "description", "payload",
-        "requesterUid", "requesterName", "requesterRole", "status",
-        "createdAt", "submittedAt", "updatedAt", "reviewerUid",
-        "reviewerName", "reviewedAt", "reviewComment", "rejectionReason",
-        "holdReason", "approvedAt", "appliedAt", "appliedByUid",
-        "lastTransitionId", "schemaVersion"
+        "schemaVersion", "isTest",
+        "attachments", "attachmentCount", "attachmentsTotalSize"
       ];
     }
 
@@ -116,19 +106,77 @@ service cloud.firestore {
       ];
     }
 
-    function isDocumentApprovalOwner() {
-      return arIsActiveUser()
-        && resource.data.requesterUid == request.auth.uid;
+    // WORK29: 문서결재 첨부파일 (schemaVersion 2) 검증.
+    // NOTE: contentType allow-list(확장자↔MIME) 강제는 실제 업로드 경계인 storage.rules
+    // 에서 수행한다. Firestore 규칙은 1000-expression 한도 때문에 첨부 항목당 구조/경로/
+    // 크기만 검증하고 contentType 은 문자열 존재만 확인한다.
+    // WORK29-CORRECTION-02 R1: 첨부 항목의 정확한 스키마를 강제한다.
+    // basePath = "document-approval-attachments/{requesterUid}/{requestId}/" (호출부에서 1회 생성)
+    //
+    // 슬롯의 권위값은 첨부 맵의 키(a0~a4)이고 storagePath 접미사에도 포함되므로
+    // 중복 `slot` 필드는 제거했다. 항목은 정확히 아래 4개 키만 가진다.
+    // 키 수 == 4 + 4개 필드를 모두 읽고 타입까지 검사하므로,
+    // 필수 키를 임의 키로 "교체" 해 총 개수를 맞추는 우회도 거부된다
+    // (교체된 필수 키 접근이 평가 오류가 되어 거부).
+    function attachmentEntryValid(entry, expectedSlot, basePath) {
+      return entry.keys().size() == 4
+        && entry.name is string
+        && entry.name.size() >= 1
+        && entry.name.size() <= 255
+        && entry.contentType is string
+        && entry.contentType.size() >= 1
+        && entry.size is int
+        && entry.size >= 1
+        && entry.size <= 10485760
+        && entry.storagePath is string
+        && entry.storagePath == basePath + expectedSlot;
     }
 
-    function isDocumentApprovalHistoryOwner(requestId) {
-      return arIsActiveUser()
-        && get(/databases/$(database)/documents/document_approval_requests/$(requestId)).data.requesterUid == request.auth.uid;
+    // WORK29-CORRECTION D1: 등록된 첨부 size 의 실제 합계.
+    // 클라이언트가 보낸 attachmentsTotalSize 를 진실값으로 신뢰하지 않기 위해 사용한다.
+    // 호출 전에 attachmentsMapValid 로 각 entry.size 가 int 임이 이미 검증돼야 한다.
+    // (map.get(key, default) 사용 — 삼항+in 조합보다 평가 비용이 낮다.)
+    function attachmentsSizeSum(a) {
+      return a.get("a0", {"size": 0}).size
+        + a.get("a1", {"size": 0}).size
+        + a.get("a2", {"size": 0}).size
+        + a.get("a3", {"size": 0}).size
+        + a.get("a4", {"size": 0}).size;
     }
 
-    function hasValidDocumentApprovalCreateShape() {
+    function attachmentsMapValid(attachments, basePath) {
+      // keys().size() 범위는 attachmentCount(1~5) == keys().size() 와
+      // hasOnly(["a0".."a4"]) 로 이미 강제되므로 중복 검사하지 않는다.
+      return attachments.keys().hasOnly(["a0", "a1", "a2", "a3", "a4"])
+        && (!("a0" in attachments) || attachmentEntryValid(attachments.a0, "a0", basePath))
+        && (!("a1" in attachments) || attachmentEntryValid(attachments.a1, "a1", basePath))
+        && (!("a2" in attachments) || attachmentEntryValid(attachments.a2, "a2", basePath))
+        && (!("a3" in attachments) || attachmentEntryValid(attachments.a3, "a3", basePath))
+        && (!("a4" in attachments) || attachmentEntryValid(attachments.a4, "a4", basePath));
+    }
+
+    function hasValidDocumentApprovalAttachments(requestId) {
+      return request.resource.data.attachments is map
+        && request.resource.data.attachmentCount is int
+        && request.resource.data.attachmentCount >= 1
+        && request.resource.data.attachmentCount <= 5
+        && request.resource.data.attachments.keys().size() == request.resource.data.attachmentCount
+        && request.resource.data.attachmentsTotalSize is int
+        && request.resource.data.attachmentsTotalSize >= 1
+        && request.resource.data.attachmentsTotalSize <= 31457280
+        && attachmentsMapValid(
+             request.resource.data.attachments,
+             "document-approval-attachments/" + request.auth.uid + "/" + requestId + "/")
+        // D1: 선언된 합계가 실제 항목 합계와 정확히 일치해야 한다 (과소·과대 신고 모두 차단).
+        && request.resource.data.attachmentsTotalSize == attachmentsSizeSum(request.resource.data.attachments);
+    }
+
+    // WORK29: v1(첨부 없음·pending)과 v2(첨부 있음·draft) 생성을 하나의 allow 로 검증.
+    // 두 create shape 를 각각 별도 allow 로 두면 공통 base 가 중복 인라인되어
+    // Firestore 1000-expression 한도를 초과한다. 공통 base 를 한 번만 인라인하고
+    // schemaVersion 으로 분기해 한도 내에서 두 경로를 모두 검증한다.
+    function hasValidDocumentApprovalUnifiedCreateShape(requestId) {
       return request.resource.data.keys().hasOnly(documentApprovalRequestKeys())
-        && request.resource.data.keys().hasAll(documentApprovalRequiredKeys())
         && request.resource.data.requestType == "document"
         && request.resource.data.documentType == "GENERAL_APPROVAL"
         && !request.resource.data.keys().hasAny([
@@ -151,11 +199,8 @@ service cloud.firestore {
         && request.resource.data.requesterName != ""
         && request.resource.data.requesterName == arUserDoc().get("name", "")
         && request.resource.data.requesterRole == arUserDoc().get("role", "")
-        && request.resource.data.status == "pending"
         && request.resource.data.createdAt == request.time
-        && request.resource.data.submittedAt == request.time
         && request.resource.data.updatedAt == request.time
-        && request.resource.data.schemaVersion == 1
         && request.resource.data.reviewerUid == null
         && request.resource.data.reviewerName == null
         && request.resource.data.reviewedAt == null
@@ -165,7 +210,32 @@ service cloud.firestore {
         && request.resource.data.approvedAt == null
         && request.resource.data.appliedAt == null
         && request.resource.data.appliedByUid == null
-        && request.resource.data.lastTransitionId == null;
+        && request.resource.data.lastTransitionId == null
+        && (
+          (
+            request.resource.data.schemaVersion == 1
+            && request.resource.data.status == "pending"
+            && request.resource.data.submittedAt == request.time
+            && !request.resource.data.keys().hasAny([
+              "attachments", "attachmentCount", "attachmentsTotalSize"
+            ])
+          ) || (
+            request.resource.data.schemaVersion == 2
+            && request.resource.data.status == "draft"
+            && request.resource.data.submittedAt == null
+            && hasValidDocumentApprovalAttachments(requestId)
+          )
+        );
+    }
+
+    function isDocumentApprovalOwner() {
+      return arIsActiveUser()
+        && resource.data.requesterUid == request.auth.uid;
+    }
+
+    function isDocumentApprovalHistoryOwner(requestId) {
+      return arIsActiveUser()
+        && get(/databases/$(database)/documents/document_approval_requests/$(requestId)).data.requesterUid == request.auth.uid;
     }
 
     function documentApprovalUserTransitionAllowed() {
@@ -276,6 +346,8 @@ service cloud.firestore {
         && request.resource.data.get("approvedAt", null) == resource.data.get("approvedAt", null)
         && request.resource.data.get("appliedAt", null) == resource.data.get("appliedAt", null)
         && request.resource.data.get("appliedByUid", null) == resource.data.get("appliedByUid", null);
+      // 첨부(attachments/attachmentCount/attachmentsTotalSize) 는 affectedKeys().hasOnly()
+      // 허용 목록에 없으므로 이 update 경로에서 변경 시 자동 차단됨 (불변 보장).
     }
 
     function documentApprovalAdminTransitionAllowed() {
@@ -481,11 +553,21 @@ service cloud.firestore {
 
     match /document_approval_requests/{requestId} {
       allow read: if arIsAdmin() || isDocumentApprovalOwner();
+      // create: v1/v2 를 하나의 unified shape 로 검증 (공통 base 중복 인라인 방지).
       allow create: if arIsActiveUser()
-        && hasValidDocumentApprovalCreateShape();
-      allow update: if hasValidDocumentApprovalUserUpdateShape(requestId)
-        || hasValidDocumentApprovalAdminUpdateShape(requestId);
-      allow delete: if false;
+        && hasValidDocumentApprovalUnifiedCreateShape(requestId);
+      // update: user/admin shape 를 한 allow 에서 OR 로 묶으면 인라인 식 트리가
+      // 1000-expression 한도를 초과하므로 별도 allow 문으로 분리한다.
+      // 각 문에 resource != null 가드를 둬서 create(set) 평가 시 update shape 가
+      // 깊이 평가돼 한도를 건드리는 것도 막는다.
+      allow update: if resource != null
+        && hasValidDocumentApprovalUserUpdateShape(requestId);
+      allow update: if resource != null
+        && hasValidDocumentApprovalAdminUpdateShape(requestId);
+      // 요청자 본인의 미제출 draft 만 삭제 허용 (업로드 실패 rollback).
+      // pending 이후 및 타인 요청 삭제는 불가.
+      allow delete: if isDocumentApprovalOwner()
+        && resource.data.status == "draft";
 
       match /history/{historyId} {
         allow read: if arIsAdmin() || isDocumentApprovalHistoryOwner(requestId);

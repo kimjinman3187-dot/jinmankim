@@ -1,0 +1,91 @@
+rules_version = '2';
+
+// WORK29-DOCUMENT-APPROVAL-FILE-ATTACHMENT-V1-01
+// 문서결재 일반문서 첨부파일 Storage 보안 규칙.
+// - 비로그인/미승인 사용자 접근 차단
+// - 요청자 본인의 draft 요청 경로에만 업로드 허용 (덮어쓰기/pending 이후 수정·삭제 불가)
+// - draft 단계에서는 요청자 본인이 rollback 정리를 위해 삭제 가능
+// - active admin 또는 요청자 본인만 읽기 허용
+// - 파일당 10MB, 허용 확장자에 대응하는 canonical MIME type만 허용
+// Storage 경로: document-approval-attachments/{requesterUid}/{requestId}/{slot}
+//
+// NOTE: firestore.get/exists 의 경로는 path 반환 헬퍼 함수로 감싸지 않고 직접 인라인한다.
+// (Storage 에뮬레이터에서 path 반환 함수를 firestore.get 에 넘기면 평가되지 않는다.)
+service firebase.storage {
+  match /b/{bucket}/o {
+    function validSlot(slot) {
+      return slot in ["a0", "a1", "a2", "a3", "a4"];
+    }
+
+    // 클라이언트가 확장자에 매핑해 지정하는 canonical MIME type 집합.
+    // firestore.rules(구조 검증) / employee-document-requests.js 와 동일하게 유지.
+    function allowedAttachmentContentType(contentType) {
+      return contentType in [
+        "application/pdf",
+        "image/png",
+        "image/jpeg",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "text/csv",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/x-hwp",
+        "application/x-hwpx"
+      ];
+    }
+
+    match /document-approval-attachments/{requesterUid}/{requestId}/{slot} {
+      // 읽기: 요청자 본인(active) 또는 active admin
+      allow read: if request.auth != null
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.status == "active"
+        && (
+          request.auth.uid == requesterUid
+          || firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == "admin"
+        );
+
+      // 쓰기: 요청자 본인의 draft 요청 경로에서만 허용.
+      // - 업로드(생성): 기존 객체가 없을 때만 (덮어쓰기 차단), 크기/형식 검증 +
+      //   WORK29-CORRECTION D2: Firestore 요청 문서에 등록된 첨부 메타와의 결속 검증.
+      //   (등록되지 않은 슬롯 / storagePath·contentType·size 불일치 업로드를 모두 차단)
+      // - 삭제(rollback 정리): draft 단계의 기존 객체 제거만 허용.
+      // status != "draft" (pending 이후)이면 업로드·삭제 모두 차단된다.
+      //
+      // NOTE: firestore.get 경로는 헬퍼로 감싸지 않고 매번 인라인한다(에뮬레이터 제약).
+      allow write: if request.auth != null
+        && request.auth.uid == requesterUid
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.status == "active"
+        && validSlot(slot)
+        && firestore.exists(/databases/(default)/documents/document_approval_requests/$(requestId))
+        && firestore.get(/databases/(default)/documents/document_approval_requests/$(requestId)).data.requesterUid == request.auth.uid
+        && firestore.get(/databases/(default)/documents/document_approval_requests/$(requestId)).data.status == "draft"
+        && (
+          (
+            resource == null
+            && request.resource != null
+            && request.resource.size >= 1
+            && request.resource.size <= 10 * 1024 * 1024
+            && allowedAttachmentContentType(request.resource.contentType)
+            // D2: 업로드 슬롯이 Firestore attachments 맵에 실제로 등록돼 있어야 한다.
+            //     (슬롯의 권위값은 맵 키. WORK29-CORRECTION-02 에서 중복 slot 필드는 제거했다.)
+            && slot in firestore.get(/databases/(default)/documents/document_approval_requests/$(requestId)).data.attachments
+            // D2: 등록 메타의 storagePath / contentType / size 가 모두 실제 객체와 일치해야 한다.
+            && firestore.get(/databases/(default)/documents/document_approval_requests/$(requestId)).data.attachments[slot].storagePath
+                 == "document-approval-attachments/" + requesterUid + "/" + requestId + "/" + slot
+            && firestore.get(/databases/(default)/documents/document_approval_requests/$(requestId)).data.attachments[slot].contentType == request.resource.contentType
+            && firestore.get(/databases/(default)/documents/document_approval_requests/$(requestId)).data.attachments[slot].size == request.resource.size
+          )
+          || (
+            request.resource == null
+            && resource != null
+          )
+        );
+    }
+
+    // 그 외 모든 경로 차단
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

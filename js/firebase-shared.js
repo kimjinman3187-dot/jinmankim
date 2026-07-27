@@ -23,6 +23,13 @@ function initializeFirebase() {
     auth = firebase.auth();
     window.db = db;
     window.auth = auth;
+    // WORK29: 문서결재 첨부파일용 Storage. SDK 미로드 시에도 기존 기능은 유지.
+    if (typeof firebase.storage === 'function') {
+        window.storage = firebase.storage();
+    } else {
+        window.storage = null;
+        console.warn('⚠️ firebase-storage-compat 미로드 — 문서결재 첨부 업로드 비활성');
+    }
     console.log('✅ Firebase 초기화 완료 (전역 공유됨)');
 }
 
@@ -507,4 +514,86 @@ console.log('📦 firebase-shared.js 로드 완료');
     script.src = 'js/work22-3h3i-finance-enhancement.js?v=20260526';
     script.defer = true;
     document.head.appendChild(script);
+})();
+
+// ═══════════════════════════════════════════════════════
+// WORK29-CORRECTION D4 — 문서결재 첨부 공용 다운로드 처리
+// 직원(js/employee-document-requests.js)과 관리자(js/approval.js)가 공유한다.
+//
+// 계약:
+// - target="_blank" 를 사용하지 않는다 (새 탭·앱 화면 이동 0건).
+// - 다운로드 URL 은 처리 중에만 일시 사용하고 Firestore/localStorage/sessionStorage
+//   등 어디에도 저장하지 않는다.
+// - 응답을 Blob 으로 받아 Object URL 로 저장하고, 클릭 직후 revoke 한다.
+// - 원래 파일명으로 저장한다.
+// - fetch 또는 Blob 응답 읽기 실패는 CORS 로 단정할 수 없으므로 새 탭 fallback 없이
+//   'network-or-cors' 코드로 보고한다.
+// ═══════════════════════════════════════════════════════
+(function installYJAttachmentDownload() {
+    if (window.yjDownloadAttachment) return;
+
+    function mapUrlError(error) {
+        const code = error && error.code;
+        if (code === 'storage/unauthorized') return 'permission-denied';
+        if (code === 'storage/object-not-found') return 'not-found';
+        return 'url-failed';
+    }
+
+    async function yjDownloadAttachment(storagePath, fileName) {
+        const path = String(storagePath || '');
+        if (!path) return { ok: false, code: 'invalid-path' };
+        if (!window.storage || typeof window.storage.ref !== 'function') {
+            return { ok: false, code: 'storage-unavailable' };
+        }
+
+        let url = '';
+        try {
+            url = await window.storage.ref(path).getDownloadURL();
+        } catch (error) {
+            console.warn('Attachment download URL failed:', path, error);
+            return { ok: false, code: mapUrlError(error) };
+        }
+
+        let blob = null;
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                return { ok: false, code: response.status === 403 ? 'permission-denied' : 'fetch-failed' };
+            }
+            blob = await response.blob();
+        } catch (error) {
+            // Fetch 예외만으로 네트워크와 브라우저 교차 출처 정책 문제를 구분할 수 없다.
+            console.warn('Attachment blob fetch failed (network or cross-origin failure):', path, error);
+            return { ok: false, code: 'network-or-cors' };
+        } finally {
+            url = ''; // 다운로드 URL 은 여기서 폐기 (저장하지 않음)
+        }
+
+        const objectUrl = URL.createObjectURL(blob);
+        try {
+            const anchor = document.createElement('a');
+            anchor.href = objectUrl;
+            anchor.download = fileName || path.split('/').pop() || 'attachment';
+            anchor.rel = 'noopener';
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+        } finally {
+            // 클릭 직후 즉시 revoke (다운로드 시작 tick 이후)
+            window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+        }
+        return { ok: true, code: '' };
+    }
+
+    function yjAttachmentDownloadMessage(code) {
+        if (code === 'permission-denied') return '첨부파일 접근 권한이 없습니다.';
+        if (code === 'not-found') return '첨부파일을 찾을 수 없습니다.';
+        if (code === 'storage-unavailable') return '첨부 저장소 연결이 준비되지 않았습니다.';
+        if (code === 'invalid-path') return '첨부파일 경로가 올바르지 않습니다.';
+        if (code === 'network-or-cors') return '네트워크 또는 브라우저 교차 출처 정책 문제로 첨부파일을 내려받지 못했습니다.';
+        return '첨부파일을 불러오지 못했습니다.';
+    }
+
+    window.yjDownloadAttachment = yjDownloadAttachment;
+    window.yjAttachmentDownloadMessage = yjAttachmentDownloadMessage;
 })();

@@ -1,0 +1,14 @@
+{
+  "name": "yjflow-document-approval-rules-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "WORK29 document approval attachment Firestore/Storage rules tests",
+  "type": "module",
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore,storage --project yongjin-enterprise \"node --test\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.3.0"
+  }
+}
