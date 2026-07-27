@@ -244,3 +244,56 @@ Storage 경로: `document-approval-attachments/{requesterUid}/{requestId}/{slot}
 ### 15.4 잔여 위험 (변동 없음)
 
 Storage→Firestore 단방향 결속 / 제출 직전 metadata 확인은 보안 경계 아님 / 바이트 시그니처·악성코드 검사 V1 범위 밖 / `CORS GATE PENDING · READ ACCESS REQUIRED` / 실계정 운영 E2E PENDING.
+
+---
+
+## 16. WORK29 PR #166 추가 경합 보정 및 독립 검증 (2026-07-27)
+
+새 검증 기준선은 `main f0a4ba8131aff869fcb6db33b07fe991d94ad21f` / PR Head `93b82225742c0df33c246ea955ddbf52442b1459`였다. 독립 검토에서 3차 보정의 기존 37개 임시 하네스에 포함되지 않은 R5~R7 결함을 확인했다.
+
+### 16.1 확인된 결함
+
+- **R5:** 첨부 없는 제출의 늦은 `add()` 실패가 외부 `catch`에서 컨텍스트 검사 없이 새 사용자 화면에 오류 문구를 표시할 수 있었다.
+- **R6:** 전역 `state.submitting`과 버튼 disabled 상태에 제출 토큰 소유권이 없어, A 제출 중 B가 새 제출을 시작하지 못하고 A의 늦은 `finally`가 B의 버튼·첨부 목록을 변경할 수 있었다.
+- **R7:** 첨부 메타 생성과 업로드 반복문이 가변 `state.attachments`를 직접 참조해 사용자 전환 초기화 또는 새 사용자 파일 선택의 영향을 받을 수 있었다.
+
+### 16.2 최소 보정
+
+- 제출 토큰 `submitSeq`, 제출 잠금 소유 토큰 `submittingSeq`, 잠금 세대 `submittingVersion`을 도입했다.
+- 사용자 컨텍스트가 바뀌면 이전 제출 토큰과 잠금을 무효화해 새 사용자가 즉시 자기 제출을 시작할 수 있게 했다.
+- 성공·실패·진행 문구와 `finally`의 버튼·첨부 목록 갱신은 현재 제출 토큰 소유자만 수행한다.
+- 첨부 없는 `add()` 실패도 제출 토큰과 전체 사용자 컨텍스트가 동일할 때만 화면에 반영한다.
+- 제출 시작 시 첨부 객체 배열을 복제·동결하고, 메타 생성과 업로드 반복문은 이 스냅샷만 참조한다.
+- 각 파일 업로드 전후에 사용자 컨텍스트를 검사해 전환 후 남은 업로드를 중단한다.
+- 사용자 전환 후 오래된 작업의 요청 ID 안내는 새 사용자 DOM을 덮지 않고 콘솔 경고로만 남긴다.
+- 사용자 전환으로 결과가 불확실한 draft와 부분 업로드는 파괴적으로 rollback하지 않는다. 이미 `pending`인 요청도 삭제하지 않는다.
+
+### 16.3 실제 검증 결과
+
+- 2026-07-27 신규 결정론 임시 하네스: **12/12 PASS**
+  - R5 늦은 성공·실패의 새 사용자 메시지/폼 변경 차단
+  - R6 B의 즉시 제출, 오래된 A `finally` 차단, 동일 사용자 중복 제출 차단, A→B→A 세대 차단
+  - R7 원본 첨부 스냅샷, 사용자 전환 후 잔여 업로드 중단, B 파일의 A 경로 유입 0건, 정확한 4필드 계약
+  - 로그아웃 토큰 무효화와 동일 사용자 정상 제출 회귀
+- 기존 3차 임시 하네스 **37/37은 저장소에 남아 있지 않아 이번 작업에서 재실행하지 않았다.** 이전 실행 기록을 이번 PASS 건수로 확대하지 않는다.
+- Firestore Rules: **46/46 PASS**, Firestore 단독 에뮬레이터 실행.
+- Storage Rules: **25/25 PASS**, 필요한 Firestore와 Storage 에뮬레이터만 별도 프로세스로 실행.
+- `node --check js/employee-document-requests.js` PASS.
+- `git diff --check` PASS.
+- 사용자 입력 `innerHTML` 0건, `_blank` 0건, 가변 `state.attachments` 업로드 반복문 0건.
+- 임시 클라이언트 하네스는 실행 후 삭제했고 저장소에 남기거나 커밋하지 않았다.
+- WORK31·WORK32·모바일·Rules·Rules 테스트·`index.html`·`js/approval.js`·`js/firebase-shared.js` 변경 0건.
+
+### 16.4 커밋과 상태
+
+- 코드 커밋: `9b12309` — `fix(work29): isolate stale submit results after user changes`
+- 코드 수정 파일: `js/employee-document-requests.js`
+- PR은 `OPEN · Draft · MERGE HOLD`를 유지한다.
+- Firestore/Storage Rules 배포, Firebase Console, CORS, Pages, Schedule, 운영 데이터 변경은 수행하지 않았다.
+- 실계정 운영 E2E와 운영 CORS 권위 확인은 계속 PENDING이다.
+
+### 16.5 잔여 위험
+
+- 사용자 전환이 파일 업로드 직후 발생하면 draft 문서와 일부 Storage 객체가 남을 수 있다. 새 사용자 권한으로 파괴적 정리를 시도하지 않고 요청 ID 기반의 관리자 점검 대상으로 보존한다.
+- 기존 37개 하네스는 재현 자산이 아니어서 이번 독립 검증에서는 신규 12개 하네스와 Rules·정적 회귀만 실제 재실행했다.
+- Storage→Firestore 단방향 결속, metadata 확인의 비보안 경계, 파일 바이트 시그니처·악성코드 검사 부재는 기존 V1 잔여 위험과 같다.
