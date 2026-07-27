@@ -93,13 +93,10 @@ body.yj-approval-dashboard-page { margin: 0; background: #0b1120; }
 }
 @media print {
     body.yj-approval-dashboard-printing { background: #fff !important; }
-    body.yj-approval-dashboard-printing > *:not(.yj-approval-dashboard-print-source) { display: none !important; }
-    body.yj-approval-dashboard-printing .yj-approval-dashboard-print-source { display: block !important; position: static !important; }
-    body.yj-approval-dashboard-printing .yj-approval-dashboard-print-source > *:not(.dash-wrap) { display: none !important; }
-    body.yj-approval-dashboard-printing .yj-approval-dashboard-print-source .dash-wrap > *:not(#dash_printArea) { display: none !important; }
-    body.yj-approval-dashboard-printing #dash_printArea { display: block !important; color: #000; }
-    body.yj-approval-dashboard-printing #dash_printArea .dash-box { border-color: #ccc; background: #fff; }
-    body.yj-approval-dashboard-printing #dash_printArea .dash-box-text,
-    body.yj-approval-dashboard-printing #dash_printArea .dash-detail-title,
-    body.yj-approval-dashboard-printing #dash_printArea .dash-hist-flow { color: #000; }
+    body.yj-approval-dashboard-printing > *:not(#yjApprovalDashboardPrintHost) { display: none !important; }
+    body.yj-approval-dashboard-printing #yjApprovalDashboardPrintHost { display: block !important; color: #000; position: static !important; }
+    body.yj-approval-dashboard-printing #yjApprovalDashboardPrintHost .dash-box { border-color: #ccc; background: #fff; }
+    body.yj-approval-dashboard-printing #yjApprovalDashboardPrintHost .dash-box-text,
+    body.yj-approval-dashboard-printing #yjApprovalDashboardPrintHost .dash-detail-title,
+    body.yj-approval-dashboard-printing #yjApprovalDashboardPrintHost .dash-hist-flow { color: #000; }
 }

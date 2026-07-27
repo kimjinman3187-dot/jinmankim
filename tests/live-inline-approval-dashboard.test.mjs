@@ -26,6 +26,9 @@ test('LIVE dashboard embeds the complete read-only approval surface', () => {
     assert.match(indexHtml, /href="approval-dashboard\.css"/);
     assert.match(indexHtml, /src="js\/approval-dashboard\.js"/);
     assert.doesNotMatch(indexHtml, /<iframe\b/i);
+    const allIds = [...indexHtml.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
+    const duplicateIds = [...new Set(allIds.filter((id, index) => allIds.indexOf(id) !== index))];
+    assert.deepEqual(duplicateIds, [], `index.html duplicate IDs: ${duplicateIds.join(', ')}`);
 });
 
 test('summary navigation stays in LIVE and scrolls to the inline dashboard', () => {

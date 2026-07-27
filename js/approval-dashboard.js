@@ -208,8 +208,7 @@
             reconcileSelectionAfterList();                    // D5
         } catch (e) {
             if (seq !== state.listSeq) return;
-            state.hasNext = false;
-            handleQueryError(e);
+            failListClosed(e);
         } finally {
             if (seq === state.listSeq) {                       // 최신 요청만 로딩/버튼 상태 복구 (D1)
                 state.loading = false;
@@ -243,12 +242,21 @@
                 window.YJLiveOperationsHub.updateApprovalDashboardSummary({
                     rows: docs.map(function (d) { var o = d.data() || {}; o.id = d.id; return o; }),
                     over: over,
+                    limit: SUMMARY_CAP,
                     role: state.isAdmin ? 'admin' : 'employee'
                 });
             }
         } catch (e) {
             if (seq !== state.summarySeq) return;
             renderSummary(null, false, e);
+            if (state.filters.period === 'all' && window.YJLiveOperationsHub &&
+                typeof window.YJLiveOperationsHub.updateApprovalDashboardSummary === 'function') {
+                window.YJLiveOperationsHub.updateApprovalDashboardSummary({
+                    error: true,
+                    code: (e && e.code) || '',
+                    role: state.isAdmin ? 'admin' : 'employee'
+                });
+            }
         }
     }
 
@@ -260,6 +268,19 @@
         else if (code === 'unavailable' || code === 'deadline-exceeded') msg = '네트워크 문제로 조회하지 못했습니다. 새로고침 후 다시 시도하세요.';
         tableMessage(msg);
         console.warn('[approval-dashboard] query error:', e);
+    }
+
+    function failListClosed(e) {
+        state.rows = [];
+        state.hasNext = false;
+        state.lastQueryAt = null;
+        state.historySeq++;
+        clearSelection();
+        if (dom.printArea) clearNode(dom.printArea);
+        cleanupPrintHost();
+        if (dom.lastQuery) dom.lastQuery.textContent = '';
+        handleQueryError(e);
+        renderPageInfo();
     }
 
     // ---------- 렌더 ----------
@@ -489,25 +510,35 @@
         }
     }
 
+    function cleanupPrintHost() {
+        var oldHost = document.getElementById('yjApprovalDashboardPrintHost');
+        if (oldHost && oldHost.parentNode) oldHost.parentNode.removeChild(oldHost);
+        document.body.classList.remove('yj-approval-dashboard-printing');
+        window.removeEventListener('afterprint', cleanupPrintHost);
+    }
+
+    function createPrintHost(req, hist, histErr) {
+        cleanupPrintHost();
+        var host = el('div', 'yj-approval-dashboard yj-approval-dashboard-print-host');
+        host.id = 'yjApprovalDashboardPrintHost';
+        host.appendChild(el('div', 'dash-print-head', '용진FLOW 문서결재'));
+        var body = el('div');
+        buildDetailInto(body, req, hist, histErr);
+        host.appendChild(body);
+        document.body.appendChild(host);
+        return host;
+    }
+
     function doPrint() {
         var id = state.selectedId;
         var req = state.rows.find(function (r) { return r.id === id; });
-        if (!id || !req || !dom.printArea) return;
+        if (!id || !req) return;
         // 저장된 이력이 현재 선택 문서 것일 때만 사용 (D4). 아니면 이력 미포함으로 인쇄.
         var hist = (state._historyForId === id) ? state._lastHistory : null;
         var histErr = (state._historyForId === id) ? null : { code: 'stale' };
-        clearNode(dom.printArea);
-        dom.printArea.appendChild(el('div', 'dash-print-head', '용진FLOW 문서결재'));
-        var body = el('div');
-        buildDetailInto(body, req, hist, hist ? null : histErr);
-        dom.printArea.appendChild(body);
+        createPrintHost(req, hist, hist ? null : histErr);
         document.body.classList.add('yj-approval-dashboard-printing');
-        root.classList.add('yj-approval-dashboard-print-source');
-        var cleanup = function () {
-            document.body.classList.remove('yj-approval-dashboard-printing');
-            window.removeEventListener('afterprint', cleanup);
-        };
-        window.addEventListener('afterprint', cleanup);
+        window.addEventListener('afterprint', cleanupPrintHost);
         window.print();
     }
 
@@ -526,6 +557,7 @@
         if (dom.listNote) dom.listNote.textContent = '';
         if (dom.tbody) clearNode(dom.tbody);
         if (dom.printArea) clearNode(dom.printArea);
+        cleanupPrintHost();
         if (dom.pageInfo) dom.pageInfo.textContent = '페이지 1';
         if (dom.prevBtn) dom.prevBtn.disabled = true;
         if (dom.nextBtn) dom.nextBtn.disabled = true;
@@ -631,6 +663,20 @@
     window.YJApprovalDashboard = {
         mount: init,
         reload: function () { loadSummary(); loadList(); },
-        __test: { periodRange: periodRange, computeHasNext: function (fetched) { return fetched > PAGE_SIZE; }, PAGE_SIZE: PAGE_SIZE, SUMMARY_CAP: SUMMARY_CAP }
+        __test: {
+            periodRange: periodRange,
+            computeHasNext: function (fetched) { return fetched > PAGE_SIZE; },
+            loadList: loadList,
+            failListClosed: failListClosed,
+            renderTable: renderTable,
+            createPrintHost: createPrintHost,
+            cleanupPrintHost: cleanupPrintHost,
+            doPrint: doPrint,
+            seedState: function (seed) { Object.keys(seed || {}).forEach(function (k) { state[k] = seed[k]; }); },
+            state: function () { return state; },
+            setDom: function (nextDom) { dom = nextDom || {}; },
+            PAGE_SIZE: PAGE_SIZE,
+            SUMMARY_CAP: SUMMARY_CAP
+        }
     };
 })();
