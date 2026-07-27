@@ -48,14 +48,18 @@
         authSeq: 0,
         // 인쇄 정합용 이력 캐시 (D4)
         _lastHistory: null,
-        _historyForId: ''
+        _historyForId: '',
+        initialized: false,
+        authUnsubscribe: null
     };
 
     var dom = {};
+    var root = null;
 
-    function $(id) { return document.getElementById(id); }
+    function $(id) { return root ? root.querySelector('#' + id) : null; }
 
-    function cacheDom() {
+    function cacheDom(mountRoot) {
+        root = mountRoot;
         [
             'authState', 'body', 'userInfo', 'scopeNote', 'summary',
             'filterPeriod', 'customRange', 'startDate', 'endDate',
@@ -234,6 +238,14 @@
                 if (counts[s] != null) counts[s]++;
             });
             renderSummary(counts, over, null);
+            if (state.filters.period === 'all' && window.YJLiveOperationsHub &&
+                typeof window.YJLiveOperationsHub.updateApprovalDashboardSummary === 'function') {
+                window.YJLiveOperationsHub.updateApprovalDashboardSummary({
+                    rows: docs.map(function (d) { var o = d.data() || {}; o.id = d.id; return o; }),
+                    over: over,
+                    role: state.isAdmin ? 'admin' : 'employee'
+                });
+            }
         } catch (e) {
             if (seq !== state.summarySeq) return;
             renderSummary(null, false, e);
@@ -489,6 +501,13 @@
         var body = el('div');
         buildDetailInto(body, req, hist, hist ? null : histErr);
         dom.printArea.appendChild(body);
+        document.body.classList.add('yj-approval-dashboard-printing');
+        root.classList.add('yj-approval-dashboard-print-source');
+        var cleanup = function () {
+            document.body.classList.remove('yj-approval-dashboard-printing');
+            window.removeEventListener('afterprint', cleanup);
+        };
+        window.addEventListener('afterprint', cleanup);
         window.print();
     }
 
@@ -517,8 +536,10 @@
         resetDashboardState(); // 숨겨진 이전 데이터가 재인증/reload 시 재사용되지 않게 초기화 (H2.8)
         if (dom.authState) { dom.authState.textContent = msg; dom.authState.style.display = 'block'; }
         if (dom.body) dom.body.style.display = 'none';
+        if (root && root.id === 'pcLiveDocumentApprovalDashboard') root.classList.add('hidden');
     }
     function showDashboard() {
+        if (root && root.id === 'pcLiveDocumentApprovalDashboard') root.classList.remove('hidden');
         if (dom.authState) dom.authState.style.display = 'none';
         if (dom.body) dom.body.style.display = 'block';
     }
@@ -549,24 +570,29 @@
         if (dom.backBtn) dom.backBtn.addEventListener('click', function () { window.location.href = 'index.html'; });
     }
 
-    function init() {
-        cacheDom();
+    function init(options) {
+        var mountRoot = (options && options.root) || document.querySelector('[data-yj-approval-dashboard]');
+        if (!mountRoot || state.initialized) return false;
+        state.initialized = true;
+        cacheDom(mountRoot);
         bindEvents();
         renderDetail(null);
         if (typeof firebase === 'undefined' || !window.FirebaseShared || typeof window.FirebaseShared.initializeFirebase !== 'function') {
             showAuthState('Firebase 로드에 실패했습니다. 새로고침 후 다시 시도하세요.');
-            return;
+            return false;
         }
-        try {
-            window.FirebaseShared.initializeFirebase();
-        } catch (e) {
-            console.warn('[approval-dashboard] init error:', e);
-            showAuthState('Firebase 초기화에 실패했습니다.');
-            return;
+        if (!window.auth || !window.db) {
+            try {
+                window.FirebaseShared.initializeFirebase();
+            } catch (e) {
+                console.warn('[approval-dashboard] init error:', e);
+                showAuthState('Firebase 초기화에 실패했습니다.');
+                return false;
+            }
         }
-        if (!window.auth || !window.db) { showAuthState('Firebase 연결이 준비되지 않았습니다.'); return; }
+        if (!window.auth || !window.db) { showAuthState('Firebase 연결이 준비되지 않았습니다.'); return false; }
         showAuthState('로그인 확인 중...');
-        window.auth.onAuthStateChanged(async function (u) {
+        state.authUnsubscribe = window.auth.onAuthStateChanged(async function (u) {
             var aseq = ++state.authSeq;        // R2: 인증 콜백마다 최신 토큰 증가
             showAuthState('로그인 확인 중...');  // R3: 이전 사용자 상태·DOM 즉시 fail-closed 초기화 + 본문 숨김
             if (!u) {
@@ -592,6 +618,7 @@
                 showAuthState((e && e.code === 'permission-denied') ? '프로필 조회 권한이 없습니다.' : '프로필 조회 중 오류가 발생했습니다.');
             }
         });
+        return true;
     }
 
     if (document.readyState === 'loading') {
@@ -602,6 +629,7 @@
 
     // 디버깅/테스트용 최소 노출 (쓰기 API 없음)
     window.YJApprovalDashboard = {
+        mount: init,
         reload: function () { loadSummary(); loadList(); },
         __test: { periodRange: periodRange, computeHasNext: function (fetched) { return fetched > PAGE_SIZE; }, PAGE_SIZE: PAGE_SIZE, SUMMARY_CAP: SUMMARY_CAP }
     };

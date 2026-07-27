@@ -6,121 +6,14 @@
     <title>용진FLOW 문서결재 대시보드</title>
     <!--
       WORK31-DOCUMENT-APPROVAL-DASHBOARD-IMPLEMENTATION-01
-      독립 PC 문서결재 "조회 전용" 대시보드. 기존 결재 계약 재사용, 읽기 전용.
-      PC 전용 페이지이며 기존 index.html/모바일 화면과 분리되어 전역 영향이 없다.
+       PC 문서결재 "조회 전용" 대시보드의 선택적 독립 진입점.
+       LIVE 인라인 화면과 동일한 CSS/JS 계약을 재사용한다.
     -->
-    <style>
-        :root {
-            --bg: #0b1120; --panel: #1e293b; --panel2: #0f1522; --card: #111827;
-            --border: #334155; --text: #e2e8f0; --muted: #94a3b8; --dim: #64748b;
-            --cyan: #22d3ee; --blue: #3b82f6;
-        }
-        * { box-sizing: border-box; }
-        body { margin: 0; background: var(--bg); color: var(--text);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Malgun Gothic", sans-serif;
-            font-size: 13px; }
-        a { color: var(--cyan); }
-        .wrap { max-width: 1280px; margin: 0 auto; padding: 20px; }
-        .topbar { display: flex; justify-content: flex-start; margin-bottom: 12px; }
-
-        header.top { display: flex; justify-content: space-between; align-items: center;
-            gap: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
-        header.top h1 { font-size: 18px; margin: 0; font-weight: 800; }
-        .top-right { display: flex; align-items: center; gap: 12px; }
-        #dash_userInfo { display: flex; align-items: center; gap: 8px; }
-        .dash-user-name { font-weight: 800; }
-        .dash-user-role { font-size: 11px; font-weight: 800; color: var(--cyan);
-            border: 1px solid rgba(34,211,238,.3); background: rgba(34,211,238,.08); border-radius: 999px; padding: 2px 10px; }
-        button { cursor: pointer; font-family: inherit; }
-        .btn { height: 34px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--border);
-            background: var(--panel2); color: var(--text); font-weight: 800; font-size: 12px; }
-        .btn:hover { border-color: var(--dim); }
-        .btn:disabled { opacity: .45; cursor: not-allowed; }
-        .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
-
-        #dash_authState { display: none; margin: 40px auto; max-width: 620px; text-align: center;
-            padding: 24px; border: 1px solid var(--border); background: var(--panel); border-radius: 12px;
-            font-weight: 700; color: var(--muted); }
-
-        .scope-note { color: var(--dim); font-size: 11px; font-weight: 700; margin: 0 0 14px; }
-
-        .summary { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 16px; }
-        .dash-tile { border: 1px solid var(--border); background: var(--panel); border-radius: 10px; padding: 12px 14px; }
-        .dash-tile-label { font-size: 11px; font-weight: 800; color: var(--muted); }
-        .dash-tile-value { font-size: 22px; font-weight: 900; margin-top: 4px; }
-        .dash-summary-cap { grid-column: 1 / -1; font-size: 10px; color: var(--dim); font-weight: 700; }
-        .dash-summary-err { grid-column: 1 / -1; color: #fca5a5; font-weight: 700; }
-
-        .filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-bottom: 12px; }
-        .field { display: flex; flex-direction: column; gap: 4px; }
-        .field label { font-size: 10px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-        select, input[type="text"], input[type="date"] { height: 34px; background: var(--card);
-            border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 0 10px; font-family: inherit; font-size: 12px; }
-        input[type="text"] { min-width: 200px; }
-        #dash_customRange { display: none; gap: 8px; align-items: end; }
-        .spacer { flex: 1; }
-        #dash_lastQuery { font-size: 10px; color: var(--dim); font-weight: 700; }
-
-        .grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(340px, .8fr); gap: 16px; }
-        .list-panel, .detail-panel { border: 1px solid var(--border); background: var(--panel); border-radius: 12px; padding: 14px; }
-        .list-scroll { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        thead th { text-align: left; color: var(--muted); text-transform: uppercase; font-size: 10px;
-            letter-spacing: .04em; border-bottom: 1px solid var(--border); padding: 8px 8px; white-space: nowrap; }
-        tbody td { padding: 9px 8px; border-bottom: 1px solid rgba(51,65,85,.5); vertical-align: top; }
-        .dash-row { cursor: pointer; }
-        .dash-row:hover { background: rgba(59,130,246,.08); }
-        .dash-row-sel { background: rgba(59,130,246,.14); }
-        .dash-td-mono { font-family: ui-monospace, Menlo, Consolas, monospace; color: var(--muted); white-space: nowrap; }
-        .dash-td-title { font-weight: 800; color: #fff; min-width: 200px; }
-        .dash-td-nowrap { white-space: nowrap; color: var(--muted); }
-        .dash-empty { text-align: center; color: var(--dim); font-weight: 700; padding: 28px 8px; }
-        .dash-list-note { font-size: 10px; color: var(--dim); font-weight: 700; margin-top: 8px; }
-
-        .pager { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
-        .pager .spacer { flex: 1; }
-
-        .dash-badge { display: inline-flex; align-items: center; border-radius: 6px; border: 1px solid var(--border);
-            padding: 2px 8px; font-size: 10px; font-weight: 900; }
-        .dash-badge-pending { color: #fcd34d; border-color: rgba(245,158,11,.35); background: rgba(245,158,11,.1); }
-        .dash-badge-approved { color: #6ee7b7; border-color: rgba(16,185,129,.35); background: rgba(16,185,129,.1); }
-        .dash-badge-rejected { color: #fca5a5; border-color: rgba(244,63,94,.35); background: rgba(244,63,94,.1); }
-        .dash-badge-on_hold { color: #67e8f9; border-color: rgba(34,211,238,.35); background: rgba(34,211,238,.1); }
-        .dash-badge-cancelled, .dash-badge-draft, .dash-badge-applied, .dash-badge-unknown { color: var(--muted); }
-
-        .dash-detail-title { font-size: 15px; font-weight: 900; color: #fff; margin: 0; }
-        .dash-detail-sub { font-family: ui-monospace, monospace; color: var(--dim); font-size: 11px; margin: 4px 0 0; }
-        .dash-detail-meta { color: var(--muted); font-size: 11px; font-weight: 700; margin: 6px 0 0; }
-        .dash-detail-status { margin: 10px 0; }
-        .dash-box { border: 1px solid var(--border); background: var(--card); border-radius: 10px; padding: 12px; margin-top: 10px; }
-        .dash-box-label { font-size: 10px; font-weight: 900; color: var(--dim); text-transform: uppercase; letter-spacing: .04em; margin: 0 0 8px; }
-        .dash-box-text { font-size: 12px; color: var(--text); margin: 0 0 4px; white-space: pre-line; }
-        .dash-hint { font-size: 11px; color: var(--dim); font-weight: 700; }
-        .dash-att { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; border-bottom: 1px solid rgba(51,65,85,.4); }
-        .dash-att:last-child { border-bottom: none; }
-        .dash-att-name { font-weight: 700; }
-        .dash-att-meta { color: var(--dim); font-size: 11px; }
-        .dash-hist { display: flex; flex-direction: column; gap: 2px; padding: 6px 0; border-bottom: 1px solid rgba(51,65,85,.4); }
-        .dash-hist:last-child { border-bottom: none; }
-        .dash-hist-time { font-size: 10px; color: var(--dim); }
-        .dash-hist-flow { font-weight: 800; }
-        .dash-hist-actor { font-size: 11px; color: var(--muted); }
-
-        #dash_printArea { display: none; }
-        .dash-print-head { font-size: 16px; font-weight: 900; margin-bottom: 12px; }
-
-        @media print {
-            body { background: #fff; color: #000; }
-            .wrap > *:not(#dash_printArea) { display: none !important; }
-            #dash_printArea { display: block !important; color: #000; }
-            #dash_printArea .dash-box { border-color: #ccc; background: #fff; }
-            #dash_printArea .dash-box-text, #dash_printArea .dash-detail-title,
-            #dash_printArea .dash-hist-flow { color: #000; }
-        }
-    </style>
+    <link rel="stylesheet" href="approval-dashboard.css">
 </head>
-<body>
-    <div class="wrap">
+<body class="yj-approval-dashboard-page">
+    <main id="approvalDashboardRoot" class="yj-approval-dashboard yj-approval-dashboard-print-source" data-yj-approval-dashboard>
+    <div class="dash-wrap">
         <!-- WORK32: 용진FLOW 복귀 (로그인 상태와 무관하게 항상 노출) -->
         <div class="topbar"><button id="dash_backBtn" class="btn" type="button">← 용진FLOW로 돌아가기</button></div>
         <div id="dash_authState">로딩 중...</div>
@@ -208,7 +101,7 @@
 
                 <aside class="detail-panel">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                        <span style="font-size:11px; font-weight:900; color:var(--muted); text-transform:uppercase;">상세 · 이력</span>
+                        <span style="font-size:11px; font-weight:900; color:var(--dash-muted); text-transform:uppercase;">상세 · 이력</span>
                         <button id="dash_printBtn" class="btn" type="button" disabled>인쇄 / PDF</button>
                     </div>
                     <div id="dash_detail"></div>
@@ -218,6 +111,7 @@
 
         <div id="dash_printArea"></div>
     </div>
+    </main>
 
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>

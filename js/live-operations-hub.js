@@ -365,6 +365,8 @@
     function fetchAdminRecentOnce() {
         const c = state.docCard;
         if (!isAdmin()) return;                 // 관리자 권한 확인 후에만 조회
+        // WORK33 인라인 상세 대시보드의 bounded 요약 결과를 재사용해 별도 get()을 만들지 않는다.
+        if ($('pcLiveDocumentApprovalDashboard')) return;
         if (c.inflight) return;                 // 진행 중이면 상태 유지 (중복 실행 금지)
         if (!window.db || typeof window.db.collection !== 'function') {
             // Firestore 미준비: 조용히 반환하지 않고 카드 내부 오류로 종료 (무한 로딩 방지)
@@ -433,8 +435,25 @@
         const button = $('pcLiveDocOpenBtn');
         if (!button || button.dataset.yjDocCardBound === 'true') return;
         button.dataset.yjDocCardBound = 'true';
-        // 기존 [data-yj-hub-target] 스크롤 핸들러와 분리된 별도 페이지 이동 핸들러
-        button.addEventListener('click', () => { window.location.href = 'approval-dashboard.html'; });
+        button.addEventListener('click', () => scrollToPanel('pcLiveDocumentApprovalDashboard'));
+    }
+
+    // approval-dashboard.js의 기간=전체 조회 결과를 WORK32 요약 카드에도 공급한다.
+    function updateApprovalDashboardSummary(payload) {
+        if (!isAdmin() || payload?.role !== 'admin' || !Array.isArray(payload?.rows)) return;
+        const rows = payload.rows;
+        const c = state.docCard;
+        const cutoff = Date.now() - DOC_CARD.WINDOW_MS;
+        c.role = 'admin';
+        c.pending = rows.filter(row => row?.status === 'pending').length;
+        c.onHold = rows.filter(row => row?.status === 'on_hold').length;
+        c.approved7 = rows.filter(row => row?.status === 'approved' && timestampValue(row?.createdAt) >= cutoff).length;
+        c.rejected7 = rows.filter(row => row?.status === 'rejected' && timestampValue(row?.createdAt) >= cutoff).length;
+        c.recent = rows.slice(0, DOC_CARD.RECENT_ITEMS);
+        c.adminActiveCapped = Boolean(payload.over);
+        c.adminRecentPartial = Boolean(payload.over);
+        c.status = rows.length ? 'ready' : 'empty';
+        renderDocCard();
     }
 
     function updateVisibility() {
@@ -544,6 +563,7 @@
         init,
         updateApprovalRequests,
         updateDocumentApprovals,
+        updateApprovalDashboardSummary,
         updateEmployeeDocumentApprovals,
         updateOrders,
         refreshVisibility: updateVisibility,
