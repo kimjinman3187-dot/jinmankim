@@ -526,8 +526,8 @@ console.log('📦 firebase-shared.js 로드 완료');
 //   등 어디에도 저장하지 않는다.
 // - 응답을 Blob 으로 받아 Object URL 로 저장하고, 클릭 직후 revoke 한다.
 // - 원래 파일명으로 저장한다.
-// - CORS 등으로 Blob 다운로드가 실패하면 새 탭 방식으로 조용히 fallback 하지 않고
-//   'cors' 코드로 보고한다 (호출부에서 CORS GATE FAILED 로 표시).
+// - fetch 또는 Blob 응답 읽기 실패는 CORS 로 단정할 수 없으므로 새 탭 fallback 없이
+//   'network-or-cors' 코드로 보고한다.
 // ═══════════════════════════════════════════════════════
 (function installYJAttachmentDownload() {
     if (window.yjDownloadAttachment) return;
@@ -562,9 +562,9 @@ console.log('📦 firebase-shared.js 로드 완료');
             }
             blob = await response.blob();
         } catch (error) {
-            // 네트워크/CORS 실패. 새 탭 fallback 없이 그대로 보고한다.
-            console.warn('Attachment blob fetch failed (CORS gate):', path, error);
-            return { ok: false, code: 'cors' };
+            // Fetch 예외만으로 네트워크와 브라우저 교차 출처 정책 문제를 구분할 수 없다.
+            console.warn('Attachment blob fetch failed (network or cross-origin failure):', path, error);
+            return { ok: false, code: 'network-or-cors' };
         } finally {
             url = ''; // 다운로드 URL 은 여기서 폐기 (저장하지 않음)
         }
@@ -590,7 +590,7 @@ console.log('📦 firebase-shared.js 로드 완료');
         if (code === 'not-found') return '첨부파일을 찾을 수 없습니다.';
         if (code === 'storage-unavailable') return '첨부 저장소 연결이 준비되지 않았습니다.';
         if (code === 'invalid-path') return '첨부파일 경로가 올바르지 않습니다.';
-        if (code === 'cors') return 'CORS GATE FAILED — 첨부파일을 내려받지 못했습니다. 관리자에게 문의하세요.';
+        if (code === 'network-or-cors') return '네트워크 또는 브라우저 교차 출처 정책 문제로 첨부파일을 내려받지 못했습니다.';
         return '첨부파일을 불러오지 못했습니다.';
     }
 

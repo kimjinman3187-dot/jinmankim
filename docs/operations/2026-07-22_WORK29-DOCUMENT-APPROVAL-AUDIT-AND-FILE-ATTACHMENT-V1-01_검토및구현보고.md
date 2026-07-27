@@ -170,14 +170,14 @@ Storage 경로: `document-approval-attachments/{requesterUid}/{requestId}/{slot}
 - **D1** `firestore.rules`: `attachmentsTotalSize == 실제 항목 size 합계` 강제(과소·과대 신고 모두 차단), 이름·contentType 빈 문자열 금지. 1000-expression 한도 대응으로 per-entry `hasOnly`→`keys().size()==5`, 중복 `is` 타입 검사 제거(타입 불일치는 평가 오류로 동일하게 거부), storagePath 접두어 1회 생성으로 축소.
 - **D2** `storage.rules`: 업로드 슬롯이 Firestore `attachments` 맵에 등록돼 있고 `slot`·`storagePath`·`contentType`·`size` 가 실제 객체와 모두 일치할 때만 허용. 미등록 슬롯·경로/형식/크기 불일치 업로드 차단.
 - **D3** `js/employee-document-requests.js`: rollback 을 상태 재확인 기반으로 재설계. 이미 `pending` 이면 삭제하지 않고 제출 완료로 안내, 상태 확인 실패 시 파괴적 삭제 금지, 등록된 전체 첨부 경로에 삭제 시도, `object-not-found` 는 정리 완료로 처리, Storage 객체가 남으면 draft 문서를 삭제하지 않음.
-- **D4** `js/firebase-shared.js` + 직원·관리자 화면: 공용 `window.yjDownloadAttachment()` 로 통합. `target="_blank"` 미사용, Blob→Object URL→원래 파일명 저장→즉시 revoke, 다운로드 URL 미보관, CORS 실패 시 새 탭 fallback 없이 `CORS GATE FAILED` 보고.
+- **D4** `js/firebase-shared.js` + 직원·관리자 화면: 공용 `window.yjDownloadAttachment()` 로 통합. `target="_blank"` 미사용, `getDownloadURL() → fetch() → Blob → Object URL`로 원래 파일명 저장→즉시 revoke, 다운로드 URL 미보관. fetch·Blob 읽기 예외는 원인을 CORS로 단정하지 않고 네트워크 또는 교차 출처 정책 문제로 보고하며 새 탭 fallback은 사용하지 않는다.
 - **D5** `js/employee-document-requests.js`: 선택 파일에 소유 UID 를 기록하고 Auth UID 변경·로그아웃·비활성 전환·Auth/업무 사용자 불일치 시 파일·폼·진행 상태를 초기화. 제출 시작 UID 와 완료 시점 UID 가 다르면 성공 처리하지 않음.
 
 ### 13.3 실제 잔여 위험 (V1 범위 밖)
 
 1. 실제 파일 바이트 시그니처 검증·악성코드 검사 없음 (확장자/contentType 메타 기반 검증까지가 범위).
 2. Storage 객체 삭제까지 실패하는 극단적 경우, draft 문서와 객체가 함께 남는다(보정 후에는 orphan 이 아니라 **정리 가능한 draft 상태**로 남고 사용자에게 요청 ID 를 안내한다). 운영 시 서버측 lifecycle 정리 권장.
-3. Blob 다운로드는 Storage 버킷 CORS 설정에 의존한다. 미설정 시 다운로드가 `CORS GATE FAILED` 로 실패하며, 이 경우 버킷 CORS 설정이 선행돼야 한다.
+3. 현재 다운로드는 `getDownloadURL() → fetch() → Blob` 경로다. 버킷 CORS 권위 설정과 실제 브라우저 다운로드 성공은 별도 증거이며, 설정만으로 현재 경로의 성공·실패를 단정하지 않는다. 최종 판정은 운영 Pages origin과 실계정·실제 객체를 사용한 런타임 E2E다.
 4. Rules 는 에뮬레이터 검증만 완료됐고 **운영 배포되지 않았다**. 관리자·직원 실계정 운영 E2E 는 미수행(PENDING).
 
 ---
@@ -211,7 +211,7 @@ Storage 경로: `document-approval-attachments/{requesterUid}/{requestId}/{slot}
 1. **Storage → Firestore 방향만 Rules 로 강제된다.** Firestore `pending` 전환이 실제 Storage 객체 존재를 보장하지 못한다. 완전한 서버 측 존재 보장은 Cloud Functions 등 신뢰 가능한 백엔드가 필요하다.
 2. 제출 직전 metadata 확인은 정상 클라이언트용 보조 장치이며 악의적 클라이언트는 우회할 수 있다.
 3. 실제 파일 바이트 시그니처 검증·악성코드 검사는 V1 범위 밖이다.
-4. 운영 버킷 CORS 설정을 확인할 권한이 없어 `CORS GATE PENDING · READ ACCESS REQUIRED` 상태다.
+4. 운영 버킷 CORS 권위 설정은 활성 gcloud 계정이 없어 `CORS CONFIG READ BLOCKED · ACTIVE ACCOUNT REQUIRED` 상태다. 존재하지 않는 경로의 비인증 probe는 권위 증거로 사용하지 않으며, 버킷 설정 확인과 실제 브라우저 다운로드 E2E를 별도 게이트로 관리한다.
 5. Rules 는 에뮬레이터 검증만 완료됐고 운영 배포되지 않았다. 관리자·직원 실계정 운영 E2E 는 PENDING 이다.
 
 ---
@@ -243,7 +243,7 @@ Storage 경로: `document-approval-attachments/{requesterUid}/{requestId}/{slot}
 
 ### 15.4 잔여 위험 (변동 없음)
 
-Storage→Firestore 단방향 결속 / 제출 직전 metadata 확인은 보안 경계 아님 / 바이트 시그니처·악성코드 검사 V1 범위 밖 / `CORS GATE PENDING · READ ACCESS REQUIRED` / 실계정 운영 E2E PENDING.
+Storage→Firestore 단방향 결속 / 제출 직전 metadata 확인은 보안 경계 아님 / 바이트 시그니처·악성코드 검사 V1 범위 밖 / `CORS CONFIG READ BLOCKED · ACTIVE ACCOUNT REQUIRED` / 실계정 운영 E2E PENDING.
 
 ---
 
@@ -344,3 +344,63 @@ Storage→Firestore 단방향 결속 / 제출 직전 metadata 확인은 보안 �
 - VM 테스트는 실제 브라우저·Firebase SDK·네트워크 타이밍을 대체하지 않으므로 실계정 운영 E2E가 필요하다.
 - Storage→Firestore 단방향 결속, metadata 확인의 비보안 경계, 파일 바이트 시그니처·악성코드 검사 부재는 기존 V1 잔여 위험과 같다.
 - 사용자 전환 직후 발생 가능한 부분 업로드와 draft는 파괴적으로 정리하지 않고 관리자 점검 대상으로 보존한다.
+
+---
+
+## 18. WORK29 PR #166 CORS 진단 계약 정정 및 운영 게이트 재정의 (2026-07-27)
+
+### 18.1 진단 오류와 최소 보정
+
+브라우저 Fetch API의 예외만으로 실제 CORS 정책 차단, 네트워크 단절, DNS·프록시 문제, 확장 프로그램 차단, 일시적 전송 실패, Blob 응답 읽기 실패를 확정적으로 구분할 수 없다. 기존 구현은 fetch 또는 Blob 읽기 예외를 모두 `cors`와 `CORS GATE FAILED`로 표시해 원인을 과잉 단정했다.
+
+`js/firebase-shared.js`의 공용 다운로드 계약을 다음과 같이 최소 보정했다.
+
+- 다운로드 경로는 기존과 동일한 `getDownloadURL() → fetch() → Blob → Object URL`을 유지한다.
+- fetch 또는 Blob 읽기 예외 코드를 `cors`에서 `network-or-cors`로 변경했다.
+- 사용자 문구를 “네트워크 또는 브라우저 교차 출처 정책 문제로 첨부파일을 내려받지 못했습니다.”로 변경했다.
+- 로그의 `CORS gate` 단정 표현을 `network or cross-origin failure`로 변경했다.
+- URL 획득 오류, HTTP 403, 기타 비정상 HTTP 응답 분류는 기존 계약을 유지한다.
+- Object URL 생성·원래 파일명·anchor 제거·URL revoke·다운로드 URL 미저장·새 탭 fallback 금지 계약을 유지한다.
+- 직원과 관리자 호출부는 공용 함수와 메시지 함수를 그대로 사용하며 변경하지 않았다.
+
+### 18.2 공식 문서 기준 게이트 분리
+
+Firebase 공식 다운로드 문서는 `getDownloadURL()`로 받은 URL을 XHR/Blob으로 내려받는 경로와 SDK 직접 다운로드 경로의 CORS 설명을 구분한다. 따라서 버킷 CORS 설정만으로 현재 다운로드 경로의 성공·실패를 단정하지 않는다.
+
+운영 GitHub Pages 확인 결과:
+
+- URL: `https://kimjinman3187-dot.github.io/jinmankim/`
+- Origin: `https://kimjinman3187-dot.github.io`
+- Pages 상태: built
+- Source: `main /`
+
+Google Cloud 권위 조회 준비 결과:
+
+- gcloud 설치: 확인
+- 활성 gcloud 계정: 없음
+- 버킷 조회 명령 `gcloud storage buckets describe gs://yongjin-enterprise.firebasestorage.app --format="default(cors_config)"`: 활성 계정 부재로 실행하지 않음
+- 판정: `CORS CONFIG READ BLOCKED · ACTIVE ACCOUNT REQUIRED`
+- 로그인·계정 전환·IAM·버킷 CORS 설정 변경: 미수행
+
+버킷 CORS 권위 설정은 보조 증거이고 최종 런타임 게이트는 배포 후 운영 Pages origin에서 실계정과 실제 객체로 수행하는 다운로드 E2E다.
+
+### 18.3 상시 다운로드 테스트
+
+신규 `tests/attachment-download.test.mjs`는 실제 `js/firebase-shared.js`에서 공용 다운로드 설치 함수 블록을 읽어 VM에서 실행한다. Node 기본 `node:test`·`vm`만 사용하며 실제 네트워크·Firebase·Storage를 호출하지 않는다.
+
+- D4-P-01~12 계약 전체 PASS.
+- Node 실제 집계: **14/14 PASS**. D4-P-09의 fetch 예외와 Blob 읽기 예외를 각각 중첩 테스트로 실행해 계약 수 12개와 Node 집계 수 14개를 구분한다.
+- 정상 다운로드, 원래 파일명, Object URL revoke, anchor 제거, URL 획득 오류 분류, HTTP 오류 분류, `network-or-cors`, 비단정 사용자 문구, 새 탭 fallback 0건, 다운로드 URL 영구 저장 0건을 검증한다.
+
+### 18.4 전체 회귀와 상태
+
+- 다운로드 상시 테스트: **14/14 PASS**.
+- 기존 사용자 전환 경합: **30/30 PASS**.
+- Firestore Rules: **46/46 PASS**, Firestore 단독 실행.
+- Storage Rules: **25/25 PASS**, 필요한 Firestore·Storage 별도 실행.
+- 생산·테스트 JavaScript `node --check`: PASS.
+- `git diff --check`: PASS.
+- 에뮬레이터 debug log와 임시 하네스 잔존 0건.
+- Firestore/Storage Rules, Rules 테스트, `js/employee-document-requests.js`, `index.html`, `js/approval.js`, 모바일, WORK31·WORK32 변경 0건.
+- Firebase Console, CORS 설정, Schedule, 운영 데이터·Storage 객체, 운영 배포 변경 0건.
+- 실계정 운영 다운로드 E2E는 PENDING이며 PR은 `OPEN · Draft · MERGE HOLD`를 유지한다.
