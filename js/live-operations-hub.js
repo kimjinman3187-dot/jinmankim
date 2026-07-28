@@ -16,6 +16,7 @@
             recent: [],
             adminActiveCapped: false,   // 관리자 활성 요청 150건 상한 도달
             adminRecentPartial: false,  // 최근 200건 상한 + 200번째도 7일 이내 → 부분 집계
+            adminRecentLimit: 200,
             employeeCapped: false,      // 직원 본인 100건 상한 도달
             status: 'idle',        // idle | loading | ready | empty | denied | error
             seq: 0,
@@ -262,7 +263,7 @@
         c.role = '';
         c.pending = 0; c.onHold = 0; c.approved7 = 0; c.rejected7 = 0;
         c.recent = [];
-        c.adminActiveCapped = false; c.adminRecentPartial = false; c.employeeCapped = false;
+        c.adminActiveCapped = false; c.adminRecentPartial = false; c.adminRecentLimit = DOC_CARD.ADMIN_RECENT_LIMIT; c.employeeCapped = false;
         c.status = 'idle';
         c.seq += 1;      // 진행 중 응답 무효화
     }
@@ -280,7 +281,7 @@
                 ? `대기·보류는 활성 요청 최근 ${DOC_CARD.ADMIN_ACTIVE_LIMIT}건 기준입니다.`
                 : '대기·보류는 누적 기준입니다.');
             parts.push(c.adminRecentPartial
-                ? `승인·반려는 최근 ${DOC_CARD.ADMIN_RECENT_LIMIT}건 기준의 부분 집계입니다.`
+                ? `승인·반려는 최근 ${c.adminRecentLimit}건 기준의 부분 집계입니다.`
                 : '승인·반려는 최근 7일 기준입니다.');
             return parts.join(' ');
         }
@@ -359,12 +360,15 @@
         c.rejected7 = 0;
         c.recent = [];
         c.adminRecentPartial = false;
+        c.adminRecentLimit = DOC_CARD.ADMIN_RECENT_LIMIT;
     }
 
     // 관리자 전용 단발 bounded 조회 1회 (실시간 Listener 아님, 신규 index 불필요)
     function fetchAdminRecentOnce() {
         const c = state.docCard;
         if (!isAdmin()) return;                 // 관리자 권한 확인 후에만 조회
+        // WORK33 인라인 상세 대시보드의 bounded 요약 결과를 재사용해 별도 get()을 만들지 않는다.
+        if ($('pcLiveDocumentApprovalDashboard')) return;
         if (c.inflight) return;                 // 진행 중이면 상태 유지 (중복 실행 금지)
         if (!window.db || typeof window.db.collection !== 'function') {
             // Firestore 미준비: 조용히 반환하지 않고 카드 내부 오류로 종료 (무한 로딩 방지)
@@ -433,8 +437,42 @@
         const button = $('pcLiveDocOpenBtn');
         if (!button || button.dataset.yjDocCardBound === 'true') return;
         button.dataset.yjDocCardBound = 'true';
-        // 기존 [data-yj-hub-target] 스크롤 핸들러와 분리된 별도 페이지 이동 핸들러
-        button.addEventListener('click', () => { window.location.href = 'approval-dashboard.html'; });
+        button.addEventListener('click', () => scrollToPanel('pcLiveDocumentApprovalDashboard'));
+    }
+
+    function deriveAdminRecentSummary(rows, over, limit, nowMs) {
+        const cutoff = (nowMs || Date.now()) - DOC_CARD.WINDOW_MS;
+        const oldestMs = rows.length ? timestampValue(rows[rows.length - 1]?.createdAt) : 0;
+        return {
+            approved7: rows.filter(row => row?.status === 'approved' && timestampValue(row?.createdAt) >= cutoff).length,
+            rejected7: rows.filter(row => row?.status === 'rejected' && timestampValue(row?.createdAt) >= cutoff).length,
+            recent: rows.slice(0, DOC_CARD.RECENT_ITEMS),
+            partial: Boolean(over && oldestMs >= cutoff),
+            limit: Number(limit) || DOC_CARD.ADMIN_RECENT_LIMIT
+        };
+    }
+
+    // approval-dashboard.js의 기간=전체 조회 결과를 WORK32 요약 카드에도 공급한다.
+    function updateApprovalDashboardSummary(payload) {
+        if (!isAdmin() || payload?.role !== 'admin') return;
+        const c = state.docCard;
+        c.role = 'admin';
+        if (payload?.error) {
+            resetAdminRecentData();
+            c.status = payload.code === 'permission-denied' ? 'denied' : 'error';
+            renderDocCard();
+            return;
+        }
+        if (!Array.isArray(payload?.rows)) return;
+        const rows = payload.rows;
+        const recent = deriveAdminRecentSummary(rows, payload.over, payload.limit);
+        c.approved7 = recent.approved7;
+        c.rejected7 = recent.rejected7;
+        c.recent = recent.recent;
+        c.adminRecentPartial = recent.partial;
+        c.adminRecentLimit = recent.limit;
+        c.status = rows.length ? 'ready' : 'empty';
+        renderDocCard();
     }
 
     function updateVisibility() {
@@ -544,9 +582,15 @@
         init,
         updateApprovalRequests,
         updateDocumentApprovals,
+        updateApprovalDashboardSummary,
         updateEmployeeDocumentApprovals,
         updateOrders,
         refreshVisibility: updateVisibility,
-        scrollToPanel
+        scrollToPanel,
+        __test: {
+            deriveAdminRecentSummary,
+            docCardState: () => state.docCard,
+            seedDocCard: seed => Object.assign(state.docCard, seed || {})
+        }
     };
 })();
