@@ -662,66 +662,6 @@
                         </aside>
                     </div>
                 </section>
-                <section id="pcEmployeeDocumentRequestPanel" class="hidden bg-[#1e293b] border border-[#334155] rounded-xl p-5 mb-6 shadow-lg relative z-10">
-                    <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4 mb-4">
-                        <div>
-                            <h3 class="font-black text-white text-sm">내 문서 결재</h3>
-                            <p class="text-[10px] text-slate-400 font-bold mt-1 leading-5">일반 문서 결재를 제출하고 본인 요청의 처리 결과를 확인합니다.</p>
-                        </div>
-                        <div class="flex flex-wrap items-center gap-2">
-                            <select id="pcEmployeeDocumentStatusFilter" class="h-10 rounded-lg border border-[#334155] bg-[#0f1522] px-3 text-xs font-black text-slate-100 outline-none">
-                                <option value="all">전체</option>
-                                <option value="pending">결재 대기</option>
-                                <option value="approved">승인</option>
-                                <option value="on_hold">보류</option>
-                                <option value="rejected">반려</option>
-                            </select>
-                            <button id="pcEmployeeDocumentRefreshBtn" type="button" class="h-10 px-4 rounded-lg bg-[#0f1522] border border-[#334155] text-slate-200 hover:text-white hover:border-slate-500 text-xs font-black transition-colors">새로고침</button>
-                        </div>
-                    </div>
-                    <div id="pcEmployeeDocumentMessage" class="mb-3 min-h-[28px] rounded-lg border border-[#334155] bg-[#0f1522] px-3 py-2 text-[11px] font-bold text-slate-400">로그인 후 본인 문서 결재 요청을 조회합니다.</div>
-                    <div class="grid grid-cols-1 xl:grid-cols-[minmax(320px,0.55fr)_minmax(0,1.45fr)] gap-4">
-                        <form id="pcEmployeeDocumentForm" class="rounded-lg border border-[#334155] bg-[#0f1522] p-4">
-                            <label for="pcEmployeeDocumentTitleInput" class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">제목</label>
-                            <input id="pcEmployeeDocumentTitleInput" type="text" maxlength="80" class="w-full h-10 rounded-lg border border-[#334155] bg-[#111827] px-3 text-xs font-bold text-white outline-none focus:border-cyan-400" placeholder="2~80자">
-                            <label for="pcEmployeeDocumentDescriptionInput" class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mt-4 mb-2">상세 내용</label>
-                            <textarea id="pcEmployeeDocumentDescriptionInput" maxlength="1000" rows="8" class="w-full rounded-lg border border-[#334155] bg-[#111827] px-3 py-2 text-xs font-bold text-white outline-none focus:border-cyan-400 resize-none" placeholder="2~1000자"></textarea>
-                            <div class="mt-4">
-                                <div class="flex items-center justify-between gap-2">
-                                    <span class="block text-[10px] font-black text-slate-400 uppercase tracking-wider">증빙 파일 첨부 <span class="text-slate-500 normal-case">(선택)</span></span>
-                                    <button id="pcEmployeeDocumentAttachmentSelectBtn" type="button" class="h-8 px-3 rounded-lg bg-[#111827] border border-[#334155] text-slate-200 hover:text-white hover:border-slate-500 text-[11px] font-black transition-colors">파일 선택</button>
-                                </div>
-                                <input id="pcEmployeeDocumentAttachmentInput" type="file" multiple class="hidden" accept=".pdf,.png,.jpg,.jpeg,.xls,.xlsx,.csv,.doc,.docx,.hwp,.hwpx,application/pdf,image/png,image/jpeg">
-                                <p id="pcEmployeeDocumentAttachmentHint" class="mt-2 text-[10px] text-slate-500 font-bold leading-4">PDF·PNG·JPG·XLS(X)·CSV·DOC(X)·HWP(X) / 최대 5개 · 개당 10MB · 합계 30MB</p>
-                                <ul id="pcEmployeeDocumentAttachmentList" class="mt-2 space-y-1"></ul>
-                                <div id="pcEmployeeDocumentAttachmentProgress" class="mt-2 min-h-[0px]"></div>
-                            </div>
-                            <button id="pcEmployeeDocumentSubmitBtn" type="submit" class="mt-4 w-full h-10 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-black transition-colors disabled:cursor-not-allowed disabled:opacity-50">결재 대기 제출</button>
-                        </form>
-                        <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.7fr)] gap-4">
-                            <div class="overflow-x-auto rounded-lg border border-[#334155] bg-[#0f1522]">
-                                <table class="w-full min-w-[680px] text-left text-[11px]">
-                                    <thead class="text-slate-400 uppercase tracking-wider border-b border-[#334155]">
-                                        <tr>
-                                            <th class="px-3 py-3 font-black">요청일</th>
-                                            <th class="px-3 py-3 font-black">제목</th>
-                                            <th class="px-3 py-3 font-black">상태</th>
-                                            <th class="px-3 py-3 font-black">처리일</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="pcEmployeeDocumentBody">
-                                        <tr>
-                                            <td colspan="4" class="px-3 py-8 text-center text-slate-500 font-bold">본인 문서 결재 요청을 불러오지 않았습니다.</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            <aside id="pcEmployeeDocumentDetail" class="rounded-lg border border-[#334155] bg-[#0f1522] p-4 min-h-[240px]">
-                                <p class="text-[11px] text-slate-500 font-bold">목록에서 요청을 선택하면 상세와 처리 결과를 표시합니다.</p>
-                            </aside>
-                        </div>
-                    </div>
-                </section>
                 <section id="pcApprovalRequestPanel" class="hidden bg-[#1e293b] border border-[#334155] rounded-xl p-5 mb-6 shadow-lg relative z-10">
                     <div class="flex justify-between items-start gap-4 mb-4">
                         <div>
@@ -971,7 +911,66 @@
             <div id="pc-page-documents" class="pc-page hidden">
                 <div class="max-w-[1600px] mx-auto w-full pb-10">
                     <h2 class="text-2xl font-black text-white mb-6">문서결재</h2>
-                    <div id="pcEmployeeDocumentRequestMount"></div>
+                    <section id="pcEmployeeDocumentRequestPanel" class="hidden bg-[#1e293b] border border-[#334155] rounded-xl p-5 mb-6 shadow-lg relative z-10">
+                        <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4 mb-4">
+                            <div>
+                                <h3 class="font-black text-white text-sm">내 문서 결재</h3>
+                                <p class="text-[10px] text-slate-400 font-bold mt-1 leading-5">일반 문서 결재를 제출하고 본인 요청의 처리 결과를 확인합니다.</p>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <select id="pcEmployeeDocumentStatusFilter" class="h-10 rounded-lg border border-[#334155] bg-[#0f1522] px-3 text-xs font-black text-slate-100 outline-none">
+                                    <option value="all">전체</option>
+                                    <option value="pending">결재 대기</option>
+                                    <option value="approved">승인</option>
+                                    <option value="on_hold">보류</option>
+                                    <option value="rejected">반려</option>
+                                </select>
+                                <button id="pcEmployeeDocumentRefreshBtn" type="button" class="h-10 px-4 rounded-lg bg-[#0f1522] border border-[#334155] text-slate-200 hover:text-white hover:border-slate-500 text-xs font-black transition-colors">새로고침</button>
+                            </div>
+                        </div>
+                        <div id="pcEmployeeDocumentMessage" class="mb-3 min-h-[28px] rounded-lg border border-[#334155] bg-[#0f1522] px-3 py-2 text-[11px] font-bold text-slate-400">로그인 후 본인 문서 결재 요청을 조회합니다.</div>
+                        <div class="grid grid-cols-1 xl:grid-cols-[minmax(320px,0.55fr)_minmax(0,1.45fr)] gap-4">
+                            <form id="pcEmployeeDocumentForm" class="rounded-lg border border-[#334155] bg-[#0f1522] p-4">
+                                <label for="pcEmployeeDocumentTitleInput" class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">제목</label>
+                                <input id="pcEmployeeDocumentTitleInput" type="text" maxlength="80" class="w-full h-10 rounded-lg border border-[#334155] bg-[#111827] px-3 text-xs font-bold text-white outline-none focus:border-cyan-400" placeholder="2~80자">
+                                <label for="pcEmployeeDocumentDescriptionInput" class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mt-4 mb-2">상세 내용</label>
+                                <textarea id="pcEmployeeDocumentDescriptionInput" maxlength="1000" rows="8" class="w-full rounded-lg border border-[#334155] bg-[#111827] px-3 py-2 text-xs font-bold text-white outline-none focus:border-cyan-400 resize-none" placeholder="2~1000자"></textarea>
+                                <div class="mt-4">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <span class="block text-[10px] font-black text-slate-400 uppercase tracking-wider">증빙 파일 첨부 <span class="text-slate-500 normal-case">(선택)</span></span>
+                                        <button id="pcEmployeeDocumentAttachmentSelectBtn" type="button" class="h-8 px-3 rounded-lg bg-[#111827] border border-[#334155] text-slate-200 hover:text-white hover:border-slate-500 text-[11px] font-black transition-colors">파일 선택</button>
+                                    </div>
+                                    <input id="pcEmployeeDocumentAttachmentInput" type="file" multiple class="hidden" accept=".pdf,.png,.jpg,.jpeg,.xls,.xlsx,.csv,.doc,.docx,.hwp,.hwpx,application/pdf,image/png,image/jpeg">
+                                    <p id="pcEmployeeDocumentAttachmentHint" class="mt-2 text-[10px] text-slate-500 font-bold leading-4">PDF·PNG·JPG·XLS(X)·CSV·DOC(X)·HWP(X) / 최대 5개 · 개당 10MB · 합계 30MB</p>
+                                    <ul id="pcEmployeeDocumentAttachmentList" class="mt-2 space-y-1"></ul>
+                                    <div id="pcEmployeeDocumentAttachmentProgress" class="mt-2 min-h-[0px]"></div>
+                                </div>
+                                <button id="pcEmployeeDocumentSubmitBtn" type="submit" class="mt-4 w-full h-10 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-black transition-colors disabled:cursor-not-allowed disabled:opacity-50">결재 대기 제출</button>
+                            </form>
+                            <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.7fr)] gap-4">
+                                <div class="overflow-x-auto rounded-lg border border-[#334155] bg-[#0f1522]">
+                                    <table class="w-full min-w-[680px] text-left text-[11px]">
+                                        <thead class="text-slate-400 uppercase tracking-wider border-b border-[#334155]">
+                                            <tr>
+                                                <th class="px-3 py-3 font-black">요청일</th>
+                                                <th class="px-3 py-3 font-black">제목</th>
+                                                <th class="px-3 py-3 font-black">상태</th>
+                                                <th class="px-3 py-3 font-black">처리일</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="pcEmployeeDocumentBody">
+                                            <tr>
+                                                <td colspan="4" class="px-3 py-8 text-center text-slate-500 font-bold">본인 문서 결재 요청을 불러오지 않았습니다.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <aside id="pcEmployeeDocumentDetail" class="rounded-lg border border-[#334155] bg-[#0f1522] p-4 min-h-[240px]">
+                                    <p class="text-[11px] text-slate-500 font-bold">목록에서 요청을 선택하면 상세와 처리 결과를 표시합니다.</p>
+                                </aside>
+                            </div>
+                        </div>
+                    </section>
                 </div>
             </div>
 
@@ -3461,10 +3460,6 @@ function applyPCRoleAccess() {
     if (pcDocumentApprovalPanel) pcDocumentApprovalPanel.classList.toggle('hidden', currentUser?.role !== 'admin');
     const pcEmployeeDocumentRequestPanel = document.getElementById('pcEmployeeDocumentRequestPanel');
     if (pcEmployeeDocumentRequestPanel) pcEmployeeDocumentRequestPanel.classList.toggle('hidden', !(currentUser && isUserActive(currentUser)));
-    const employeeDocumentMount = document.getElementById('pcEmployeeDocumentRequestMount');
-    if (employeeDocumentMount && pcEmployeeDocumentRequestPanel && pcEmployeeDocumentRequestPanel.parentElement !== employeeDocumentMount) {
-        employeeDocumentMount.appendChild(pcEmployeeDocumentRequestPanel);
-    }
     // [WORK24-SEARCH01-A3] factory role: Live 재무성 정보(.yj-fin-only) 숨김
     document.body.classList.toggle('yj-hide-finance', currentUser?.role === 'factory');
 }

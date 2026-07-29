@@ -38,14 +38,20 @@ test('05 documents menu exists once', () => {
 test('06 employee request panel exists once', () => {
   assert.equal((html.match(/id="pcEmployeeDocumentRequestPanel"/g) || []).length, 1);
 });
-test('07 employee request panel is moved, not copied', () => {
-  includes(/employeeDocumentMount\.appendChild\(pcEmployeeDocumentRequestPanel\)/);
+test('07 employee request panel is directly inside the documents page', () => {
+  const documentsPage = html.slice(
+    html.indexOf('id="pc-page-documents"'),
+    html.indexOf('id="pc-page-sales"')
+  );
+  assert.match(documentsPage, /id="pcEmployeeDocumentRequestPanel"/);
 });
-test('08 employee request mount belongs to documents page', () => {
-  const pageStart = html.indexOf('id="pc-page-documents"');
-  const pageEnd = html.indexOf('id="pc-page-sales"', pageStart);
-  const mount = html.indexOf('id="pcEmployeeDocumentRequestMount"');
-  assert.ok(pageStart < mount && mount < pageEnd);
+test('08 LIVE has no employee panel, empty mount, or dynamic relocation', () => {
+  const dashboardPage = html.slice(
+    html.indexOf('id="pc-page-dashboard"'),
+    html.indexOf('id="pc-page-documents"')
+  );
+  assert.doesNotMatch(dashboardPage, /id="pcEmployeeDocumentRequestPanel"/);
+  assert.doesNotMatch(html, /pcEmployeeDocumentRequestMount|employeeDocumentMount|appendChild\(pcEmployeeDocumentRequestPanel\)/);
 });
 test('09 admin can access dashboard and documents', () => {
   assert.deepEqual(roleTabs('admin').slice(0, 2), ['dashboard', 'documents']);
