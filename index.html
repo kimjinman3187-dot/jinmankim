@@ -461,8 +461,8 @@
         </div>
 
         <nav class="flex-1 py-6 flex flex-col gap-2 px-4" id="pcNav">
-            <a href="#" onclick="switchPCTab('live')" id="pc-tab-live" class="pc-tab-btn inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-[#1e293b] text-blue-400 font-bold text-xs uppercase tracking-wider transition-colors"><span class="nav-ico" aria-hidden="true"></span><span>LIVE 결재</span></a>
-            <a href="#" onclick="switchPCTab('dashboard')" id="pc-tab-dashboard" class="pc-tab-btn inline-flex items-center gap-2 px-4 py-3 rounded-xl text-slate-400 hover:bg-[#1e293b] hover:text-white font-bold text-xs uppercase tracking-wider transition-colors"><span class="nav-ico" aria-hidden="true"></span><span>현황</span></a>
+            <a href="#" onclick="switchPCTab('dashboard')" id="pc-tab-dashboard" class="pc-tab-btn inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-[#1e293b] text-blue-400 font-bold text-xs uppercase tracking-wider transition-colors"><span class="nav-ico" aria-hidden="true"></span><span>LIVE</span></a>
+            <a href="#" onclick="switchPCTab('approval')" id="pc-tab-approval" class="pc-tab-btn inline-flex items-center gap-2 px-4 py-3 rounded-xl text-slate-400 hover:bg-[#1e293b] hover:text-white font-bold text-xs uppercase tracking-wider transition-colors"><span class="nav-ico" aria-hidden="true"></span><span>문서결재</span></a>
             <a href="#" onclick="switchPCTab('sales')" id="pc-tab-sales" class="pc-tab-btn inline-flex items-center gap-2 px-4 py-3 rounded-xl text-slate-400 hover:bg-[#1e293b] hover:text-white font-bold text-xs uppercase tracking-wider transition-colors"><span class="nav-ico" aria-hidden="true"></span><span>Sales</span></a>
             <a href="#" onclick="switchPCTab('accounting')" id="pc-tab-accounting" class="pc-tab-btn inline-flex items-center gap-2 px-4 py-3 rounded-xl text-slate-400 hover:bg-[#1e293b] hover:text-white font-bold text-xs uppercase tracking-wider transition-colors"><span class="nav-ico" aria-hidden="true"></span><span>Finance</span></a>
             <a href="#" onclick="switchPCTab('receivables')" id="pc-tab-receivables" class="pc-tab-btn inline-flex items-center gap-2 px-4 py-3 rounded-xl text-slate-400 hover:bg-[#1e293b] hover:text-white font-bold text-xs uppercase tracking-wider transition-colors"><span class="nav-ico" aria-hidden="true"></span><span>AR</span></a>
@@ -538,7 +538,7 @@
                             <div class="flex items-start justify-between gap-3"><div><p class="text-[10px] font-black uppercase tracking-wider text-slate-500">Document Approval</p><h3 class="mt-1 text-sm font-black text-white">관리자 문서 결재</h3></div><span id="pcHubDocumentTotal" class="rounded-lg bg-cyan-500/10 px-2 py-1 text-xs font-black text-cyan-300">0건</span></div>
                             <div class="mt-4 flex gap-2 text-[11px] font-bold text-slate-400"><span>대기 <b id="pcHubDocumentPending" class="text-white">0</b></span><span>·</span><span>보류 <b id="pcHubDocumentHold" class="text-white">0</b></span></div>
                             <ul id="pcHubDocumentRecent" class="mt-3 min-h-[78px] space-y-2 text-[11px] font-bold text-slate-400"><li>조회 결과 대기 중</li></ul>
-                            <button type="button" onclick="switchPCTab('live'); setTimeout(function () { document.getElementById('pcDocumentApprovalPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 0);" class="mt-3 w-full rounded-lg border border-[#334155] bg-[#1e293b] px-3 py-2 text-xs font-black text-slate-200 hover:border-blue-400 hover:text-white">처리 화면 이동</button>
+                            <button type="button" onclick="switchPCTab('approval'); setTimeout(function () { document.getElementById('pcDocumentApprovalPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 0);" class="mt-3 w-full rounded-lg border border-[#334155] bg-[#1e293b] px-3 py-2 text-xs font-black text-slate-200 hover:border-blue-400 hover:text-white">처리 화면 이동</button>
                         </article>
                     </div>
                 </section>
@@ -823,11 +823,11 @@
 
             </div>
 
-            <div id="pc-page-live" class="pc-page hidden">
+            <div id="pc-page-approval" class="pc-page hidden">
                 <div class="mx-auto w-full max-w-[1800px] pb-10">
                     <div class="mb-6">
                         <p class="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">Admin Approval Console</p>
-                        <h2 class="mt-1 text-2xl font-black text-white">LIVE 문서결재</h2>
+                        <h2 class="mt-1 text-2xl font-black text-white">문서결재</h2>
                     </div>
                     <div class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:items-start">
                         <aside>
@@ -1659,7 +1659,7 @@ const ACCESS_MATRIX = {
 };
 
 const TAB_ACCESS_AREA = {
-    live: 'approval',
+    approval: 'approval',
     sales: 'sales',
     accounting: 'finance',
     receivables: 'ar',
@@ -1677,7 +1677,7 @@ const ROLE_TABS = {
 };
 // [K5G-17] PC 사이드바 네비 아이콘 (Heroicons outline, currentColor 기반). SVG는 여기 한 곳에서만 관리.
 const NAV_ICONS = {
-    live: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-7.036-7.036A11.959 11.959 0 0 0 3.598 5.1 11.99 11.99 0 0 0 3 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.365-.228-2.677-.648-3.9a11.959 11.959 0 0 0-4.366-2.386A11.946 11.946 0 0 0 12 2c-1.409 0-2.76.244-4.036.714Z"/></svg>',
+    approval: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-7.036-7.036A11.959 11.959 0 0 0 3.598 5.1 11.99 11.99 0 0 0 3 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.365-.228-2.677-.648-3.9a11.959 11.959 0 0 0-4.366-2.386A11.946 11.946 0 0 0 12 2c-1.409 0-2.76.244-4.036.714Z"/></svg>',
     dashboard: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/></svg>',
     sales: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"/></svg>',
     accounting: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V12Zm-12 0h.008v.008H6V12Z"/></svg>',
@@ -1698,12 +1698,14 @@ const PC_ROLE_TABS = {
     sales: ['dashboard', 'sales', 'receivables', 'factory', 'inventory'],
     accounting: ['dashboard', 'sales', 'accounting', 'receivables', 'factory', 'inventory'],
     factory: ['dashboard', 'factory', 'inventory'],
-    admin: ['live', 'dashboard', 'sales', 'accounting', 'receivables', 'factory', 'inventory']
+    admin: ['dashboard', 'approval', 'sales', 'accounting', 'receivables', 'factory', 'inventory']
 };
-const ROLE_DEFAULT_PC_TAB = { admin: 'live', sales: 'dashboard', accounting: 'accounting', factory: 'dashboard' };
+const ROLE_DEFAULT_PC_TAB = { admin: 'approval', sales: 'dashboard', accounting: 'accounting', factory: 'dashboard' };
 const HASH_TAB_ALIASES = {
-    '#live': 'live',
+    '#live': 'dashboard',
     '#dashboard': 'dashboard',
+    '#approval': 'approval',
+    '#document-approval': 'approval',
     '#sales': 'sales',
     '#finance': 'accounting',
     '#accounting': 'accounting',
@@ -3435,7 +3437,7 @@ function processLoginSuccess() {
 
 function applyPCRoleAccess() {
     const allowedTabs = getAllowedPCTabs();
-    ['live', 'dashboard', 'sales', 'accounting', 'receivables', 'factory', 'inventory'].forEach(tab => {
+    ['dashboard', 'approval', 'sales', 'accounting', 'receivables', 'factory', 'inventory'].forEach(tab => {
         const tabEl = document.getElementById('pc-tab-' + tab);
         if (tabEl) tabEl.classList.toggle('hidden', !allowedTabs.includes(tab));
     });
@@ -4866,7 +4868,7 @@ function switchPCTab(tabId, pushHistory = true) {
         activeBtn.classList.add('bg-[#1e293b]', 'text-blue-400');
     }
 
-    const pageTitles = { 'live': 'LIVE Approval Console', 'dashboard': 'Operations Overview', 'sales': 'Sales Management', 'accounting': 'Finance Overview', 'receivables': 'Accounts Receivable', 'factory': 'Production Live', 'inventory': 'Inventory Dashboard' };
+    const pageTitles = { 'approval': 'Document Approval', 'dashboard': 'Operations Hub', 'sales': 'Sales Management', 'accounting': 'Finance Overview', 'receivables': 'Accounts Receivable', 'factory': 'Production Live', 'inventory': 'Inventory Dashboard' };
     const mainHeader = document.querySelector('header h1');
     if (mainHeader && pageTitles[tabId]) { mainHeader.innerText = pageTitles[tabId]; }
 
@@ -4902,7 +4904,7 @@ function switchPCTab(tabId, pushHistory = true) {
     if (tabId === 'dashboard' && currentUser && isUserActive(currentUser)) {
         window.YJEmployeeDocumentRequests?.refresh?.();
     }
-    if (tabId === 'live') {
+    if (tabId === 'approval') {
         window.YJApprovalDashboard?.mount?.({ root: document.getElementById('pcLiveDocumentApprovalDashboard') });
         loadApprovalRequestsReadOnly();
         window.YJApproval?.refresh?.();
