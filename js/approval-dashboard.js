@@ -394,25 +394,57 @@
         parent.appendChild(b);
     }
 
-    function renderAttachments(parent, req) {
-        // 첨부는 표시 전용 확장 지점. 다운로드/Storage 접근 없음.
+    function renderAttachments(parent, req, options) {
+        options = options || {};
         var a = req.attachments;
         if (!a || typeof a !== 'object') return;
         var slots = ATTACH_SLOTS.filter(function (s) { return a[s] && typeof a[s] === 'object'; });
         if (!slots.length) return;
-        var b = box('첨부파일 (표시 전용 · ' + slots.length + ')');
+        var b = box('첨부파일 (' + slots.length + ')');
+        var status = options.forPrint ? null : el('p', 'dash-hint');
+
+        async function downloadAttachment(storagePath, name) {
+            if (!status || typeof window.yjDownloadAttachment !== 'function') return;
+            status.textContent = '내려받는 중...';
+            try {
+                var result = await window.yjDownloadAttachment(storagePath, name);
+                if (result && result.ok) {
+                    status.textContent = '저장했습니다: ' + (name || '(이름 없음)');
+                    return;
+                }
+                status.textContent = (typeof window.yjAttachmentDownloadMessage === 'function')
+                    ? window.yjAttachmentDownloadMessage(result && result.code)
+                    : '첨부파일을 내려받지 못했습니다.';
+            } catch (error) {
+                console.warn('[approval-dashboard] attachment download error:', error);
+                status.textContent = '첨부파일을 내려받지 못했습니다.';
+            }
+        }
+
         slots.forEach(function (s) {
             var m = a[s];
             var row = el('div', 'dash-att');
             row.appendChild(el('span', 'dash-att-name', m.name || '(이름 없음)'));
             row.appendChild(el('span', 'dash-att-meta', fmtBytes(m.size) + ' · ' + (m.contentType || '-')));
+            if (!options.forPrint) {
+                if (!m.storagePath) {
+                    row.appendChild(el('span', 'dash-att-meta', '경로 없음'));
+                } else if (typeof window.yjDownloadAttachment === 'function') {
+                    var btn = el('button', 'btn', '다운로드');
+                    btn.type = 'button';
+                    btn.addEventListener('click', function () {
+                        downloadAttachment(m.storagePath, m.name);
+                    });
+                    row.appendChild(btn);
+                }
+            }
             b.appendChild(row);
         });
-        b.appendChild(el('p', 'dash-hint', '다운로드는 첨부 기능(PR #166) 병합 이후 단계에서 제공됩니다.'));
+        if (status) b.appendChild(status);
         parent.appendChild(b);
     }
 
-    function buildDetailInto(container, req, historyDocs, historyError) {
+    function buildDetailInto(container, req, historyDocs, historyError, options) {
         clearNode(container);
         container.appendChild(el('p', 'dash-detail-title', req.title || '제목 없음'));
         container.appendChild(el('p', 'dash-detail-sub', docNumber(req)));
@@ -424,7 +456,7 @@
         desc.appendChild(el('p', 'dash-box-text', req.description || '-'));
         container.appendChild(desc);
 
-        renderAttachments(container, req);
+        renderAttachments(container, req, options);
 
         var proc = box('처리 정보');
         proc.appendChild(el('p', 'dash-box-text', '처리자: ' + (req.reviewerName || '-')));
@@ -523,7 +555,7 @@
         host.id = 'yjApprovalDashboardPrintHost';
         host.appendChild(el('div', 'dash-print-head', '용진FLOW 문서결재'));
         var body = el('div');
-        buildDetailInto(body, req, hist, histErr);
+        buildDetailInto(body, req, hist, histErr, { forPrint: true });
         host.appendChild(body);
         document.body.appendChild(host);
         return host;
