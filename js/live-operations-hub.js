@@ -268,32 +268,39 @@
 
     function renderDocCard() {
         const card = $('pcLiveDocApprovalCard');
-        if (!card) return;
+        const liveCard = $('pcLiveOpsDocCard');
+        if (!card && !liveCard) return;
         const eligible = docCardEligible();
-        card.classList.toggle('hidden', !eligible);
+        card?.classList.toggle('hidden', !eligible);
+        liveCard?.classList.toggle('hidden', !eligible);
         if (!eligible) return;
 
         const c = state.docCard;
-        setText('pcLiveDocScopeBadge', c.role === 'admin' ? '전사' : (c.role === 'employee' ? '본인 요청' : '-'));
+        const scopeLabel = c.role === 'admin' ? '전사' : (c.role === 'employee' ? '본인 요청' : '-');
+        setText('pcLiveDocScopeBadge', scopeLabel);
         setText('pcLiveDocPending', c.pending);
         setText('pcLiveDocHold', c.onHold);
         setText('pcLiveDocApproved7', c.approved7);
         setText('pcLiveDocRejected7', c.rejected7);
+        setText('pcLiveOpsDocScopeBadge', scopeLabel);
+        setText('pcLiveOpsDocPending', c.pending);
+        setText('pcLiveOpsDocHold', c.onHold);
+        setText('pcLiveOpsDocApproved7', c.approved7);
+        setText('pcLiveOpsDocRejected7', c.rejected7);
 
         const basis = $('pcLiveDocBasis');
         if (basis) basis.textContent = docCardBasisText();
 
-        const stateNode = $('pcLiveDocState');
-        if (stateNode) {
-            stateNode.textContent = {
-                idle: '조회 결과 대기 중입니다.',
-                loading: '문서결재 현황을 불러오는 중입니다.',
-                ready: '',
-                empty: '표시할 문서결재 요청이 없습니다.',
-                denied: '문서결재 조회 권한이 없습니다.',
-                error: '문서결재 현황을 불러오지 못했습니다.'
-            }[c.status] || '';
-        }
+        const stateText = {
+            idle: '조회 결과 대기 중입니다.',
+            loading: '문서결재 현황을 불러오는 중입니다.',
+            ready: '',
+            empty: '표시할 문서결재 요청이 없습니다.',
+            denied: '문서결재 조회 권한이 없습니다.',
+            error: '문서결재 현황을 불러오지 못했습니다.'
+        }[c.status] || '';
+        setText('pcLiveDocState', stateText);
+        setText('pcLiveOpsDocState', stateText);
 
         renderDocCardRecent();
     }

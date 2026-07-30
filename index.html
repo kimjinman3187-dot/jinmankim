@@ -549,6 +549,17 @@
                 <section id="pcOperationsLiveSummary" class="grid grid-cols-1 gap-4 mb-6 xl:grid-cols-3 relative z-10">
                     <article class="rounded-xl border border-[#334155] bg-[#1e293b] p-5 shadow-lg"><h3 class="text-sm font-black text-white">실시간 주요 지표</h3><div class="mt-4 grid grid-cols-2 gap-3"><div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[10px] font-bold text-slate-500">승인 대기 수주</p><p id="pcHubMetricPending" class="mt-1 text-xl font-black text-amber-300">0건</p></div><div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[10px] font-bold text-slate-500">생산 진행</p><p id="pcHubMetricProduction" class="mt-1 text-xl font-black text-blue-300">0건</p></div><div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[10px] font-bold text-slate-500">생산 완료</p><p id="pcHubMetricCompleted" class="mt-1 text-xl font-black text-emerald-300">0건</p></div><div class="rounded-lg bg-[#0f1522] p-3 yj-fin-only"><p class="text-[10px] font-bold text-slate-500">미수 관리 대상</p><p id="pcHubMetricReceivable" class="mt-1 text-xl font-black text-rose-300">0건</p></div></div></article>
                     <article class="rounded-xl border border-[#334155] bg-[#1e293b] p-5 shadow-lg"><div class="flex items-center justify-between"><h3 class="text-sm font-black text-white">최근 업무 현황</h3><span class="text-[10px] font-black text-slate-500">최대 5건</span></div><ul id="pcHubRecentOrders" class="mt-4 space-y-2"><li class="text-[11px] font-bold text-slate-500">주문 데이터 대기 중</li></ul></article>
+                    <article id="pcLiveOpsDocCard" class="hidden rounded-xl border border-[#334155] bg-[#1e293b] p-5 shadow-lg">
+                        <div class="flex items-start justify-between gap-3"><h3 class="text-sm font-black text-white">문서결재현황</h3><span id="pcLiveOpsDocScopeBadge" class="shrink-0 rounded-lg bg-cyan-500/10 px-2 py-1 text-[10px] font-black text-cyan-300">-</span></div>
+                        <div class="mt-4 grid grid-cols-2 gap-2 text-center">
+                            <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[10px] font-bold text-slate-500">결재 대기</p><p id="pcLiveOpsDocPending" class="mt-1 text-xl font-black text-amber-300">0</p></div>
+                            <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[10px] font-bold text-slate-500">보류</p><p id="pcLiveOpsDocHold" class="mt-1 text-xl font-black text-cyan-300">0</p></div>
+                            <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[10px] font-bold text-slate-500">승인 · 최근 7일</p><p id="pcLiveOpsDocApproved7" class="mt-1 text-xl font-black text-emerald-300">0</p></div>
+                            <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[10px] font-bold text-slate-500">반려 · 최근 7일</p><p id="pcLiveOpsDocRejected7" class="mt-1 text-xl font-black text-rose-300">0</p></div>
+                        </div>
+                        <p id="pcLiveOpsDocState" class="mt-3 min-h-[16px] text-[11px] font-bold text-slate-400"></p>
+                        <button type="button" onclick="switchPCTab('approval')" class="mt-3 w-full rounded-lg border border-[#334155] bg-[#0f1522] px-3 py-2 text-xs font-black text-slate-200 transition-colors hover:border-blue-400 hover:text-white">문서결재 탭으로 이동</button>
+                    </article>
                 </section>
                 <div id="dashboardProductClientSearchMount">
                 <section id="pcProductClientSearchPanel" class="bg-[#1e293b] border border-[#334155] rounded-2xl shadow-xl overflow-hidden mb-6 relative z-10">
@@ -4893,6 +4904,7 @@ function switchPCTab(tabId, pushHistory = true) {
     }
     if (tabId === 'dashboard' && currentUser?.role === 'admin') {
         loadApprovalRequestsReadOnly();
+        window.YJApproval?.refresh?.();
     }
     if (tabId === 'dashboard') {
         window.YJLiveOperationsHub?.refreshVisibility?.();
