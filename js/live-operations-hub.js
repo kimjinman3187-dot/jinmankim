@@ -118,42 +118,11 @@
         return displayValue(request, ['requesterName', 'requesterEmail', 'requesterUid'], '요청자 정보 없음');
     }
 
-    function documentTime(request) {
-        return request?.reviewedAt || request?.submittedAt || request?.createdAt || request?.updatedAt;
-    }
-
     function documentStatusLabel(status) {
         if (typeof window.YJApproval?.getStatusLabel === 'function') {
             return window.YJApproval.getStatusLabel(status);
         }
         return status || '-';
-    }
-
-    function renderDocumentItem(list, request, compact) {
-        const item = document.createElement('li');
-        item.className = compact
-            ? 'flex items-center justify-between gap-3 rounded-lg bg-slate-900/60 px-3 py-2'
-            : 'rounded-lg border border-[#334155]/70 bg-[#0f1522] px-3 py-2';
-
-        const main = document.createElement('div');
-        main.className = 'min-w-0';
-        const title = document.createElement('p');
-        title.className = 'truncate text-[11px] font-black text-slate-200';
-        title.textContent = documentTitle(request);
-        main.appendChild(title);
-
-        const meta = document.createElement('p');
-        meta.className = 'mt-1 truncate text-[10px] font-bold text-slate-500';
-        meta.textContent = compact
-            ? documentRequester(request)
-            : `${documentRequester(request)} · ${formatTime(documentTime(request))}`;
-        main.appendChild(meta);
-
-        const status = document.createElement('span');
-        status.className = 'shrink-0 text-[10px] font-black text-cyan-300';
-        status.textContent = documentStatusLabel(request?.status);
-        item.append(main, status);
-        list.appendChild(item);
     }
 
     function renderApprovalRequests() {
@@ -168,30 +137,6 @@
         setText('pcHubApprovalRecent', recent
             ? `${displayValue(recent, ['displayName', 'name', 'email'], '요청자 정보 없음')} · ${formatTime(recent.requested_at)}`
             : '현재 조회된 요청이 없습니다.');
-    }
-
-    function renderDocumentApprovals() {
-        const requests = state.documentApprovals;
-        const pending = requests.filter(request => request?.status === 'pending').length;
-        const onHold = requests.filter(request => request?.status === 'on_hold').length;
-        const recent = requests.slice().sort((a, b) => timestampValue(documentTime(b)) - timestampValue(documentTime(a)));
-        setText('pcHubDocumentTotal', `${pending + onHold}건`);
-        setText('pcHubDocumentPending', pending);
-        setText('pcHubDocumentHold', onHold);
-
-        const cardList = $('pcHubDocumentRecent');
-        clearList(cardList);
-        if (cardList) {
-            if (!recent.length) appendEmpty(cardList, '현재 조회된 문서가 없습니다.');
-            recent.slice(0, 3).forEach(request => renderDocumentItem(cardList, request, true));
-        }
-
-        const recentList = $('pcHubRecentDocuments');
-        clearList(recentList);
-        if (recentList) {
-            if (!recent.length) appendEmpty(recentList, '현재 조회된 문서가 없습니다.');
-            recent.slice(0, 5).forEach(request => renderDocumentItem(recentList, request, false));
-        }
     }
 
     function orderTime(order) {
@@ -479,10 +424,8 @@
         const admin = isAdmin();
         if (!admin && state.documentApprovals.length) {
             state.documentApprovals = [];
-            renderDocumentApprovals();
         }
         $('pcAdminOperationsHub')?.classList.toggle('hidden', !admin);
-        $('pcHubRecentDocumentsCard')?.classList.toggle('hidden', !admin);
         // WORK32: 신규 카드는 관리자 hub 상태와 분리 제어.
         // 비로그인·비활성이면 초기화(조회 0건), 관리자→비관리자 전환 시에만 전사 데이터 폐기.
         if (!docCardEligible()) resetDocCardData();
@@ -509,7 +452,6 @@
     function renderAll() {
         updateVisibility();
         renderApprovalRequests();
-        renderDocumentApprovals();
         renderOrders();
     }
 
@@ -531,7 +473,6 @@
         state.documentApprovals = filter === 'all'
             ? nextRequests.filter(request => request?.status === 'pending' || request?.status === 'on_hold')
             : nextRequests;
-        renderDocumentApprovals();
         // WORK32: 카드의 대기·보류·상한은 `active` 결과일 때만 갱신 (기존 hub 동작은 그대로)
         feedAdminDocCard(filter === 'active');
     }
