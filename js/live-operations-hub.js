@@ -269,7 +269,9 @@
     function renderDocCard() {
         const card = $('pcLiveDocApprovalCard');
         const liveCard = $('pcLiveOpsDocCard');
-        if (!card && !liveCard) return;
+        const glancePending = $('pcHubDocGlancePending');
+        const glanceHold = $('pcHubDocGlanceHold');
+        if (!card && !liveCard && !glancePending && !glanceHold) return;
         const eligible = docCardEligible();
         card?.classList.toggle('hidden', !eligible);
         liveCard?.classList.toggle('hidden', !eligible);
@@ -287,6 +289,8 @@
         setText('pcLiveOpsDocHold', c.onHold);
         setText('pcLiveOpsDocApproved7', c.approved7);
         setText('pcLiveOpsDocRejected7', c.rejected7);
+        setText('pcHubDocGlancePending', c.pending);
+        setText('pcHubDocGlanceHold', c.onHold);
 
         const basis = $('pcLiveDocBasis');
         if (basis) basis.textContent = docCardBasisText();
