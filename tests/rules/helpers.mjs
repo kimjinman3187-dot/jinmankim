@@ -143,7 +143,7 @@ export function pendingV1Request(sv, requesterUid) {
 
 // Seed a request document directly (rules disabled), converting server
 // timestamps to concrete Timestamps so it represents an already-stored doc.
-export async function seedRequest(env, requestId, data) {
+export async function seedRequest(env, requestId, data, collection = 'document_approval_requests') {
   await env.withSecurityRulesDisabled(async (ctx) => {
     const fs = await import('firebase/firestore');
     const db = ctx.firestore();
@@ -153,7 +153,7 @@ export async function seedRequest(env, requestId, data) {
         concrete[k] = fs.Timestamp.now();
       }
     }
-    await fs.setDoc(fs.doc(db, 'document_approval_requests', requestId), concrete);
+    await fs.setDoc(fs.doc(db, collection, requestId), concrete);
   });
 }
 

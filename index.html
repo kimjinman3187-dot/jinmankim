@@ -18,6 +18,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-functions-compat.js"></script>
     <script src="js/firebase-shared.js"></script>
     <script src="js/work22-payment-hotfix.js?v=20260529"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -265,7 +266,8 @@
             <select id="approvalRequestRoleSelect" style="width:100%; height:40px; border-radius:12px; border:1px solid rgba(255,255,255,0.2); background:rgba(15,23,42,0.82); color:#fff; padding:0 10px; font-size:12px; outline:none; margin-bottom:10px;">
                 <option value="sales">sales</option>
                 <option value="accounting">accounting</option>
-                <option value="factory">factory</option>
+                                <option value="factory">factory</option>
+                                <option value="factory_manager">factory_manager</option>
             </select>
             <label for="approvalRequestReasonInput" style="display:block; font-size:10px; font-weight:900; color:#bfdbfe; margin-bottom:6px;">요청 사유</label>
             <textarea id="approvalRequestReasonInput" rows="3" placeholder="업무상 필요한 권한을 간단히 적어주세요." style="width:100%; min-height:72px; border-radius:12px; border:1px solid rgba(255,255,255,0.2); background:rgba(15,23,42,0.82); color:#fff; padding:10px 12px; font-size:12px; outline:none; resize:vertical; margin-bottom:8px;"></textarea>
@@ -427,6 +429,7 @@
                         <option value="sales">sales</option>
                         <option value="accounting">accounting</option>
                         <option value="factory">factory</option>
+                        <option value="factory_manager">factory_manager</option>
                     </select>
                     <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider">max_uses</label>
                     <input id="inviteMaxUsesInput" type="number" min="1" max="100" value="1" class="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold outline-none">
@@ -606,7 +609,7 @@
                     <div class="grid grid-cols-4 gap-3 items-end">
                         <div><label class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">role</label>
                             <select id="pcInviteRoleSelect" class="w-full h-10 rounded-lg border border-[#334155] bg-[#0f1522] px-3 text-xs font-bold text-white outline-none">
-                                <option value="sales">sales</option><option value="accounting">accounting</option><option value="factory">factory</option>
+                                <option value="sales">sales</option><option value="accounting">accounting</option><option value="factory">factory</option><option value="factory_manager">factory_manager</option>
                             </select></div>
                         <div><label class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">max_uses</label>
                             <input id="pcInviteMaxUsesInput" type="number" min="1" max="100" value="1" class="w-full h-10 rounded-lg border border-[#334155] bg-[#0f1522] px-3 text-xs font-bold text-white outline-none"></div>
@@ -802,10 +805,33 @@
                         <div id="pcEmployeeDocumentMessage" class="mb-3 min-h-[28px] rounded-lg border border-[#334155] bg-[#0f1522] px-3 py-2 text-[11px] font-bold text-slate-400">로그인 후 본인 문서 결재 요청을 조회합니다.</div>
                         <div class="grid grid-cols-1 xl:grid-cols-[minmax(320px,0.55fr)_minmax(0,1.45fr)] gap-4">
                             <form id="pcEmployeeDocumentForm" class="rounded-lg border border-[#334155] bg-[#0f1522] p-4">
+                                <label for="pcEmployeeDocumentTypeInput" class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">서식</label>
+                                <select id="pcEmployeeDocumentTypeInput" class="w-full h-10 rounded-lg border border-[#334155] bg-[#111827] px-3 text-xs font-bold text-white outline-none focus:border-cyan-400">
+                                    <option value="GENERAL_APPROVAL">일반 문서결재</option>
+                                    <option value="EXPENSE_REPORT">지출결의서</option>
+                                </select>
                                 <label for="pcEmployeeDocumentTitleInput" class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">제목</label>
                                 <input id="pcEmployeeDocumentTitleInput" type="text" maxlength="80" class="w-full h-10 rounded-lg border border-[#334155] bg-[#111827] px-3 text-xs font-bold text-white outline-none focus:border-cyan-400" placeholder="2~80자">
                                 <label for="pcEmployeeDocumentDescriptionInput" class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mt-4 mb-2">상세 내용</label>
                                 <textarea id="pcEmployeeDocumentDescriptionInput" maxlength="1000" rows="8" class="w-full rounded-lg border border-[#334155] bg-[#111827] px-3 py-2 text-xs font-bold text-white outline-none focus:border-cyan-400 resize-none" placeholder="2~1000자"></textarea>
+                                <fieldset id="pcEmployeeExpenseFields" class="hidden mt-4 rounded-lg border border-[#334155] bg-[#111827] p-3">
+                                    <legend class="px-1 text-[10px] font-black text-cyan-300 uppercase tracking-wider">지출결의서 필수 항목</legend>
+                                    <label for="pcEmployeeExpenseTypeInput" class="block text-[10px] font-black text-slate-400 mt-2 mb-1">지출유형</label>
+                                    <select id="pcEmployeeExpenseTypeInput" class="w-full h-10 rounded-lg border border-[#334155] bg-[#0f1522] px-3 text-xs font-bold text-white">
+                                        <option value="">선택</option><option value="material">자재비</option><option value="outsourcing">외주비</option><option value="general">일반경비</option><option value="entertainment">접대비</option><option value="other">기타</option>
+                                    </select>
+                                    <label for="pcEmployeeExpenseAmountInput" class="block text-[10px] font-black text-slate-400 mt-3 mb-1">금액</label>
+                                    <input id="pcEmployeeExpenseAmountInput" type="number" min="1" step="1" inputmode="numeric" class="w-full h-10 rounded-lg border border-[#334155] bg-[#0f1522] px-3 text-xs font-bold text-white" placeholder="숫자만 입력">
+                                    <label for="pcEmployeeExpenseDateInput" class="block text-[10px] font-black text-slate-400 mt-3 mb-1">지출예정일</label>
+                                    <input id="pcEmployeeExpenseDateInput" type="date" class="w-full h-10 rounded-lg border border-[#334155] bg-[#0f1522] px-3 text-xs font-bold text-white">
+                                    <label for="pcEmployeeExpensePayeeInput" class="block text-[10px] font-black text-slate-400 mt-3 mb-1">지급처</label>
+                                    <input id="pcEmployeeExpensePayeeInput" type="text" maxlength="100" class="w-full h-10 rounded-lg border border-[#334155] bg-[#0f1522] px-3 text-xs font-bold text-white">
+                                    <label for="pcEmployeeExpenseMethodInput" class="block text-[10px] font-black text-slate-400 mt-3 mb-1">지급방법</label>
+                                    <select id="pcEmployeeExpenseMethodInput" class="w-full h-10 rounded-lg border border-[#334155] bg-[#0f1522] px-3 text-xs font-bold text-white">
+                                        <option value="">선택</option><option value="bank_transfer">계좌이체</option><option value="corporate_card">법인카드</option><option value="cash">현금</option>
+                                    </select>
+                                    <p class="mt-3 text-[10px] font-bold leading-4 text-amber-300">결재선: 담당 제출 → 회계 검토 → 대표 승인. 증빙첨부가 없으면 제출할 수 없습니다.</p>
+                                </fieldset>
                                 <div class="mt-4">
                                     <div class="flex items-center justify-between gap-2">
                                         <span class="block text-[10px] font-black text-slate-400 uppercase tracking-wider">증빙 파일 첨부 <span class="text-slate-500 normal-case">(선택)</span></span>
@@ -1596,7 +1622,7 @@ let pinBuffer = '';
 let googleAuthRestoreStarted = false;
 let googleLoginProcessing = false;
 let anonymousPinBootstrapStarted = false;
-const APPROVAL_ASSIGNABLE_ROLES = ['admin', 'sales', 'accounting', 'factory'];
+    const APPROVAL_ASSIGNABLE_ROLES = ['admin', 'sales', 'accounting', 'factory', 'factory_manager'];
 const STAFF_ADMIN_APPROVAL_UID = 'k71PMratO6fHpyePn7G5QEvwwql1';
 const STAFF_ADMIN_APPROVAL_EMAIL = 'jeongwony0412@gmail.com';
 let selectedWoodStr = '목재를 선택하세요';
@@ -1680,6 +1706,10 @@ const ACCESS_MATRIX = {
     factory: {
         view: ['live', 'docbox', 'dashboard', 'production', 'inventory'],
         write: ['production']
+    },
+    factory_manager: {
+        view: ['live', 'docbox', 'dashboard', 'production', 'inventory'],
+        write: ['production']
     }
 };
 
@@ -1699,6 +1729,7 @@ const ROLE_TABS = {
     sales: ['sales', 'receivables', 'factory', 'history'],
     accounting: ['sales', 'accounting', 'receivables', 'factory', 'history'],
     factory: ['factory'],
+    factory_manager: ['factory'],
     admin: ['sales', 'accounting', 'receivables', 'factory', 'history']
 };
 // [K5G-17] PC 사이드바 네비 아이콘 (Heroicons outline, currentColor 기반). SVG는 여기 한 곳에서만 관리.
@@ -1723,11 +1754,12 @@ document.addEventListener('DOMContentLoaded', applyNavIcons);
 const TAB_META = { sales: {label:'영업'}, accounting: {label:'회계'}, receivables: {label:'채권'}, factory: {label:'생산'}, history: {label:'현황'} };
 const PC_ROLE_TABS = {
     sales: ['dashboard', 'docbox', 'sales', 'receivables', 'factory', 'inventory'],
-    accounting: ['dashboard', 'docbox', 'sales', 'accounting', 'receivables', 'factory', 'inventory'],
+    accounting: ['dashboard', 'docbox', 'approval', 'sales', 'accounting', 'receivables', 'factory', 'inventory'],
     factory: ['dashboard', 'docbox', 'factory', 'inventory'],
+    factory_manager: ['dashboard', 'docbox', 'factory', 'inventory'],
     admin: ['dashboard', 'docbox', 'approval', 'sales', 'accounting', 'receivables', 'factory', 'inventory']
 };
-const ROLE_DEFAULT_PC_TAB = { admin: 'approval', sales: 'docbox', accounting: 'docbox', factory: 'docbox' };
+const ROLE_DEFAULT_PC_TAB = { admin: 'approval', sales: 'docbox', accounting: 'docbox', factory: 'docbox', factory_manager: 'docbox' };
 const HASH_TAB_ALIASES = {
     '#live': 'dashboard',
     '#dashboard': 'dashboard',
@@ -3108,7 +3140,7 @@ async function validateInviteCodeReadOnly(inviteCode, googleUserContext) {
     if (d.active !== true) return { ok: false, reason: 'inactive' };
     if (d.revoked_at) return { ok: false, reason: 'revoked' };
     const role = d.role;
-    if (!['sales', 'accounting', 'factory'].includes(role)) return { ok: false, reason: 'bad-role' };
+    if (!['sales', 'accounting', 'factory', 'factory_manager'].includes(role)) return { ok: false, reason: 'bad-role' };
     const expMs = inviteTimestampToMillis(d.expires_at);
     if (expMs !== null && expMs < Date.now()) return { ok: false, reason: 'expired' };
     const used = Number(d.used_count) || 0;
@@ -3172,7 +3204,7 @@ async function createApprovalRequest() {
     const authUser = window.auth?.currentUser;
     const requestedRole = String(roleSelect?.value || '').trim();
     const requestReason = String(reasonInput?.value || '').trim();
-    const allowedRoles = ['sales', 'accounting', 'factory'];
+    const allowedRoles = ['sales', 'accounting', 'factory', 'factory_manager'];
 
     if (!window.db?.collection) {
         setMessage('승인 요청 기능을 준비하지 못했습니다. 잠시 후 다시 시도하세요.', '#fecaca');
@@ -3187,7 +3219,7 @@ async function createApprovalRequest() {
         return;
     }
     if (!allowedRoles.includes(requestedRole)) {
-        setMessage('요청 권한은 sales, accounting, factory 중 하나만 선택할 수 있습니다.', '#fecaca');
+        setMessage('요청 권한은 sales, accounting, factory, factory_manager 중 하나만 선택할 수 있습니다.', '#fecaca');
         return;
     }
 
@@ -3487,11 +3519,11 @@ function applyPCRoleAccess() {
     const pcApprovalRequestPanel = document.getElementById('pcApprovalRequestPanel');
     if (pcApprovalRequestPanel) pcApprovalRequestPanel.classList.toggle('hidden', currentUser?.role !== 'admin');
     const pcDocumentApprovalPanel = document.getElementById('pcDocumentApprovalPanel');
-    if (pcDocumentApprovalPanel) pcDocumentApprovalPanel.classList.toggle('hidden', currentUser?.role !== 'admin');
+    if (pcDocumentApprovalPanel) pcDocumentApprovalPanel.classList.toggle('hidden', !['admin', 'accounting'].includes(currentUser?.role));
     const pcEmployeeDocumentRequestPanel = document.getElementById('pcEmployeeDocumentRequestPanel');
     if (pcEmployeeDocumentRequestPanel) pcEmployeeDocumentRequestPanel.classList.toggle('hidden', !(currentUser && isUserActive(currentUser)));
     // [WORK24-SEARCH01-A3] factory role: Live 재무성 정보(.yj-fin-only) 숨김
-    document.body.classList.toggle('yj-hide-finance', currentUser?.role === 'factory');
+    document.body.classList.toggle('yj-hide-finance', ['factory', 'factory_manager'].includes(currentUser?.role));
 }
 
 function createApprovalRequestMessageRow(message) {
@@ -3944,7 +3976,7 @@ function startOrdersListener(customQuery = null) {
 
     let query;
     if (customQuery) { query = customQuery; } 
-    else { const baseRef = db.collection('orders'); if (currentUser.role === 'sales') { query = baseRef.where('reportedBy', '==', currentUser.name).orderBy('createdAt', 'desc').limit(100); } else if (currentUser.role === 'factory') { query = baseRef.where('status', 'in', ['approved', 'completed']).orderBy('createdAt', 'desc').limit(150); } else { query = baseRef.orderBy('createdAt', 'desc').limit(300); } }
+    else { const baseRef = db.collection('orders'); if (currentUser.role === 'sales') { query = baseRef.where('reportedBy', '==', currentUser.name).orderBy('createdAt', 'desc').limit(100); } else if (['factory', 'factory_manager'].includes(currentUser.role)) { query = baseRef.where('status', 'in', ['approved', 'completed']).orderBy('createdAt', 'desc').limit(150); } else { query = baseRef.orderBy('createdAt', 'desc').limit(300); } }
     ordersListenerUnsubscribe = query.onSnapshot(snap => { orders = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); executeSearch(); }, error => { console.error("Orders Listener Error:", error); });
 }
 
