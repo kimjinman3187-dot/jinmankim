@@ -2,6 +2,7 @@
     if (window.YJEmployeeDocumentRequests) return;
 
     const COLLECTION = 'document_approval_requests';
+    const EXPENSE_COLLECTION = 'expense_approval_requests';
     const SORT_FIELD = 'createdAt';
     const LIMIT = 100;
     const FILTERS = ['all', 'pending', 'approved', 'on_hold', 'rejected'];
@@ -76,8 +77,15 @@
     function cacheDom() {
         dom.panel = $('pcEmployeeDocumentRequestPanel');
         dom.form = $('pcEmployeeDocumentForm');
+        dom.documentType = $('pcEmployeeDocumentTypeInput');
         dom.title = $('pcEmployeeDocumentTitleInput');
         dom.description = $('pcEmployeeDocumentDescriptionInput');
+        dom.expenseFields = $('pcEmployeeExpenseFields');
+        dom.expenseType = $('pcEmployeeExpenseTypeInput');
+        dom.expenseAmount = $('pcEmployeeExpenseAmountInput');
+        dom.expenseDate = $('pcEmployeeExpenseDateInput');
+        dom.expensePayee = $('pcEmployeeExpensePayeeInput');
+        dom.expenseMethod = $('pcEmployeeExpenseMethodInput');
         dom.submit = $('pcEmployeeDocumentSubmitBtn');
         dom.filter = $('pcEmployeeDocumentStatusFilter');
         dom.refresh = $('pcEmployeeDocumentRefreshBtn');
@@ -239,7 +247,7 @@
             label = '보류 사유';
             value = request.holdReason || '';
         } else if (status === 'pending') {
-            value = '관리자 결재 대기 중입니다.';
+            value = request.workflow?.currentApproverRole === 'accounting' ? '회계 검토 대기 중입니다.' : request.workflow?.currentApproverRole === 'admin' ? '대표 최종 승인 대기 중입니다.' : '관리자 결재 대기 중입니다.';
         } else {
             value = statusLabel(status);
         }
@@ -270,6 +278,17 @@
         appendText(desc, 'p', '상세 내용', 'text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2');
         appendText(desc, 'p', request.description || '-', 'text-[11px] text-slate-300 whitespace-pre-line');
         dom.detail.appendChild(desc);
+
+        if (Array.isArray(request.workflow?.steps)) {
+            const line = document.createElement('div');
+            line.className = 'mt-3 rounded-lg border border-[#334155] bg-[#111827] p-3';
+            appendText(line, 'p', '결재선 이력', 'text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2');
+            request.workflow.steps.forEach(step => {
+                const status = step.status === 'approved' ? '승인' : step.status === 'rejected' ? '반려' : step.status === 'pending' ? '대기' : '예정';
+                appendText(line, 'p', `${step.label} · ${status} · ${step.actorName || '-'} · ${formatTime(step.actedAt)}`, 'mt-1 text-[11px] text-slate-300');
+            });
+            dom.detail.appendChild(line);
+        }
 
         renderAttachments(dom.detail, request);
 
@@ -574,21 +593,40 @@
     }
 
     function validateForm() {
+        const documentType = String(dom.documentType?.value || 'GENERAL_APPROVAL');
         const title = String(dom.title?.value || '').trim();
         const description = String(dom.description?.value || '').trim();
         if (title.length < 2 || title.length > 80) return { ok: false, message: '제목은 공백 제외 2~80자로 입력하세요.' };
         if (description.length < 2 || description.length > 1000) return { ok: false, message: '상세 내용은 공백 제외 2~1000자로 입력하세요.' };
-        return { ok: true, title, description };
+        if (documentType !== 'EXPENSE_REPORT') return { ok: true, documentType, title, description, payload: { kind: 'general_approval', body: {} } };
+        const expenseType = String(dom.expenseType?.value || '');
+        const amount = Number(dom.expenseAmount?.value || 0);
+        const plannedDate = String(dom.expenseDate?.value || '');
+        const payee = String(dom.expensePayee?.value || '').trim();
+        const paymentMethod = String(dom.expenseMethod?.value || '');
+        if (!['material', 'outsourcing', 'general', 'entertainment', 'other'].includes(expenseType)) return { ok: false, message: '지출유형을 선택하세요.' };
+        if (!Number.isSafeInteger(amount) || amount < 1) return { ok: false, message: '금액은 1원 이상의 정수로 입력하세요.' };
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(plannedDate)) return { ok: false, message: '지출예정일을 입력하세요.' };
+        if (payee.length < 1 || payee.length > 100) return { ok: false, message: '지급처는 1~100자로 입력하세요.' };
+        if (!['bank_transfer', 'corporate_card', 'cash'].includes(paymentMethod)) return { ok: false, message: '지급방법을 선택하세요.' };
+        if (state.attachments.length < 1) return { ok: false, message: '지출결의서는 증빙첨부가 필수입니다.' };
+        return {
+            ok: true,
+            documentType,
+            title,
+            description,
+            payload: { kind: 'expense_report', body: { expenseType, amount, plannedDate, payee, paymentMethod } }
+        };
     }
 
-    function buildCreatePayload(user, auth, ts, title, description) {
+    function buildCreatePayload(user, auth, ts, form) {
         return {
             requestType: 'document',
             documentType: 'GENERAL_APPROVAL',
             status: 'pending',
             schemaVersion: 1,
-            title,
-            description,
+            title: form.title,
+            description: form.description,
             payload: {
                 kind: 'general_approval',
                 body: {}
@@ -634,15 +672,16 @@
         return { attachments, total };
     }
 
-    function buildDraftPayload(user, auth, title, description, meta) {
-        return {
+    function buildDraftPayload(user, auth, form, meta) {
+        const expense = form.documentType === 'EXPENSE_REPORT';
+        const base = {
             requestType: 'document',
-            documentType: 'GENERAL_APPROVAL',
+            documentType: form.documentType,
             status: 'draft',
-            schemaVersion: 2,
-            title,
-            description,
-            payload: { kind: 'general_approval', body: {} },
+            schemaVersion: expense ? 3 : 2,
+            title: form.title,
+            description: form.description,
+            payload: form.payload,
             requesterUid: auth.uid,
             requesterName: user.name,
             requesterRole: user.role,
@@ -663,6 +702,10 @@
             attachmentCount: Object.keys(meta.attachments).length,
             attachmentsTotalSize: meta.total
         };
+        if (expense) {
+            base.formType = 'expense';
+        }
+        return base;
     }
 
     function buildSubmitHistoryPayload(requestId, transitionId, user, auth) {
@@ -765,14 +808,15 @@
             setSubmitMessage(captured, '사용자가 변경되어 선택한 첨부파일을 초기화했습니다. 다시 선택하세요.', 'error');
             return;
         }
-        const docRef = window.db.collection(COLLECTION).doc();
+        const targetCollection = form.documentType === 'EXPENSE_REPORT' ? EXPENSE_COLLECTION : COLLECTION;
+        const docRef = window.db.collection(targetCollection).doc();
         const requestId = docRef.id;
         const meta = buildAttachmentMeta(submitUid, requestId, attachmentSnapshot);
         // 등록된 전체 첨부 경로 (업로드 응답 유실 대비 — 정리는 이 목록 전체를 대상으로 한다)
         const registeredPaths = Object.values(meta.attachments).map(entry => entry.storagePath);
         let draftCreated = false;
         try {
-            await docRef.set(buildDraftPayload(ready.user, ready.auth, form.title, form.description, meta));
+            await docRef.set(buildDraftPayload(ready.user, ready.auth, form, meta));
             draftCreated = true;
 
             for (let i = 0; i < attachmentSnapshot.length; i += 1) {
@@ -806,18 +850,40 @@
             setSubmitProgress(captured, '결재 제출 처리 중...');
             const historyRef = docRef.collection('history').doc();
             const transitionId = historyRef.id;
-            await window.db.runTransaction(async transaction => {
-                const snap = await transaction.get(docRef);
-                if (!snap.exists) throw Object.assign(new Error('draft missing'), { code: 'not-found' });
-                if ((snap.data() || {}).status !== 'draft') throw Object.assign(new Error('draft not in draft state'), { code: 'failed-precondition' });
-                transaction.update(docRef, {
-                    status: 'pending',
-                    submittedAt: serverTimestamp(),
-                    updatedAt: serverTimestamp(),
-                    lastTransitionId: transitionId
+            if (form.documentType === 'EXPENSE_REPORT') {
+                if (!window.functions?.httpsCallable) {
+                    throw Object.assign(new Error('expense approval function unavailable'), { code: 'functions-unavailable' });
+                }
+                const submitExpenseApproval = window.functions.httpsCallable('submitExpenseApproval');
+                await submitExpenseApproval({ requestId, transitionId });
+            } else {
+                const auditRef = window.db.collection('audit_logs').doc(transitionId);
+                await window.db.runTransaction(async transaction => {
+                    const snap = await transaction.get(docRef);
+                    if (!snap.exists) throw Object.assign(new Error('draft missing'), { code: 'not-found' });
+                    if ((snap.data() || {}).status !== 'draft') throw Object.assign(new Error('draft not in draft state'), { code: 'failed-precondition' });
+                    transaction.update(docRef, {
+                        status: 'pending',
+                        submittedAt: serverTimestamp(),
+                        updatedAt: serverTimestamp(),
+                        lastTransitionId: transitionId
+                    });
+                    transaction.set(historyRef, buildSubmitHistoryPayload(requestId, transitionId, ready.user, ready.auth));
+                    transaction.set(auditRef, {
+                        action: 'DOCUMENT_APPROVAL_SUBMITTED',
+                        user: ready.user.name,
+                        role: ready.user.role,
+                        email: ready.user.email || ready.auth.email || '',
+                        uid: ready.auth.uid,
+                        order_id: requestId,
+                        details: { requestId, transitionId, documentType: form.documentType, step: 0 },
+                        timestamp: Date.now(),
+                        createdAt: serverTimestamp(),
+                        createdAtMs: Date.now(),
+                        createdAtKst: typeof window.formatKstDateTime === 'function' ? window.formatKstDateTime(new Date()) : ''
+                    });
                 });
-                transaction.set(historyRef, buildSubmitHistoryPayload(requestId, transitionId, ready.user, ready.auth));
-            });
+            }
 
             // D5 / R3-C: 완료 시점의 컨텍스트(UID + 활성 상태 + Auth 일치 + 세대)를 검사한다.
             // 이미 pending 으로 전이된 요청은 사용자 변경을 이유로 삭제하지 않는다.
@@ -913,12 +979,14 @@
         renderAttachmentList();
         setMessage('문서 결재 요청을 제출하는 중입니다.', 'info');
         try {
-            if (state.attachments.length > 0) {
+            if (form.documentType === 'EXPENSE_REPORT' && state.attachments.length < 1) {
+                setSubmitMessage(captured, '지출결의서는 증빙첨부가 필수입니다.', 'error');
+            } else if (state.attachments.length > 0) {
                 await submitWithAttachments(ready, form, captured, attachmentSnapshot);
             } else {
                 const ts = serverTimestamp();
                 // R4: 첨부 없는 제출도 생성된 문서 reference 를 받아 요청 ID 를 확보한다.
-                const createdRef = await window.db.collection(COLLECTION).add(buildCreatePayload(ready.user, ready.auth, ts, form.title, form.description));
+                const createdRef = await window.db.collection(COLLECTION).add(buildCreatePayload(ready.user, ready.auth, ts, form));
                 const requestId = createdRef?.id || '';
                 // R3-B: 쓰기 완료 후 컨텍스트가 바뀌었으면 새 사용자 화면을 이전 작업 결과로 바꾸지 않는다.
                 if (!contextUnchanged(captured)) {
@@ -978,16 +1046,39 @@
         tableMessage('본인 문서 결재 요청을 불러오는 중입니다.');
         setMessage('조회 중...', 'info');
         try {
-            const snapshot = await window.db.collection(COLLECTION)
-                .where('requesterUid', '==', ready.auth.uid)
-                .orderBy(SORT_FIELD, 'desc')
-                .limit(LIMIT)
-                .get();
+            const [legacySnapshot, expenseSnapshot] = await Promise.all([
+                window.db.collection(COLLECTION)
+                    .where('requesterUid', '==', ready.auth.uid)
+                    .orderBy(SORT_FIELD, 'desc')
+                    .limit(LIMIT)
+                    .get(),
+                window.db.collection(EXPENSE_COLLECTION)
+                    .where('requesterUid', '==', ready.auth.uid)
+                    .orderBy(SORT_FIELD, 'desc')
+                    .limit(LIMIT)
+                    .get()
+            ]);
             // R3: 사용자가 바뀐 뒤 도착한 오래된 응답은 state·DOM·LIVE 카드 어디에도 반영하지 않는다.
             if (!isCurrent()) {
                 return { ok: false, count: 0, reason: 'context-changed' };
             }
-            state.requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const expenseRequests = await Promise.all(expenseSnapshot.docs.map(async doc => {
+                const parent = { id: doc.id, sourceCollection: EXPENSE_COLLECTION, ...doc.data() };
+                if (!doc.ref?.collection) return parent;
+                const stateSnapshot = await doc.ref.collection('workflow').doc('state').get();
+                return stateSnapshot.exists ? { ...parent, ...stateSnapshot.data() } : parent;
+            }));
+            if (!isCurrent()) {
+                return { ok: false, count: 0, reason: 'context-changed' };
+            }
+            state.requests = [
+                ...legacySnapshot.docs.map(doc => ({ id: doc.id, sourceCollection: COLLECTION, ...doc.data() })),
+                ...expenseRequests
+            ].sort((a, b) => {
+                const av = a.createdAt?.toMillis?.() || 0;
+                const bv = b.createdAt?.toMillis?.() || 0;
+                return bv - av;
+            }).slice(0, LIMIT);
             const selected = syncSelectionWithVisibleRows();
             renderRows();
             renderDetail(selected || null);
@@ -1023,6 +1114,16 @@
         if (state.initialized) return true;
         state.initialized = true;
         dom.form.addEventListener('submit', submit);
+        if (dom.documentType) {
+            const syncDocumentType = () => {
+                const expense = dom.documentType.value === 'EXPENSE_REPORT';
+                dom.expenseFields?.classList.toggle('hidden', !expense);
+                if (dom.attachInput) dom.attachInput.required = expense;
+                if (dom.attachSelectBtn) dom.attachSelectBtn.textContent = expense ? '증빙 선택 (필수)' : '파일 선택';
+            };
+            dom.documentType.addEventListener('change', syncDocumentType);
+            syncDocumentType();
+        }
         dom.refresh.addEventListener('click', refresh);
         if (dom.attachSelectBtn && dom.attachInput) {
             dom.attachSelectBtn.addEventListener('click', () => {

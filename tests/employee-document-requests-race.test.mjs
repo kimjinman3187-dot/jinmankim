@@ -110,7 +110,7 @@ function createHarness(initialUid = 'A') {
             }
         },
         db: {
-            collection() {
+            collection(collectionName) {
                 const query = {
                     add() {
                         const queued = addQueue.shift();
@@ -123,6 +123,9 @@ function createHarness(initialUid = 'A') {
                     orderBy() { return this; },
                     limit() { return this; },
                     get() {
+                        if (collectionName === 'expense_approval_requests') {
+                            return Promise.resolve(requestSnapshot([]));
+                        }
                         const queued = queryQueue.shift();
                         return queued ? queued.promise : Promise.resolve(requestSnapshot([]));
                     }
@@ -298,7 +301,7 @@ test('R3-A-04/R3-A-05 B 결과와 loading은 늦은 A 성공·finally에 유지�
     await runB;
     a.resolve(requestSnapshot([{ id: 'A-request', requesterUid: 'A' }]));
     await runA;
-    assert.deepEqual(h.api.state.requests.map(item => item.id), ['B-request']);
+    assert.deepEqual(Array.from(h.api.state.requests, item => item.id), ['B-request']);
     assert.equal(h.api.state.loading, false);
 });
 
@@ -333,7 +336,7 @@ test('R3-A-08 동일 사용자 정상 조회는 목록과 LIVE 카드에 반영�
     h.queryQueue.push({ promise: Promise.resolve(requestSnapshot([{ id: 'A-1', requesterUid: 'A' }])) });
     const result = await h.api.refresh();
     assert.equal(result.ok, true);
-    assert.deepEqual(h.api.state.requests.map(item => item.id), ['A-1']);
+    assert.deepEqual(Array.from(h.api.state.requests, item => item.id), ['A-1']);
     assert.equal(h.liveCalls.length, 1);
 });
 

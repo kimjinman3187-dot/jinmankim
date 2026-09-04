@@ -2,6 +2,7 @@
     if (window.YJApproval) return;
 
     const COLLECTION = 'document_approval_requests';
+    const EXPENSE_COLLECTION = 'expense_approval_requests';
     const DEFAULT_FILTER = 'active';
     const SORT_FIELD = 'createdAt';
     const STATUS_LABELS = {
@@ -65,10 +66,9 @@
         return window.auth?.currentUser || null;
     }
 
-    function isAdminUser() {
+    function isReviewerUser() {
         const user = currentUser();
-        const canAdminWrite = typeof window.canWrite === 'function' ? window.canWrite('admin', user?.role) : user?.role === 'admin';
-        return Boolean(user && user.status === 'active' && canAdminWrite);
+        return Boolean(user && user.status === 'active' && ['admin', 'accounting'].includes(user.role));
     }
 
     function getReviewerUid() {
@@ -147,6 +147,23 @@
         return ADMIN_TRANSITIONS[previousStatus]?.includes(nextStatus) && Boolean(ACTION_BY_TRANSITION[`${previousStatus}>${nextStatus}`]);
     }
 
+    function isExpenseRequest(request) {
+        return request?.schemaVersion === 3 && request?.documentType === 'EXPENSE_REPORT';
+    }
+
+    function canProcessRequest(request, action, user = currentUser()) {
+        if (!request || !user || request.requesterUid === getReviewerUid()) return false;
+        if (!isExpenseRequest(request)) return user.role === 'admin' && canTransition(request.status, action);
+        if (request.status !== 'pending' || !['approved', 'rejected'].includes(action)) return false;
+        if (request.workflow?.currentApproverRole !== user.role) return false;
+        if (user.role === 'accounting') return request.workflow?.currentStep === 1;
+        if (user.role === 'admin') {
+            const financeActorUid = request.workflow?.steps?.[1]?.actorUid || '';
+            return request.workflow?.currentStep === 2 && financeActorUid && financeActorUid !== getReviewerUid();
+        }
+        return false;
+    }
+
     function sanitizeError(error) {
         const code = error?.code || '';
         if (code === 'permission-denied') return '문서 결재 권한이 없습니다. Rules 배포 상태와 관리자 계정을 확인하세요.';
@@ -210,17 +227,17 @@
     function renderActions(cell, request) {
         const status = String(request.status || '');
         const isProcessing = state.processingRequestIds.has(request.id);
-        if (!ADMIN_TRANSITIONS[status]) {
+        if (!canProcessRequest(request, 'approved') && !canProcessRequest(request, 'rejected') && !canProcessRequest(request, 'on_hold')) {
             appendText(cell, 'span', '처리 불가', 'text-[10px] font-black text-slate-500');
             return;
         }
-        if (canTransition(status, 'approved')) {
+        if (canProcessRequest(request, 'approved')) {
             cell.appendChild(createButton('승인', baseButtonClass('approve'), () => openDetail(request.id, 'approved'), isProcessing));
         }
-        if (canTransition(status, 'rejected')) {
+        if (canProcessRequest(request, 'rejected')) {
             cell.appendChild(createButton('반려', baseButtonClass('reject'), () => openDetail(request.id, 'rejected'), isProcessing));
         }
-        if (canTransition(status, 'on_hold')) {
+        if (canProcessRequest(request, 'on_hold')) {
             cell.appendChild(createButton('보류', baseButtonClass('hold'), () => openDetail(request.id, 'on_hold'), isProcessing));
         }
     }
@@ -404,6 +421,16 @@
         renderStatusBadge(statusLine, request.status);
         dom.detail.appendChild(statusLine);
         renderPayload(dom.detail, request);
+        if (Array.isArray(request.workflow?.steps)) {
+            const line = document.createElement('div');
+            line.className = 'mt-3 rounded-lg border border-[#334155] bg-[#111827] p-3';
+            appendText(line, 'p', '결재선', 'text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2');
+            request.workflow.steps.forEach(step => {
+                const status = step.status === 'approved' ? '승인' : step.status === 'rejected' ? '반려' : step.status === 'pending' ? '대기' : '예정';
+                appendText(line, 'p', `${step.label} · ${status} · ${step.actorName || '-'} · ${formatTime(step.actedAt)}`, 'mt-1 text-[11px] text-slate-300');
+            });
+            dom.detail.appendChild(line);
+        }
         renderAttachments(dom.detail, request);
 
         const description = displayValue(request, ['description'], '');
@@ -415,7 +442,7 @@
             dom.detail.appendChild(desc);
         }
 
-        if (action && canTransition(request.status, action)) {
+        if (action && canProcessRequest(request, action)) {
             dom.detail.appendChild(createReasonArea(action, request));
         } else if (ADMIN_TRANSITIONS[request.status]) {
             appendText(dom.detail, 'p', '처리 버튼을 선택하면 사유 입력 영역이 열립니다.', 'mt-4 text-[11px] text-slate-500 font-bold');
@@ -428,14 +455,22 @@
         return state.requests.find(request => request.id === state.selectedId) || null;
     }
 
-    function buildRequestQuery() {
+    function buildLegacyRequestQuery() {
         let query = window.db.collection(COLLECTION);
+        const user = currentUser();
+        if (user?.role === 'accounting') {
+            return null;
+        }
         if (state.filter === 'active') {
             query = query.where('status', 'in', ['pending', 'on_hold']);
         } else if (state.filter !== 'all') {
             query = query.where('status', '==', state.filter);
         }
         return query.orderBy(SORT_FIELD, 'desc').limit(150);
+    }
+
+    function buildExpenseRequestQuery() {
+        return window.db.collection(EXPENSE_COLLECTION).orderBy(SORT_FIELD, 'desc').limit(150);
     }
 
     function getCurrentUserUidFields(user) {
@@ -457,11 +492,11 @@
     async function refresh() {
         if (!cacheDom()) return;
         if (state.loading) return;
-        if (!isAdminUser()) {
+        if (!isReviewerUser()) {
             clearNode(dom.body);
-            tableMessage('관리자 계정으로 로그인하면 문서 결재 요청을 조회할 수 있습니다.');
+            tableMessage('회계 또는 관리자 계정으로 로그인하면 담당 단계의 문서 결재 요청을 조회할 수 있습니다.');
             renderDetail(null);
-            setMessage('관리자 전용 패널입니다.', 'error');
+            setMessage('회계·관리자 결재 패널입니다.', 'error');
             return;
         }
         if (!window.db?.collection) {
@@ -472,9 +507,35 @@
         tableMessage('문서 결재 요청을 불러오는 중입니다.');
         setMessage('조회 중...', 'info');
         try {
-            const snapshot = await buildRequestQuery().get();
-            state.requests = snapshot.docs
-                .map(doc => ({ id: doc.id, ...doc.data() }));
+            const legacyQuery = buildLegacyRequestQuery();
+            const expenseQuery = buildExpenseRequestQuery();
+            const [legacySnapshot, expenseSnapshot] = await Promise.all([
+                legacyQuery ? legacyQuery.get() : Promise.resolve({ docs: [] }),
+                expenseQuery.get()
+            ]);
+            const expenseRequests = await Promise.all(expenseSnapshot.docs.map(async doc => {
+                const parent = { id: doc.id, sourceCollection: EXPENSE_COLLECTION, ...doc.data() };
+                if (!doc.ref?.collection) return parent;
+                const stateSnapshot = await doc.ref.collection('workflow').doc('state').get();
+                return stateSnapshot.exists ? { ...parent, ...stateSnapshot.data() } : parent;
+            }));
+            state.requests = [
+                ...legacySnapshot.docs.map(doc => ({ id: doc.id, sourceCollection: COLLECTION, ...doc.data() })),
+                ...expenseRequests
+            ]
+                .filter(request => {
+                    if (!isExpenseRequest(request)) return true;
+                    if (currentUser()?.role === 'accounting') {
+                        return request.status === 'pending' && request.workflow?.currentApproverRole === 'accounting';
+                    }
+                    if (state.filter === 'active') return ['pending', 'on_hold'].includes(request.status);
+                    return state.filter === 'all' || request.status === state.filter;
+                })
+                .sort((a, b) => {
+                    const av = a.createdAt?.toMillis?.() || 0;
+                    const bv = b.createdAt?.toMillis?.() || 0;
+                    return bv - av;
+                });
             window.YJLiveOperationsHub?.updateDocumentApprovals?.(state.requests, state.filter);
             if (!state.requests.some(request => request.id === state.selectedId)) state.selectedId = '';
             renderRows();
@@ -501,7 +562,41 @@
         return { ok: true, reason };
     }
 
-    function buildUpdatePayload(action, transitionId, reason, ts, reviewer) {
+    function buildUpdatePayload(request, action, transitionId, reason, ts, reviewer, actedAt) {
+        if (isExpenseRequest(request)) {
+            const steps = request.workflow.steps.map(step => ({ ...step }));
+            const stepIndex = Number(request.workflow.currentStep);
+            steps[stepIndex] = {
+                ...steps[stepIndex],
+                status: action === 'approved' ? 'approved' : 'rejected',
+                actorUid: reviewer.uid,
+                actorName: reviewer.name,
+                actedAt,
+                comment: reason || ''
+            };
+            const financeAdvance = action === 'approved' && stepIndex === 1;
+            if (financeAdvance) steps[2] = { ...steps[2], status: 'pending' };
+            return {
+                status: action === 'rejected' ? 'rejected' : (financeAdvance ? 'pending' : 'approved'),
+                workflow: {
+                    currentStep: financeAdvance ? 2 : stepIndex,
+                    currentApproverRole: financeAdvance ? 'admin' : null,
+                    steps,
+                    finalDecisionAt: financeAdvance ? null : ts,
+                    rejection: action === 'rejected'
+                        ? { reason, actorUid: reviewer.uid, actorName: reviewer.name, actorRole: reviewer.role, actedAt: ts }
+                        : null
+                },
+                reviewerUid: reviewer.uid,
+                reviewerName: reviewer.name,
+                reviewedAt: ts,
+                updatedAt: ts,
+                reviewComment: action === 'approved' ? (reason || '') : request.reviewComment,
+                rejectionReason: action === 'rejected' ? reason : request.rejectionReason,
+                approvedAt: action === 'approved' && stepIndex === 2 ? ts : request.approvedAt,
+                lastTransitionId: transitionId
+            };
+        }
         const payload = {
             status: action,
             reviewerUid: reviewer.uid,
@@ -519,11 +614,11 @@
         return payload;
     }
 
-    function buildHistoryPayload(requestId, transitionId, previousStatus, nextStatus, reason, ts, reviewer) {
+    function buildHistoryPayload(requestId, transitionId, previousStatus, nextStatus, reason, ts, reviewer, actionName, stepIndex) {
         return {
             requestId,
             transitionId,
-            action: ACTION_BY_TRANSITION[`${previousStatus}>${nextStatus}`],
+            action: actionName || ACTION_BY_TRANSITION[`${previousStatus}>${nextStatus}`],
             previousStatus,
             nextStatus,
             actorUid: reviewer.uid,
@@ -531,14 +626,15 @@
             actorRole: reviewer.role,
             comment: reason || '',
             createdAt: ts,
-            schemaVersion: 1
+            schemaVersion: 1,
+            ...(Number.isInteger(stepIndex) ? { stepIndex } : {})
         };
     }
 
     async function handleDecision(requestId, action) {
         if (state.processingRequestIds.has(requestId)) return;
-        if (!isAdminUser()) {
-            setMessage('관리자만 문서 결재 요청을 처리할 수 있습니다.', 'error');
+        if (!isReviewerUser()) {
+            setMessage('회계 또는 관리자만 담당 단계의 문서 결재 요청을 처리할 수 있습니다.', 'error');
             return;
         }
         const user = currentUser();
@@ -548,7 +644,7 @@
             return;
         }
         const request = state.requests.find(item => item.id === requestId);
-        if (!request || !canTransition(request.status, action)) {
+        if (!request || !canProcessRequest(request, action, user)) {
             setMessage('현재 상태에서 허용되지 않는 결재 처리입니다.', 'error');
             return;
         }
@@ -568,37 +664,50 @@
         renderRows();
         setMessage('문서 결재를 처리하는 중입니다.', 'info');
         try {
-            const requestRef = window.db.collection(COLLECTION).doc(requestId);
+            const requestCollection = request.sourceCollection || (isExpenseRequest(request) ? EXPENSE_COLLECTION : COLLECTION);
+            const requestRef = window.db.collection(requestCollection).doc(requestId);
             const userRef = window.db.collection('users').doc(auth.uid);
             const historyRef = requestRef.collection('history').doc();
             const transitionId = historyRef.id;
-            const ts = window.firebase.firestore.FieldValue.serverTimestamp();
-
-            await window.db.runTransaction(async transaction => {
-                const userSnap = await transaction.get(userRef);
-                const latestSnap = await transaction.get(requestRef);
-                if (!userSnap.exists) throw Object.assign(new Error('reviewer user not found'), { code: 'permission-denied' });
-                const userData = userSnap.data() || {};
-                const reviewerName = String(userData.name || '').trim();
-                if (userData.status !== 'active' || userData.role !== 'admin' || !reviewerName) {
-                    throw Object.assign(new Error('reviewer is not active admin'), { code: 'permission-denied' });
+            if (isExpenseRequest(request)) {
+                if (!window.functions?.httpsCallable) {
+                    throw Object.assign(new Error('expense approval function unavailable'), { code: 'functions-unavailable' });
                 }
-                if (!latestSnap.exists) throw Object.assign(new Error('request not found'), { code: 'not-found' });
-                const latest = { id: latestSnap.id, ...latestSnap.data() };
-                const previousStatus = String(latest.status || '');
-                if (!canTransition(previousStatus, action)) {
-                    throw Object.assign(new Error('invalid transition'), { code: 'failed-precondition' });
-                }
-                if (!ACTION_BY_TRANSITION[`${previousStatus}>${action}`]) {
-                    throw Object.assign(new Error('missing transition action'), { code: 'failed-precondition' });
-                }
+                const transitionExpenseApproval = window.functions.httpsCallable('transitionExpenseApproval');
+                await transitionExpenseApproval({ requestId, transitionId, action, reason: validation.reason });
+            } else {
+                const auditRef = window.db.collection('audit_logs').doc(transitionId);
+                const ts = window.firebase.firestore.FieldValue.serverTimestamp();
+                await window.db.runTransaction(async transaction => {
+                    const userSnap = await transaction.get(userRef);
+                    const latestSnap = await transaction.get(requestRef);
+                    if (!userSnap.exists) throw Object.assign(new Error('reviewer user not found'), { code: 'permission-denied' });
+                    const userData = userSnap.data() || {};
+                    const reviewerName = String(userData.name || '').trim();
+                    if (userData.status !== 'active' || userData.role !== 'admin' || !reviewerName) {
+                        throw Object.assign(new Error('reviewer is not active admin'), { code: 'permission-denied' });
+                    }
+                    if (!latestSnap.exists) throw Object.assign(new Error('request not found'), { code: 'not-found' });
+                    const latest = { id: latestSnap.id, sourceCollection: requestCollection, ...latestSnap.data() };
+                    const previousStatus = String(latest.status || '');
+                    if (!canProcessRequest(latest, action, { ...userData, uid: auth.uid })) {
+                        throw Object.assign(new Error('invalid transition'), { code: 'failed-precondition' });
+                    }
+                    const actionName = ACTION_BY_TRANSITION[`${previousStatus}>${action}`];
+                    if (!actionName) throw Object.assign(new Error('missing transition action'), { code: 'failed-precondition' });
+                    const reviewer = { uid: auth.uid, name: reviewerName, role: userData.role };
+                    transaction.update(requestRef, buildUpdatePayload(latest, action, transitionId, validation.reason, ts, reviewer, null));
+                    transaction.set(historyRef, buildHistoryPayload(requestId, transitionId, previousStatus, action, validation.reason, ts, reviewer, actionName, null));
+                    transaction.set(auditRef, {
+                        action: 'DOCUMENT_APPROVAL_' + actionName.toUpperCase(), user: reviewerName, role: userData.role,
+                        email: userData.email || auth.email || '', uid: auth.uid, order_id: requestId,
+                        details: { requestId, transitionId, documentType: latest.documentType || '', previousStatus, nextStatus: action },
+                        timestamp: Date.now(), createdAt: ts, createdAtMs: Date.now(), createdAtKst: ''
+                    });
+                });
+            }
 
-                const reviewer = { uid: auth.uid, name: reviewerName, role: userData.role };
-                transaction.update(requestRef, buildUpdatePayload(action, transitionId, validation.reason, ts, reviewer));
-                transaction.set(historyRef, buildHistoryPayload(requestId, transitionId, previousStatus, action, validation.reason, ts, reviewer));
-            });
-
-            if (typeof window.logAction === 'function') {
+            if (!isExpenseRequest(request) && typeof window.logAction === 'function') {
                 await window.logAction('DOCUMENT_APPROVAL_' + action.toUpperCase(), requestId, {
                     status: action,
                     transitionId
@@ -632,7 +741,7 @@
 
     function init() {
         if (!bindEvents()) return;
-        if (isAdminUser()) refresh();
+        if (isReviewerUser()) refresh();
     }
 
     window.addEventListener('yj:auth-ready', () => {

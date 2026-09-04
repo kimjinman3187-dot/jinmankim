@@ -23,6 +23,9 @@ function initializeFirebase() {
     auth = firebase.auth();
     window.db = db;
     window.auth = auth;
+    window.functions = typeof firebase.functions === 'function'
+        ? firebase.app().functions('asia-northeast3')
+        : null;
     // WORK29: 문서결재 첨부파일용 Storage. SDK 미로드 시에도 기존 기능은 유지.
     if (typeof firebase.storage === 'function') {
         window.storage = firebase.storage();

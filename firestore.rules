@@ -27,8 +27,12 @@ service cloud.firestore {
       return arIsActiveUser() && arUserDoc().get("role", "") == "admin";
     }
 
+    function arIsAccounting() {
+      return arIsActiveUser() && arUserDoc().get("role", "") == "accounting";
+    }
+
     function validAssignableRole(role) {
-      return role in ["admin", "sales", "accounting", "factory"];
+      return role in ["admin", "sales", "accounting", "factory", "factory_manager"];
     }
 
     function validUserStatus(status) {
@@ -86,7 +90,7 @@ service cloud.firestore {
         "reviewedAt", "reviewComment", "rejectionReason", "holdReason",
         "approvedAt", "appliedAt", "appliedByUid", "lastTransitionId",
         "schemaVersion", "isTest",
-        "attachments", "attachmentCount", "attachmentsTotalSize"
+        "attachments", "attachmentCount", "attachmentsTotalSize", "formType", "workflow"
       ];
     }
 
@@ -105,6 +109,48 @@ service cloud.firestore {
         "holdReason", "approvedAt", "lastTransitionId"
       ];
     }
+
+    function expenseApprovalDraftKeys() {
+      return [
+        "requestType", "title", "documentType", "description", "payload",
+        "requesterUid", "requesterName", "requesterRole", "status", "createdAt",
+        "submittedAt", "updatedAt", "reviewerUid", "reviewerName", "reviewedAt",
+        "reviewComment", "rejectionReason", "holdReason", "approvedAt", "appliedAt",
+        "appliedByUid", "lastTransitionId", "schemaVersion", "attachments",
+        "attachmentCount", "attachmentsTotalSize", "formType"
+      ];
+    }
+
+    function documentApprovalLegacyRequestKeys() {
+      return [
+        "requestId", "requestType", "title", "documentType", "description",
+        "payload", "requesterUid", "requesterName", "requesterEmail",
+        "requesterRole", "requesterSite", "status", "createdAt",
+        "submittedAt", "updatedAt", "reviewerUid", "reviewerName",
+        "reviewedAt", "reviewComment", "rejectionReason", "holdReason",
+        "approvedAt", "appliedAt", "appliedByUid", "lastTransitionId",
+        "schemaVersion", "isTest",
+        "attachments", "attachmentCount", "attachmentsTotalSize"
+      ];
+    }
+
+
+    function validExpenseBody(body) {
+      return body is map
+        && body.keys().hasOnly(["expenseType", "amount", "plannedDate", "payee", "paymentMethod"])
+        && body.keys().hasAll(["expenseType", "amount", "plannedDate", "payee", "paymentMethod"])
+        && body.expenseType in ["material", "outsourcing", "general", "entertainment", "other"]
+        && body.amount is int
+        && body.amount >= 1
+        && body.plannedDate is string
+        && body.plannedDate.matches("^\\d{4}-\\d{2}-\\d{2}$")
+        && body.payee is string
+        && body.payee.size() >= 1
+        && body.payee.size() <= 100
+        && body.paymentMethod in ["bank_transfer", "corporate_card", "cash"];
+    }
+
+
 
     // WORK29: 문서결재 첨부파일 (schemaVersion 2) 검증.
     // NOTE: contentType allow-list(확장자↔MIME) 강제는 실제 업로드 경계인 storage.rules
@@ -147,12 +193,13 @@ service cloud.firestore {
     function attachmentsMapValid(attachments, basePath) {
       // keys().size() 범위는 attachmentCount(1~5) == keys().size() 와
       // hasOnly(["a0".."a4"]) 로 이미 강제되므로 중복 검사하지 않는다.
+      let emptyEntry = {"name": "", "contentType": "", "size": 0, "storagePath": ""};
       return attachments.keys().hasOnly(["a0", "a1", "a2", "a3", "a4"])
-        && (!("a0" in attachments) || attachmentEntryValid(attachments.a0, "a0", basePath))
-        && (!("a1" in attachments) || attachmentEntryValid(attachments.a1, "a1", basePath))
-        && (!("a2" in attachments) || attachmentEntryValid(attachments.a2, "a2", basePath))
-        && (!("a3" in attachments) || attachmentEntryValid(attachments.a3, "a3", basePath))
-        && (!("a4" in attachments) || attachmentEntryValid(attachments.a4, "a4", basePath));
+        && (!("a0" in attachments) || attachmentEntryValid(attachments.get("a0", emptyEntry), "a0", basePath))
+        && (!("a1" in attachments) || attachmentEntryValid(attachments.get("a1", emptyEntry), "a1", basePath))
+        && (!("a2" in attachments) || attachmentEntryValid(attachments.get("a2", emptyEntry), "a2", basePath))
+        && (!("a3" in attachments) || attachmentEntryValid(attachments.get("a3", emptyEntry), "a3", basePath))
+        && (!("a4" in attachments) || attachmentEntryValid(attachments.get("a4", emptyEntry), "a4", basePath));
     }
 
     function hasValidDocumentApprovalAttachments(requestId) {
@@ -171,12 +218,32 @@ service cloud.firestore {
         && request.resource.data.attachmentsTotalSize == attachmentsSizeSum(request.resource.data.attachments);
     }
 
+    function hasValidExpenseAttachments(requestId) {
+      let attachments = request.resource.data.get("attachments", {});
+      let attachmentCount = request.resource.data.get("attachmentCount", 0);
+      let totalSize = request.resource.data.get("attachmentsTotalSize", 0);
+      return attachments is map
+        && attachmentCount is int
+        && attachmentCount >= 1
+        && attachmentCount <= 5
+        && attachments.keys().size() == attachmentCount
+        && totalSize is int
+        && totalSize >= 1
+        && totalSize <= 31457280
+        && attachmentsMapValid(
+             attachments,
+             "document-approval-attachments/" + request.auth.uid + "/" + requestId + "/")
+        && totalSize == attachmentsSizeSum(attachments);
+    }
+
     // WORK29: v1(첨부 없음·pending)과 v2(첨부 있음·draft) 생성을 하나의 allow 로 검증.
     // 두 create shape 를 각각 별도 allow 로 두면 공통 base 가 중복 인라인되어
     // Firestore 1000-expression 한도를 초과한다. 공통 base 를 한 번만 인라인하고
     // schemaVersion 으로 분기해 한도 내에서 두 경로를 모두 검증한다.
+    // (WORK40 2차: schemaVersion 별 별도 allow 분리를 실측했으나 create DENY 1,000 진단을
+    //  전혀 줄이지 못해 원복 — phase-one read-collection walk 가 schemaVersion 단락을 무시함.)
     function hasValidDocumentApprovalUnifiedCreateShape(requestId) {
-      return request.resource.data.keys().hasOnly(documentApprovalRequestKeys())
+      return request.resource.data.keys().hasOnly(documentApprovalLegacyRequestKeys())
         && request.resource.data.requestType == "document"
         && request.resource.data.documentType == "GENERAL_APPROVAL"
         && !request.resource.data.keys().hasAny([
@@ -184,7 +251,6 @@ service cloud.firestore {
         ])
         && request.resource.data.payload is map
         && request.resource.data.payload.keys().hasOnly(["kind", "body"])
-        && request.resource.data.payload.keys().hasAll(["kind", "body"])
         && request.resource.data.payload.get("kind", "") == "general_approval"
         && request.resource.data.payload.body is map
         && request.resource.data.payload.body.keys().hasOnly([])
@@ -195,7 +261,6 @@ service cloud.firestore {
         && request.resource.data.description.size() >= 2
         && request.resource.data.description.size() <= 1000
         && request.resource.data.requesterUid == request.auth.uid
-        && request.resource.data.requesterName is string
         && request.resource.data.requesterName != ""
         && request.resource.data.requesterName == arUserDoc().get("name", "")
         && request.resource.data.requesterRole == arUserDoc().get("role", "")
@@ -228,6 +293,33 @@ service cloud.firestore {
         );
     }
 
+    function hasValidExpenseCreateShape(requestId) {
+      return request.resource.data.keys().hasOnly(expenseApprovalDraftKeys())
+        && request.resource.data.keys().hasAll(expenseApprovalDraftKeys())
+        && request.resource.data.requestType == "document"
+        && request.resource.data.documentType == "EXPENSE_REPORT"
+        && request.resource.data.formType == "expense"
+        && request.resource.data.schemaVersion == 3
+        && request.resource.data.status == "draft"
+        && request.resource.data.submittedAt == null
+        && !request.resource.data.keys().hasAny([
+          "requestId", "requesterEmail", "requesterSite", "isTest"
+        ])
+        && request.resource.data.payload is map
+        && request.resource.data.payload.keys().hasOnly(["kind", "body"])
+        && request.resource.data.payload.keys().hasAll(["kind", "body"])
+        && request.resource.data.payload.kind == "expense_report"
+        && validExpenseBody(request.resource.data.payload.body)
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 2
+        && request.resource.data.title.size() <= 80
+        && request.resource.data.description is string
+        && request.resource.data.description.size() >= 2
+        && request.resource.data.description.size() <= 1000
+        && request.resource.data.requesterUid == request.auth.uid
+        && hasValidExpenseAttachments(requestId);
+    }
+
     function isDocumentApprovalOwner() {
       return arIsActiveUser()
         && resource.data.requesterUid == request.auth.uid;
@@ -236,6 +328,16 @@ service cloud.firestore {
     function isDocumentApprovalHistoryOwner(requestId) {
       return arIsActiveUser()
         && get(/databases/$(database)/documents/document_approval_requests/$(requestId)).data.requesterUid == request.auth.uid;
+    }
+
+    function isExpenseApprovalOwner() {
+      return arIsActiveUser()
+        && resource.data.requesterUid == request.auth.uid;
+    }
+
+    function isExpenseApprovalHistoryOwner(requestId) {
+      return arIsActiveUser()
+        && get(/databases/$(database)/documents/expense_approval_requests/$(requestId)).data.requesterUid == request.auth.uid;
     }
 
     function documentApprovalUserTransitionAllowed() {
@@ -268,6 +370,11 @@ service cloud.firestore {
       return /databases/$(database)/documents/document_approval_requests/$(requestId)/history/$(transitionId);
     }
 
+
+
+
+
+
     function validDocumentApprovalHistoryAction(previousStatus, nextStatus, action) {
       return (
         previousStatus == "draft" && nextStatus == "pending" && action == "submitted"
@@ -287,25 +394,23 @@ service cloud.firestore {
         previousStatus == "on_hold" && nextStatus == "approved" && action == "approved"
       ) || (
         previousStatus == "on_hold" && nextStatus == "rejected" && action == "rejected"
+      ) || (
+        previousStatus == "pending" && nextStatus == "pending" && action == "step_approved"
+      ) || (
+        previousStatus == "pending" && nextStatus == "approved" && action == "step_approved"
+      ) || (
+        previousStatus == "pending" && nextStatus == "rejected" && action == "step_rejected"
       );
     }
 
     function hasMatchingDocumentApprovalHistoryAfter(requestId) {
+      let transitionId = request.resource.data.get("lastTransitionId", "");
+      let historyPath = documentApprovalHistoryPath(requestId, transitionId);
       return request.resource.data.diff(resource.data).affectedKeys().hasAny(["lastTransitionId"])
-        && validDocumentApprovalTransitionId(request.resource.data.get("lastTransitionId", ""))
+        && validDocumentApprovalTransitionId(transitionId)
         && request.resource.data.get("lastTransitionId", null) != resource.data.get("lastTransitionId", null)
-        && !exists(documentApprovalHistoryPath(requestId, request.resource.data.lastTransitionId))
-        && existsAfter(documentApprovalHistoryPath(requestId, request.resource.data.lastTransitionId))
-        && getAfter(documentApprovalHistoryPath(requestId, request.resource.data.lastTransitionId)).data.requestId == requestId
-        && getAfter(documentApprovalHistoryPath(requestId, request.resource.data.lastTransitionId)).data.transitionId == request.resource.data.lastTransitionId
-        && getAfter(documentApprovalHistoryPath(requestId, request.resource.data.lastTransitionId)).data.previousStatus == resource.data.status
-        && getAfter(documentApprovalHistoryPath(requestId, request.resource.data.lastTransitionId)).data.nextStatus == request.resource.data.status
-        && getAfter(documentApprovalHistoryPath(requestId, request.resource.data.lastTransitionId)).data.actorUid == request.auth.uid
-        && validDocumentApprovalHistoryAction(
-          resource.data.status,
-          request.resource.data.status,
-          getAfter(documentApprovalHistoryPath(requestId, request.resource.data.lastTransitionId)).data.action
-        );
+        && !exists(historyPath)
+        && existsAfter(historyPath);
     }
 
     function hasValidDocumentApprovalTransitionHistoryState(requestId) {
@@ -315,39 +420,43 @@ service cloud.firestore {
       ) || (
         request.resource.data.status != resource.data.status
           && hasMatchingDocumentApprovalHistoryAfter(requestId)
+      ) || (
+        resource.data.schemaVersion == 3
+          && resource.data.status == "pending"
+          && request.resource.data.status == "pending"
+          && resource.data.workflow.currentStep == 1
+          && request.resource.data.workflow.currentStep == 2
+          && hasMatchingDocumentApprovalHistoryAfter(requestId)
       );
     }
 
     function hasValidDocumentApprovalUserUpdateShape(requestId) {
-      return isDocumentApprovalOwner()
-        && request.resource.data.keys().hasOnly(documentApprovalRequestKeys())
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+      // 비용 최적화: diff() 는 30키 문서에서 고비용이므로 1회만 계산해 재사용한다.
+      // (동일 diff 를 4회 인라인하면 1000-expression 예산을 크게 잠식한다.)
+      // isDocumentApprovalOwner() 는 호출부(allow update) 앞단에서 이미 검증되므로
+      // 여기서는 중복 평가하지 않는다(eager let diff() 도 소유자 경로에서만 실행됨).
+      let delta = request.resource.data.diff(resource.data);
+      let affected = delta.affectedKeys();
+      return request.resource.data.keys().hasOnly(documentApprovalLegacyRequestKeys())
+        && affected.hasOnly([
           "title", "documentType", "description", "payload", "status",
           "submittedAt", "updatedAt", "lastTransitionId"
         ])
-        && request.resource.data.diff(resource.data).affectedKeys().hasAny(["updatedAt"])
-        && request.resource.data.diff(resource.data).unchangedKeys().hasAll([
-          "requesterUid", "requesterName", "requesterRole", "createdAt", "schemaVersion"
-        ])
+        && affected.hasAny(["updatedAt"])
         && validDocumentApprovalStatus(request.resource.data.status)
         && documentApprovalUserTransitionAllowed()
         && hasValidDocumentApprovalTransitionHistoryState(requestId)
         && request.resource.data.updatedAt == request.time
         && (
-          !request.resource.data.diff(resource.data).affectedKeys().hasAny(["submittedAt"])
+          !affected.hasAny(["submittedAt"])
           || request.resource.data.submittedAt == request.time
-        )
-        && request.resource.data.get("reviewerUid", null) == resource.data.get("reviewerUid", null)
-        && request.resource.data.get("reviewerName", null) == resource.data.get("reviewerName", null)
-        && request.resource.data.get("reviewedAt", null) == resource.data.get("reviewedAt", null)
-        && request.resource.data.get("reviewComment", null) == resource.data.get("reviewComment", null)
-        && request.resource.data.get("rejectionReason", null) == resource.data.get("rejectionReason", null)
-        && request.resource.data.get("holdReason", null) == resource.data.get("holdReason", null)
-        && request.resource.data.get("approvedAt", null) == resource.data.get("approvedAt", null)
-        && request.resource.data.get("appliedAt", null) == resource.data.get("appliedAt", null)
-        && request.resource.data.get("appliedByUid", null) == resource.data.get("appliedByUid", null);
-      // 첨부(attachments/attachmentCount/attachmentsTotalSize) 는 affectedKeys().hasOnly()
-      // 허용 목록에 없으므로 이 update 경로에서 변경 시 자동 차단됨 (불변 보장).
+        );
+      // 불변성: affected.hasOnly([title/documentType/description/payload/status/submittedAt/
+      // updatedAt/lastTransitionId]) 가 이 8키 외 모든 필드의 변경을 이미 차단하므로,
+      // requester*/createdAt/schemaVersion 의 unchangedKeys().hasAll 및
+      // reviewer*/review*/rejectionReason/holdReason/approvedAt/appliedAt/appliedByUid 의
+      // 개별 == 비교, 첨부(attachments/attachmentCount/attachmentsTotalSize) 변경은
+      // 모두 자동 차단됨(중복 제거, 보안 동일, 표현식 예산 절감).
     }
 
     function documentApprovalAdminTransitionAllowed() {
@@ -374,26 +483,19 @@ service cloud.firestore {
     }
 
     function hasValidDocumentApprovalAdminUpdateShape(requestId) {
-      return arIsAdmin()
-        && request.resource.data.keys().hasOnly(documentApprovalRequestKeys())
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(documentApprovalAdminUpdateKeys())
-        && request.resource.data.diff(resource.data).affectedKeys().hasAny([
+      // 비용 최적화: diff().affectedKeys() 를 1회만 계산해 재사용한다.
+      // arIsAdmin() 은 호출부(allow update) 앞단에서 이미 검증되므로 중복 평가하지 않는다
+      // (eager let diff() 도 admin 경로에서만 실행됨).
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      return request.resource.data.keys().hasOnly(documentApprovalLegacyRequestKeys())
+        && affected.hasOnly(documentApprovalAdminUpdateKeys())
+        && affected.hasAny([
           "status", "updatedAt", "reviewerUid", "reviewerName", "reviewedAt"
         ])
-        && request.resource.data.requestType == resource.data.requestType
-        && request.resource.data.title == resource.data.title
-        && request.resource.data.payload == resource.data.payload
-        && request.resource.data.requesterUid == resource.data.requesterUid
-        && request.resource.data.requesterName == resource.data.requesterName
-        && request.resource.data.requesterRole == resource.data.requesterRole
-        && request.resource.data.createdAt == resource.data.createdAt
-        && request.resource.data.schemaVersion == resource.data.schemaVersion
-        && request.resource.data.get("requestId", null) == resource.data.get("requestId", null)
-        && request.resource.data.get("documentType", null) == resource.data.get("documentType", null)
-        && request.resource.data.get("description", null) == resource.data.get("description", null)
-        && request.resource.data.get("requesterEmail", null) == resource.data.get("requesterEmail", null)
-        && request.resource.data.get("requesterSite", null) == resource.data.get("requesterSite", null)
-        && request.resource.data.get("isTest", null) == resource.data.get("isTest", null)
+        // 불변성: affected.hasOnly(documentApprovalAdminUpdateKeys()) 가 admin-update 키
+        // 외 모든 필드(requestType/title/payload/requester*/createdAt/schemaVersion/requestId/
+        // documentType/description/requesterEmail/requesterSite/isTest/appliedAt/appliedByUid)의
+        // 변경을 이미 차단하므로 개별 == 비교는 중복 → 제거(보안 동일, 표현식 예산 절감).
         && validDocumentApprovalStatus(request.resource.data.status)
         && documentApprovalAdminTransitionAllowed()
         && hasMatchingDocumentApprovalHistoryAfter(requestId)
@@ -403,8 +505,6 @@ service cloud.firestore {
         && request.resource.data.reviewerUid == request.auth.uid
         && request.resource.data.reviewerName == arUserDoc().get("name", "")
         && request.resource.data.reviewerName != ""
-        && request.resource.data.get("appliedAt", null) == resource.data.get("appliedAt", null)
-        && request.resource.data.get("appliedByUid", null) == resource.data.get("appliedByUid", null)
         && (
           request.resource.data.status != "approved"
           || request.resource.data.approvedAt == request.time
@@ -419,15 +519,28 @@ service cloud.firestore {
         )
         && (
           request.resource.data.status != "approved"
-          || !request.resource.data.diff(resource.data).affectedKeys().hasAny(["rejectionReason", "holdReason"])
+          || !affected.hasAny(["rejectionReason", "holdReason"])
         );
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     function documentApprovalHistoryKeys() {
       return [
         "requestId", "action", "previousStatus", "nextStatus", "actorUid",
         "actorName", "actorRole", "comment", "createdAt", "schemaVersion",
-        "transitionId"
+        "transitionId", "stepIndex"
       ];
     }
 
@@ -436,12 +549,18 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/document_approval_requests/$(requestId))
         && existsAfter(/databases/$(database)/documents/document_approval_requests/$(requestId))
         && request.resource.data.keys().hasOnly(documentApprovalHistoryKeys())
-        && request.resource.data.keys().hasAll(documentApprovalHistoryKeys())
+        && request.resource.data.keys().hasAll([
+          "requestId", "action", "previousStatus", "nextStatus", "actorUid",
+          "actorName", "actorRole", "comment", "createdAt", "schemaVersion",
+          "transitionId"
+        ])
         && validDocumentApprovalTransitionId(historyId)
         && request.resource.data.transitionId == historyId
         && request.resource.data.requestId == requestId
         && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.actorName == arUserDoc().get("name", "")
         && request.resource.data.actorRole == arUserDoc().get("role", "")
+        && !(request.resource.data.action in ["step_approved", "step_rejected"])
         && validDocumentApprovalStatus(request.resource.data.previousStatus)
         && validDocumentApprovalStatus(request.resource.data.nextStatus)
         && request.resource.data.previousStatus != request.resource.data.nextStatus
@@ -463,7 +582,8 @@ service cloud.firestore {
         && request.resource.data.previousStatus == get(/databases/$(database)/documents/document_approval_requests/$(requestId)).data.status
         && request.resource.data.nextStatus == getAfter(/databases/$(database)/documents/document_approval_requests/$(requestId)).data.status
         && request.resource.data.transitionId == getAfter(/databases/$(database)/documents/document_approval_requests/$(requestId)).data.lastTransitionId
-        && get(/databases/$(database)/documents/document_approval_requests/$(requestId)).data.status != getAfter(/databases/$(database)/documents/document_approval_requests/$(requestId)).data.status
+        && get(/databases/$(database)/documents/document_approval_requests/$(requestId)).data.status
+          != getAfter(/databases/$(database)/documents/document_approval_requests/$(requestId)).data.status
         && validDocumentApprovalHistoryAction(
           request.resource.data.previousStatus,
           request.resource.data.nextStatus,
@@ -473,6 +593,8 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time
         && request.resource.data.schemaVersion == 1;
     }
+
+
 
     // WORK25-AUTH-RULES-HARDENING-01:
     // 익명/미승인 사용자의 데이터 접근 차단.
@@ -510,7 +632,11 @@ service cloud.firestore {
     // 감사 로그: 기록은 Google 인증(승인 전 게이트 로그 포함) 또는 active 직원,
     // 열람은 admin만. 익명 기록 불가.
     match /audit_logs/{logId} {
-      allow create: if arIsGoogleUser() || arIsActiveUser();
+      allow create: if !(request.resource.data.get("action", "") in [
+          "DOCUMENT_APPROVAL_SUBMITTED", "DOCUMENT_APPROVAL_STEP_APPROVED",
+          "DOCUMENT_APPROVAL_STEP_REJECTED"
+        ])
+        && (arIsGoogleUser() || arIsActiveUser());
       allow read: if arIsAdmin();
       allow update, delete: if false;
     }
@@ -532,7 +658,7 @@ service cloud.firestore {
         && request.resource.data.email == request.auth.token.email
         && request.resource.data.status == "pending"
         && request.resource.data.source == "google_approval_gate"
-        && request.resource.data.requested_role in ["sales", "accounting", "factory"]
+        && request.resource.data.requested_role in ["sales", "accounting", "factory", "factory_manager"]
         && request.resource.data.reviewed_by == null
         && request.resource.data.reviewed_at == null
         && request.resource.data.decision_reason == null
@@ -553,16 +679,24 @@ service cloud.firestore {
 
     match /document_approval_requests/{requestId} {
       allow read: if arIsAdmin() || isDocumentApprovalOwner();
-      // create: v1/v2 를 하나의 unified shape 로 검증 (공통 base 중복 인라인 방지).
       allow create: if arIsActiveUser()
+        && request.resource.data.schemaVersion in [1, 2]
         && hasValidDocumentApprovalUnifiedCreateShape(requestId);
       // update: user/admin shape 를 한 allow 에서 OR 로 묶으면 인라인 식 트리가
       // 1000-expression 한도를 초과하므로 별도 allow 문으로 분리한다.
       // 각 문에 resource != null 가드를 둬서 create(set) 평가 시 update shape 가
       // 깊이 평가돼 한도를 건드리는 것도 막는다.
+      // 값싼 역할 판별자(isDocumentApprovalOwner / arIsAdmin)를 shape 함수 호출 앞단으로
+      // hoist 한다: upsert 평가에서 resource 를 incoming 으로 취급해도, 소유자/관리자가
+      // 아닌 경로는 고비용 shape(내부 diff() 포함)를 아예 진입하지 않고 조기 단락된다.
+      // (판별자는 각 shape 내부에서 중복 제거됨.)
       allow update: if resource != null
+        && resource.data.schemaVersion in [1, 2]
+        && isDocumentApprovalOwner()
         && hasValidDocumentApprovalUserUpdateShape(requestId);
       allow update: if resource != null
+        && resource.data.schemaVersion in [1, 2]
+        && arIsAdmin()
         && hasValidDocumentApprovalAdminUpdateShape(requestId);
       // 요청자 본인의 미제출 draft 만 삭제 허용 (업로드 실패 rollback).
       // pending 이후 및 타인 요청 삭제는 불가.
@@ -573,6 +707,27 @@ service cloud.firestore {
         allow read: if arIsAdmin() || isDocumentApprovalHistoryOwner(requestId);
         allow create: if hasValidDocumentApprovalHistoryCreateShape(requestId, historyId);
         allow update, delete: if false;
+      }
+    }
+
+    match /expense_approval_requests/{requestId} {
+      allow read: if arIsAdmin() || isExpenseApprovalOwner() || arIsAccounting();
+      allow create: if arIsActiveUser()
+        && request.resource.data.get("schemaVersion", 0) == 3
+        && request.resource.data.get("formType", "") == "expense"
+        && hasValidExpenseCreateShape(requestId);
+      allow update: if false;
+      allow delete: if isExpenseApprovalOwner()
+        && resource.data.status == "draft";
+
+      match /history/{historyId} {
+        allow read: if arIsAdmin() || isExpenseApprovalHistoryOwner(requestId);
+        allow write: if false;
+      }
+
+      match /workflow/state {
+        allow read: if arIsAdmin() || isExpenseApprovalOwner() || arIsAccounting();
+        allow write: if false;
       }
     }
   }
