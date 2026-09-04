@@ -110,6 +110,92 @@
         list.appendChild(item);
     }
 
+    // ---------- WORK41: 최근 업무 정렬 · 지연 판별 · 예외 색상/문구 ----------
+    // 주문 상태 우선순위(작을수록 먼저): 지연/반려 → 대기 → 진행 → 완료
+    const ORDER_PRIORITY = { rejected: 0, pending: 1, approved: 2, completed: 3 };
+    const DAY_MS = 24 * 60 * 60 * 1000;
+
+    function parseDueMs(order) {
+        const due = order?.dueDate;
+        if (!due) return 0;
+        const ms = new Date(due).getTime();
+        return Number.isFinite(ms) ? ms : 0;
+    }
+    // 지연: 납기일이 지났고 아직 완료/반려가 아님
+    function isDelayedOrder(order, nowMs) {
+        const due = parseDueMs(order);
+        if (!due) return false;
+        const status = order?.status;
+        if (status === 'completed' || status === 'rejected') return false;
+        return due < (nowMs || Date.now());
+    }
+    // 납기 임박: 납기가 오늘~windowDays 이내이고 미완료
+    function isDueSoonOrder(order, nowMs, windowDays) {
+        const due = parseDueMs(order);
+        if (!due) return false;
+        const status = order?.status;
+        if (status === 'completed' || status === 'rejected') return false;
+        const now = nowMs || Date.now();
+        const days = windowDays || 3;
+        return due >= now && due <= now + days * DAY_MS;
+    }
+    function orderPriorityRank(order, nowMs) {
+        if (isDelayedOrder(order, nowMs)) return 0;               // 지연은 최우선
+        const base = ORDER_PRIORITY[order?.status];
+        return base === undefined ? 1.5 : base;                  // 미지정 상태는 대기와 진행 사이
+    }
+    // WORK41 §3.7: 테스트성 데이터 식별(비파괴 — 삭제·수정하지 않고 배지/필터로만 처리)
+    const TEST_PATTERN = /(^|[\s_\-])(TEST|테스트|샘플|SAMPLE|DEMO)/i;
+    function isTestOrder(order) {
+        if (!order) return false;
+        if (order.isTest === true || order.testData === true) return true;
+        const fields = [order.client, order.clientName, order.company, order.title, order.material, order.productName, order.itemName, order.id];
+        return fields.some(v => typeof v === 'string' && TEST_PATTERN.test(v));
+    }
+    // 최근 업무 명시 정렬 — 미처리 우선, 완료는 뒤로(또는 제외), 테스트 데이터는 기본 제외. 자동 테스트 대상.
+    function sortRecentOrders(orders, options) {
+        const opts = options || {};
+        const nowMs = opts.nowMs || Date.now();
+        let list = Array.isArray(orders) ? orders.slice() : [];
+        if (!opts.includeCompleted) {
+            list = list.filter(order => order?.status !== 'completed');
+        }
+        if (!opts.includeTest) {
+            list = list.filter(order => !isTestOrder(order));
+        }
+        return list.sort((a, b) => {
+            const ra = orderPriorityRank(a, nowMs);
+            const rb = orderPriorityRank(b, nowMs);
+            if (ra !== rb) return ra - rb;                                       // 우선순위 오름차순
+            return timestampValue(orderTime(b)) - timestampValue(orderTime(a));  // 동순위는 최신순
+        });
+    }
+
+    const TONE_TEXT = { amber: 'text-amber-300', rose: 'text-rose-300', slate: 'text-slate-200' };
+    const TONE_CLASSES = ['text-white', 'text-slate-200', 'text-slate-400', 'text-amber-300', 'text-rose-300', 'text-emerald-300', 'text-blue-300'];
+    // 0건=중립, 처리 필요=강조, 조회 실패=숫자 대신 '-'+원인 문구 (색상만으로 구분하지 않음)
+    function setCountCell(numId, badgeId, stateId, count, options) {
+        const opts = options || {};
+        const num = $(numId);
+        const badge = badgeId ? $(badgeId) : null;
+        const st = stateId ? $(stateId) : null;
+        const suffix = opts.suffix || '';
+        const applyNumClass = cls => { if (num) { TONE_CLASSES.forEach(c => num.classList.remove(c)); num.classList.add(cls); } };
+        if (opts.failed) {
+            if (num) num.textContent = '-';
+            applyNumClass('text-rose-300');
+            if (badge) badge.textContent = '조회 실패';
+            if (st) st.textContent = opts.failMessage || '조회 실패 · 다시 시도';
+            return;
+        }
+        const value = Number(count) || 0;
+        const active = value > 0;
+        if (num) num.textContent = `${value}${suffix}`;
+        applyNumClass(active ? (TONE_TEXT[opts.tone] || TONE_TEXT.amber) : TONE_TEXT.slate);
+        if (badge) badge.textContent = `${value}건`;
+        if (st) st.textContent = active ? (opts.activeMessage || '처리 필요') : (opts.idleMessage || '처리할 항목이 없습니다.');
+    }
+
     function documentTitle(request) {
         return displayValue(request, ['title', 'documentType', 'requestType'], '제목 없음');
     }
@@ -129,7 +215,13 @@
         const requests = state.approvalRequests;
         const pending = requests.filter(request => request?.status === 'pending').length;
         const onHold = requests.filter(request => request?.status === 'on_hold').length;
-        setText('pcHubApprovalTotal', `${pending + onHold}건`);
+        const approvalTotal = pending + onHold;
+        setText('pcHubApprovalTotal', `${approvalTotal}건`);
+        const approvalBadge = $('pcHubApprovalTotal');
+        if (approvalBadge) {
+            approvalBadge.classList.toggle('text-amber-200', approvalTotal > 0);
+            approvalBadge.classList.toggle('text-slate-200', approvalTotal === 0);
+        }
         setText('pcHubApprovalPending', pending);
         setText('pcHubApprovalHold', onHold);
 
@@ -143,20 +235,33 @@
         return order?.updatedAt || order?.createdAt || order?.dueDate;
     }
 
-    function renderOrderItem(list, order) {
+    const ORDER_STATUS_TONE = { pending: 'text-amber-300', approved: 'text-blue-300', completed: 'text-emerald-300', rejected: 'text-rose-300' };
+    function renderOrderItem(list, order, nowMs) {
         const item = document.createElement('li');
         item.className = 'rounded-lg border border-[#334155]/70 bg-[#0f1522] px-3 py-2';
         const top = document.createElement('div');
         top.className = 'flex items-center justify-between gap-3';
+        const left = document.createElement('div');
+        left.className = 'flex min-w-0 items-center gap-1.5';
+        if (isTestOrder(order)) {
+            const testBadge = document.createElement('span');
+            testBadge.className = 'shrink-0 rounded bg-slate-600/60 px-1.5 py-0.5 text-[10px] font-black text-slate-200';
+            testBadge.textContent = '테스트';
+            left.appendChild(testBadge);
+        }
         const client = document.createElement('p');
-        client.className = 'truncate text-[11px] font-black text-slate-200';
+        client.className = 'truncate text-[11px] font-black text-slate-100';
         client.textContent = displayValue(order, ['client', 'clientName', 'company'], '거래처 정보 없음');
+        left.appendChild(client);
+        const delayed = isDelayedOrder(order, nowMs || Date.now());
+        const baseLabel = ORDER_STATUS_LABELS[order?.status] || order?.status || '-';
         const status = document.createElement('span');
-        status.className = 'shrink-0 text-[10px] font-black text-blue-300';
-        status.textContent = ORDER_STATUS_LABELS[order?.status] || order?.status || '-';
-        top.append(client, status);
+        // 색상만으로 구분하지 않고 상태 문구를 함께 표시(§3.5)
+        status.className = `shrink-0 text-[11px] font-black ${delayed ? 'text-rose-300' : (ORDER_STATUS_TONE[order?.status] || 'text-slate-300')}`;
+        status.textContent = delayed ? `지연 · ${baseLabel}` : baseLabel;
+        top.append(left, status);
         const meta = document.createElement('p');
-        meta.className = 'mt-1 truncate text-[10px] font-bold text-slate-500';
+        meta.className = 'mt-1 truncate text-[11px] font-bold text-slate-400';
         meta.textContent = `${displayValue(order, ['material', 'productName', 'itemName'], '품목 정보 없음')} · 납기 ${displayValue(order, ['dueDate'], '-')}`;
         item.append(top, meta);
         list.appendChild(item);
@@ -164,8 +269,7 @@
 
     function renderOrders() {
         const orders = state.orders;
-        const pending = orders.filter(order => order?.status === 'pending').length;
-        const production = orders.filter(order => order?.status === 'approved').length;
+        const failed = Boolean(state.ordersError);
         const completed = orders.filter(order => order?.status === 'completed').length;
         const dashboardMetrics = typeof window.getPCDashboardMetrics === 'function'
             ? window.getPCDashboardMetrics(orders)
@@ -173,17 +277,35 @@
         const receivable = dashboardMetrics
             ? dashboardMetrics.debtItems.length
             : orders.filter(order => ['approved', 'completed'].includes(order?.status) && order?.paymentStatus !== 'paid').length;
-        setText('pcHubMetricPending', `${pending}건`);
-        setText('pcHubMetricProduction', `${production}건`);
-        setText('pcHubMetricCompleted', `${completed}건`);
-        setText('pcHubMetricReceivable', `${receivable}건`);
+        const nowMs = Date.now();
+        const urgent = orders.filter(order => isDelayedOrder(order, nowMs) || isDueSoonOrder(order, nowMs)).length;
+
+        // 운영 현황(B): 생산 완료만 hub가 대표 표시(승인 대기·생산 진행은 pcKpi* 가 대표)
+        setText('pcHubMetricCompleted', failed ? '-' : `${completed}건`);
+        // 지금 처리할 업무(A): 납기·지연 / 미수금 — 0건 중립, 처리필요 강조, 조회실패 명시
+        setCountCell('pcHubUrgentOrders', 'pcHubUrgentBadge', 'pcHubUrgentState', urgent, {
+            tone: 'rose', failed,
+            activeMessage: '지연·임박 주문 확인 필요', idleMessage: '지연·임박 주문 없음',
+            failMessage: '주문 조회 실패 · 다시 시도'
+        });
+        setCountCell('pcHubMetricReceivable', 'pcHubReceivableBadge', 'pcHubReceivableState', receivable, {
+            tone: 'rose', suffix: '건', failed,
+            activeMessage: '미수 관리 대상 있음', idleMessage: '미수 관리 대상 없음',
+            failMessage: '주문 조회 실패 · 다시 시도'
+        });
 
         const list = $('pcHubRecentOrders');
         clearList(list);
         if (!list) return;
-        const recent = orders.slice().sort((a, b) => timestampValue(orderTime(b)) - timestampValue(orderTime(a))).slice(0, 5);
-        if (!recent.length) appendEmpty(list, '현재 조회된 주문이 없습니다.');
-        recent.forEach(order => renderOrderItem(list, order));
+        if (failed) { appendEmpty(list, '주문 조회 실패 · 다시 시도해 주세요.'); return; }
+        const includeCompleted = Boolean($('pcHubRecentIncludeCompleted')?.checked);
+        const includeTest = Boolean($('pcHubRecentIncludeTest')?.checked);
+        const recent = sortRecentOrders(orders, { includeCompleted, includeTest, nowMs }).slice(0, 5);
+        if (!recent.length) {
+            appendEmpty(list, includeCompleted ? '현재 조회된 주문이 없습니다.' : '미처리 주문이 없습니다.');
+            return;
+        }
+        recent.forEach(order => renderOrderItem(list, order, nowMs));
     }
 
     // ---------- WORK32: LIVE 문서결재 현황 카드 ----------
@@ -291,6 +413,25 @@
         setText('pcLiveOpsDocRejected7', c.rejected7);
         setText('pcHubDocGlancePending', c.pending);
         setText('pcHubDocGlanceHold', c.onHold);
+        // WORK41: 문서결재 예외 카드 합계·상태 문구(조회 실패를 0건으로 표시하지 않음)
+        const docGlanceTotal = (Number(c.pending) || 0) + (Number(c.onHold) || 0);
+        setText('pcHubDocGlanceTotal', `${docGlanceTotal}건`);
+        const docGlanceBadge = $('pcHubDocGlanceTotal');
+        if (docGlanceBadge) {
+            docGlanceBadge.classList.toggle('text-amber-200', docGlanceTotal > 0);
+            docGlanceBadge.classList.toggle('text-slate-200', docGlanceTotal === 0);
+        }
+        const docGlanceStateNode = $('pcHubDocGlanceState');
+        if (docGlanceStateNode) {
+            docGlanceStateNode.textContent = {
+                loading: '불러오는 중입니다.',
+                denied: '조회 권한 확인 필요',
+                error: '조회 실패 · 다시 시도',
+                empty: '',
+                ready: '',
+                idle: ''
+            }[c.status] || '';
+        }
 
         const basis = $('pcLiveDocBasis');
         if (basis) basis.textContent = docCardBasisText();
@@ -469,6 +610,7 @@
     function init() {
         bindNavigation();
         bindDocCardNavigation();
+        bindRecentToggle();
         state.initialized = true;
         renderAll();
     }
@@ -519,9 +661,21 @@
         renderDocCard();
     }
 
-    function updateOrders(orders) {
+    function updateOrders(orders, options) {
         state.orders = Array.isArray(orders) ? orders.slice() : [];
+        // WORK41: 조회 실패 신호(선택). 미전달 시 성공으로 간주(기존 호출부 호환).
+        state.ordersError = Boolean(options && options.error);
         renderOrders();
+    }
+
+    // WORK41: 최근 업무 '완료 포함' 토글 — 변경 시 재렌더(신규 조회 없음)
+    function bindRecentToggle() {
+        ['pcHubRecentIncludeCompleted', 'pcHubRecentIncludeTest'].forEach(id => {
+            const toggle = $(id);
+            if (!toggle || toggle.dataset.yjRecentBound === 'true') return;
+            toggle.dataset.yjRecentBound = 'true';
+            toggle.addEventListener('change', renderOrders);
+        });
     }
 
     window.addEventListener('yj:auth-ready', () => window.setTimeout(() => {
@@ -542,7 +696,13 @@
         __test: {
             deriveAdminRecentSummary,
             docCardState: () => state.docCard,
-            seedDocCard: seed => Object.assign(state.docCard, seed || {})
+            seedDocCard: seed => Object.assign(state.docCard, seed || {}),
+            // WORK41: 최근 업무 정렬·지연 판별 검증용
+            sortRecentOrders,
+            orderPriorityRank,
+            isDelayedOrder,
+            isDueSoonOrder,
+            isTestOrder
         }
     };
 })();
