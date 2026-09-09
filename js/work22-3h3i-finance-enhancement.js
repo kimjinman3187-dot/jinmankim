@@ -209,20 +209,20 @@
             .yj-finance-collapsed>.yj-finance-section-content{display:none!important;}
             .yj-finance-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin:0 0 2rem 0;}
             .yj-finance-summary-card{background:#1e293b;border:1px solid #334155;border-radius:1rem;padding:1rem;box-shadow:0 12px 28px rgba(0,0,0,.22);}
-            .yj-finance-summary-label{font-size:10px;color:#94a3b8;font-weight:900;letter-spacing:.08em;text-transform:uppercase;}
+            .yj-finance-summary-label{font-size:11px;color:#94a3b8;font-weight:900;letter-spacing:.08em;text-transform:uppercase;}
             .yj-finance-summary-value{font-size:18px;color:#fff;font-weight:1000;margin-top:.35rem;}
-            .yj-finance-summary-sub{font-size:10px;color:#64748b;font-weight:800;margin-top:.25rem;}
-            .yj-finance-period-badge{font-size:10px;font-weight:900;color:#38bdf8;background:rgba(14,165,233,.08);border:1px solid rgba(14,165,233,.22);padding:.25rem .5rem;border-radius:.5rem;margin-top:.5rem;display:inline-flex;}
+            .yj-finance-summary-sub{font-size:11px;color:#64748b;font-weight:800;margin-top:.25rem;}
+            .yj-finance-period-badge{font-size:11px;font-weight:900;color:#38bdf8;background:rgba(14,165,233,.08);border:1px solid rgba(14,165,233,.22);padding:.25rem .5rem;border-radius:.5rem;margin-top:.5rem;display:inline-flex;}
             .yj-finance-row-hidden-by-period{display:none!important;}
             .yj-common-kpi-card{min-width:0!important;overflow:hidden!important;padding:.85rem .9rem!important;display:flex!important;flex-direction:column!important;justify-content:center!important;gap:.16rem!important;}
             .yj-common-kpi-card p,.yj-common-kpi-card span,.yj-common-kpi-card div{max-width:100%!important;min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;}
             .yj-common-kpi-value{display:block!important;width:100%!important;max-width:100%!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;font-size:1.08rem!important;line-height:1.05!important;letter-spacing:-0.055em!important;font-variant-numeric:tabular-nums!important;}
             .yj-dashboard-kpi-card{min-width:0!important;overflow:hidden!important;padding:.75rem .85rem!important;display:flex!important;flex-direction:column!important;justify-content:center!important;gap:.18rem!important;}
             .yj-dashboard-kpi-card p,.yj-dashboard-kpi-card span,.yj-dashboard-kpi-card div{max-width:100%!important;min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;}
-            .yj-dashboard-meta{display:block;margin-top:.18rem;font-size:9px!important;line-height:1.1!important;font-weight:900;color:#64748b;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+            .yj-dashboard-meta{display:block;margin-top:.18rem;font-size:11px!important;line-height:1.2!important;font-weight:900;color:#64748b;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
             .yj-production-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem;margin-bottom:1rem;}
             .yj-production-summary-card{border:1px solid rgba(51,65,85,.9);background:rgba(15,21,34,.74);border-radius:1rem;padding:.8rem;min-width:0;overflow:hidden;}
-            .yj-production-summary-label{font-size:9px;color:#64748b;font-weight:900;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+            .yj-production-summary-label{font-size:11px;color:#64748b;font-weight:900;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
             .yj-production-summary-value{font-size:1.05rem;color:#fff;font-weight:1000;margin-top:.2rem;letter-spacing:-.03em;}
             .yj-production-card{border:1px solid rgba(51,65,85,.95);background:rgba(15,21,34,.72);border-radius:1rem;padding:1rem;transition:border-color .15s ease,background .15s ease,box-shadow .15s ease;}
             .yj-production-card.is-overdue{border-color:rgba(239,68,68,.5);background:rgba(127,29,29,.13);}
@@ -231,16 +231,16 @@
             .yj-production-card.is-ready{border-color:rgba(34,197,94,.55);background:rgba(20,83,45,.14);box-shadow:0 0 0 1px rgba(34,197,94,.18) inset;}
             .yj-production-card.is-packing{border-color:rgba(59,130,246,.48);background:rgba(30,64,175,.13);}
             .yj-production-order-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:.85rem;}
-            .yj-production-order-label{font-size:9px;color:#64748b;font-weight:900;letter-spacing:.08em;text-transform:uppercase;}
+            .yj-production-order-label{font-size:11px;color:#64748b;font-weight:900;letter-spacing:.08em;text-transform:uppercase;}
             .yj-production-order-value{color:#f8fafc;font-size:12px;font-weight:1000;line-height:1.35;margin-top:.15rem;overflow-wrap:anywhere;}
             .yj-production-order-product{color:#cbd5e1;font-size:11px;font-weight:900;line-height:1.35;margin-top:.15rem;overflow-wrap:anywhere;}
             .yj-production-info-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.55rem;margin-bottom:.75rem;}
             .yj-production-info-cell{min-width:0;background:rgba(17,24,39,.78);border:1px solid rgba(51,65,85,.9);border-radius:.7rem;padding:.65rem;}
-            .yj-production-info-value{color:#e2e8f0;font-size:10px;font-weight:900;line-height:1.45;margin-top:.2rem;overflow-wrap:anywhere;}
+            .yj-production-info-value{color:#e2e8f0;font-size:12px;font-weight:900;line-height:1.45;margin-top:.2rem;overflow-wrap:anywhere;}
             .yj-production-qty-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem;margin-bottom:.75rem;}
             .yj-production-qty-cell{min-width:0;}
             .yj-production-qty-value{display:block;color:#f8fafc;font-size:11px;font-weight:1000;margin-top:.15rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-            .yj-production-badge{display:inline-flex;align-items:center;justify-content:center;min-height:22px;padding:0 .45rem;border-radius:.5rem;border:1px solid rgba(148,163,184,.2);font-size:10px;font-weight:1000;white-space:nowrap;}
+            .yj-production-badge{display:inline-flex;align-items:center;justify-content:center;min-height:22px;padding:0 .45rem;border-radius:.5rem;border:1px solid rgba(148,163,184,.2);font-size:11px;font-weight:1000;white-space:nowrap;}
             .yj-production-badge.overdue{color:#f87171;background:rgba(239,68,68,.10);border-color:rgba(239,68,68,.32);}
             .yj-production-badge.today{color:#fb923c;background:rgba(249,115,22,.10);border-color:rgba(249,115,22,.32);}
             .yj-production-badge.soon{color:#facc15;background:rgba(234,179,8,.10);border-color:rgba(234,179,8,.32);}
@@ -255,7 +255,7 @@
             #pcKpiSales,#pcKpiDebt,#pcKpiFactory,#pcKpiPending{display:block!important;width:100%!important;max-width:100%!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;font-size:1.05rem!important;line-height:1.05!important;letter-spacing:-0.045em!important;font-variant-numeric:tabular-nums!important;}
             #pcFinanceOrderTotal,#pcFinanceIssuedTotal,#pcFinancePaidTotal,#pcFinanceDebtTotal,#pcArOverdueAmount,#pcArNormalAmount{font-size:1.05rem!important;letter-spacing:-0.055em!important;}
             #pcArRecoveryRate,#pcArRiskLabel{font-size:1.22rem!important;letter-spacing:-0.035em!important;}
-            @media(max-width:1280px){.yj-common-kpi-value,#pcKpiSales,#pcKpiDebt,#pcKpiFactory,#pcKpiPending,#pcFinanceOrderTotal,#pcFinanceIssuedTotal,#pcFinancePaidTotal,#pcFinanceDebtTotal,#pcArOverdueAmount,#pcArNormalAmount{font-size:.95rem!important;}.yj-common-kpi-card,.yj-dashboard-kpi-card{padding:.7rem .75rem!important;}.yj-dashboard-meta{font-size:8.5px!important;}}
+            @media(max-width:1280px){.yj-common-kpi-value,#pcKpiSales,#pcKpiDebt,#pcKpiFactory,#pcKpiPending,#pcFinanceOrderTotal,#pcFinanceIssuedTotal,#pcFinancePaidTotal,#pcFinanceDebtTotal,#pcArOverdueAmount,#pcArNormalAmount{font-size:.95rem!important;}.yj-common-kpi-card,.yj-dashboard-kpi-card{padding:.7rem .75rem!important;}.yj-dashboard-meta{font-size:11px!important;}}
             @media(max-width:1024px){.yj-finance-summary-grid,.yj-production-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
             @media(max-width:640px){.yj-finance-summary-grid,.yj-production-summary-grid{grid-template-columns:1fr;}.yj-finance-section-header{align-items:flex-start!important;flex-direction:column!important;}.yj-finance-section-actions{justify-content:flex-start;}}
         `;
@@ -391,10 +391,10 @@
             if (!anchor || !anchor.parentElement) return;
             anchor.insertAdjacentHTML('beforebegin', `
                 <div id='pcFinanceEnhanceSummary' class='yj-finance-summary-grid'>
-                    <div class='yj-finance-summary-card'><div class='yj-finance-summary-label'>Invoice Wait</div><div id='pcFinanceSummaryInvoiceWait' class='yj-finance-summary-value'>0건</div><div id='pcFinanceSummaryInvoiceAmount' class='yj-finance-summary-sub'>청구 예정 ₩ 0</div><div id='pcFinanceSummaryPeriodA' class='yj-finance-period-badge'>전체 기간</div></div>
-                    <div class='yj-finance-summary-card'><div class='yj-finance-summary-label'>Collection Wait</div><div id='pcFinanceSummaryCollectionWait' class='yj-finance-summary-value'>0건</div><div id='pcFinanceSummaryCollectionAmount' class='yj-finance-summary-sub'>잔금 ₩ 0</div><div id='pcFinanceSummaryPeriodB' class='yj-finance-period-badge'>전체 기간</div></div>
-                    <div class='yj-finance-summary-card'><div class='yj-finance-summary-label'>Completed</div><div id='pcFinanceSummaryCompleted' class='yj-finance-summary-value'>0건</div><div id='pcFinanceSummaryCompletedAmount' class='yj-finance-summary-sub'>입금 완료 ₩ 0</div><div id='pcFinanceSummaryPeriodC' class='yj-finance-period-badge'>전체 기간</div></div>
-                    <div class='yj-finance-summary-card'><div class='yj-finance-summary-label'>Action Queue</div><div id='pcFinanceSummaryActionQueue' class='yj-finance-summary-value'>0건</div><div id='pcFinanceSummaryActionSub' class='yj-finance-summary-sub'>승인/생산/청구/수금 처리 필요</div><div id='pcFinanceSummaryPeriodD' class='yj-finance-period-badge'>전체 기간</div></div>
+                    <div class='yj-finance-summary-card'><div class='yj-finance-summary-label'>청구 대기</div><div id='pcFinanceSummaryInvoiceWait' class='yj-finance-summary-value'>0건</div><div id='pcFinanceSummaryInvoiceAmount' class='yj-finance-summary-sub'>청구 예정 ₩ 0</div><div id='pcFinanceSummaryPeriodA' class='yj-finance-period-badge'>전체 기간</div></div>
+                    <div class='yj-finance-summary-card'><div class='yj-finance-summary-label'>수금 대기</div><div id='pcFinanceSummaryCollectionWait' class='yj-finance-summary-value'>0건</div><div id='pcFinanceSummaryCollectionAmount' class='yj-finance-summary-sub'>잔금 ₩ 0</div><div id='pcFinanceSummaryPeriodB' class='yj-finance-period-badge'>전체 기간</div></div>
+                    <div class='yj-finance-summary-card'><div class='yj-finance-summary-label'>완료 거래</div><div id='pcFinanceSummaryCompleted' class='yj-finance-summary-value'>0건</div><div id='pcFinanceSummaryCompletedAmount' class='yj-finance-summary-sub'>입금 완료 ₩ 0</div><div id='pcFinanceSummaryPeriodC' class='yj-finance-period-badge'>전체 기간</div></div>
+                    <div class='yj-finance-summary-card'><div class='yj-finance-summary-label'>처리 대기</div><div id='pcFinanceSummaryActionQueue' class='yj-finance-summary-value'>0건</div><div id='pcFinanceSummaryActionSub' class='yj-finance-summary-sub'>승인/생산/청구/수금 처리 필요</div><div id='pcFinanceSummaryPeriodD' class='yj-finance-period-badge'>전체 기간</div></div>
                 </div>`);
         }
 
@@ -527,9 +527,9 @@
             const tbody = document.getElementById('pcArTableBody');
             if (!tbody) return;
             tbody.innerHTML = clientItems.slice(0, 15).map(item => {
-                const riskBadge = item.maxElapsed >= 60 ? `<span class='bg-red-500/10 text-red-400 border border-red-500/30 px-2 py-1 rounded text-[10px] font-black'>RISK</span>` : item.maxElapsed >= 30 ? `<span class='bg-orange-500/10 text-orange-400 border border-orange-500/30 px-2 py-1 rounded text-[10px] font-black'>WATCH</span>` : `<span class='bg-green-500/10 text-green-400 border border-green-500/30 px-2 py-1 rounded text-[10px] font-black'>SAFE</span>`;
+                const riskBadge = item.maxElapsed >= 60 ? `<span class='bg-red-500/10 text-red-400 border border-red-500/30 px-2 py-1 rounded text-[11px] font-black'>RISK</span>` : item.maxElapsed >= 30 ? `<span class='bg-orange-500/10 text-orange-400 border border-orange-500/30 px-2 py-1 rounded text-[11px] font-black'>WATCH</span>` : `<span class='bg-green-500/10 text-green-400 border border-green-500/30 px-2 py-1 rounded text-[11px] font-black'>SAFE</span>`;
                 const elapsedClass = item.maxElapsed >= 60 ? 'text-red-500' : item.maxElapsed >= 30 ? 'text-orange-400' : 'text-slate-400';
-                return `<tr class='hover:bg-red-500/5 transition-colors'><td class='px-4 py-3 font-bold text-white'>${item.client}<br><span class='text-[10px] text-slate-500 font-black'>미수 ${item.orderCount}건</span></td><td class='px-4 py-3 text-slate-400'>${item.latestDate}</td><td class='px-4 py-3 ${elapsedClass} font-bold'>${item.maxElapsed}일<br>${riskBadge}</td><td class='px-4 py-3 text-right font-black text-red-400'>${dashboardKrwShort(item.balanceAmount)}</td></tr>`;
+                return `<tr class='hover:bg-red-500/5 transition-colors'><td class='px-4 py-3 font-bold text-white'>${item.client}<br><span class='text-[11px] text-slate-500 font-black'>미수 ${item.orderCount}건</span></td><td class='px-4 py-3 text-slate-400'>${item.latestDate}</td><td class='px-4 py-3 ${elapsedClass} font-bold'>${item.maxElapsed}일<br>${riskBadge}</td><td class='px-4 py-3 text-right font-black text-red-400'>${dashboardKrwShort(item.balanceAmount)}</td></tr>`;
             }).join('') || `<tr><td colspan='4' class='px-4 py-8 text-center text-slate-500 font-bold'>미수금 데이터가 없습니다.</td></tr>`;
             tbody.querySelectorAll('tr').forEach((row, index) => {
                 const item = clientItems[index];
@@ -676,10 +676,10 @@ const items = Array.from(itemMap.values());
 
             const summary = `
                 <div class='yj-production-summary-grid'>
-                    <div class='yj-production-summary-card'><div class='yj-production-summary-label'>Overdue</div><div class='yj-production-summary-value text-red-400'>${overdueCount}건</div></div>
-                    <div class='yj-production-summary-card'><div class='yj-production-summary-label'>Ready</div><div class='yj-production-summary-value text-green-400'>${readyCount}건</div></div>
-                    <div class='yj-production-summary-card'><div class='yj-production-summary-label'>Packing</div><div class='yj-production-summary-value text-blue-400'>${packingCount}건</div></div>
-                    <div class='yj-production-summary-card'><div class='yj-production-summary-label'>Remain</div><div class='yj-production-summary-value text-blue-400'>${totalRemain.toLocaleString()}장</div></div>
+                    <div class='yj-production-summary-card'><div class='yj-production-summary-label'>지연</div><div class='yj-production-summary-value text-red-400'>${overdueCount}건</div></div>
+                    <div class='yj-production-summary-card'><div class='yj-production-summary-label'>완료</div><div class='yj-production-summary-value text-green-400'>${readyCount}건</div></div>
+                    <div class='yj-production-summary-card'><div class='yj-production-summary-label'>포장 대기</div><div class='yj-production-summary-value text-blue-400'>${packingCount}건</div></div>
+                    <div class='yj-production-summary-card'><div class='yj-production-summary-label'>잔여</div><div class='yj-production-summary-value text-blue-400'>${totalRemain.toLocaleString()}장</div></div>
                 </div>`;
 
             const waitPanel = waitItems.length ? `
@@ -730,7 +730,7 @@ const items = Array.from(itemMap.values());
                             <div class='yj-production-qty-cell'><span class='yj-production-order-label'>잔여</span><strong class='yj-production-qty-value ${remainClass}'>${item.remainQty.toLocaleString()}장</strong></div>
                             <div class='yj-production-qty-cell'><span class='yj-production-order-label'>납기</span><strong class='yj-production-qty-value'>${o.dueDate || '-'}</strong></div>
                         </div>
-                        <div class='flex justify-between text-[10px] font-bold mb-1'>
+                        <div class='flex justify-between text-[11px] font-bold mb-1'>
                             <span class='text-slate-400'>${item.completedQty.toLocaleString()} / ${item.qty.toLocaleString()}장</span>
                             <span class='${item.pct >= 90 ? 'text-green-400' : 'text-blue-400'}'>${item.pct}%</span>
                         </div>
@@ -812,19 +812,20 @@ const items = Array.from(itemMap.values());
             const collectionRate = totalOrderAmount > 0 ? Math.round((paidAmount / totalOrderAmount) * 100) : 0;
             const debtCount = Array.isArray(metrics.debtItems) ? metrics.debtItems.length : 0;
 
-            setCardLabel('pcKpiSales', 'Sales');
+            // WORK45-A: 운영 현황 카드 라벨 한글화(영문 카테고리 제거, 계산·의미는 무변경)
+            setCardLabel('pcKpiSales', '영업·주문');
             setText('pcKpiSales', dashboardKrwShort(totalOrderAmount));
             setCardMeta('pcKpiSales', `수주 ${metrics.totalCount || 0}건`);
 
-            setCardLabel('pcKpiDebt', 'AR');
+            setCardLabel('pcKpiDebt', '미수금');
             setText('pcKpiDebt', dashboardKrwShort(debtAmount));
             setCardMeta('pcKpiDebt', `미수 ${debtCount}건 · 장기 ${Array.isArray(metrics.overdueItems) ? metrics.overdueItems.length : 0}건`);
 
-            setCardLabel('pcKpiFactory', 'Production');
+            setCardLabel('pcKpiFactory', '생산');
             setText('pcKpiFactory', `${activeProductionCount}건`);
             setCardMeta('pcKpiFactory', `리드타임 ${metrics.avgLeadTime || '0.0'}일`);
 
-            setCardLabel('pcKpiPending', 'Finance');
+            setCardLabel('pcKpiPending', '승인 대기');
             setText('pcKpiPending', `${pendingCount}건`);
             setCardMeta('pcKpiPending', `수금률 ${collectionRate}% · 입금 ${dashboardKrwShort(paidAmount)}`);
             applyCommonKpiLayout();

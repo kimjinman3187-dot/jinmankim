@@ -173,7 +173,7 @@
             on_hold: 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30',
             cancelled: 'bg-slate-500/10 text-slate-300 border-slate-500/30'
         }[status] || 'bg-slate-500/10 text-slate-300 border-slate-500/30';
-        span.className = `inline-flex items-center rounded border px-2 py-1 text-[10px] font-black ${tone}`;
+        span.className = `inline-flex items-center rounded border px-2 py-1 text-[11px] font-black ${tone}`;
         span.textContent = statusLabel(status);
         parent.appendChild(span);
     }
@@ -245,7 +245,7 @@
         }
         const box = document.createElement('div');
         box.className = 'mt-3 rounded-lg border border-[#334155] bg-[#111827] p-3';
-        appendText(box, 'p', label, 'text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2');
+        appendText(box, 'p', label, 'text-[11px] font-black text-slate-500 uppercase tracking-wider mb-2');
         appendText(box, 'p', value || '-', 'text-[11px] text-slate-300 whitespace-pre-line');
         parent.appendChild(box);
     }
@@ -267,7 +267,7 @@
 
         const desc = document.createElement('div');
         desc.className = 'mt-3 rounded-lg border border-[#334155] bg-[#111827] p-3';
-        appendText(desc, 'p', '상세 내용', 'text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2');
+        appendText(desc, 'p', '상세 내용', 'text-[11px] font-black text-slate-500 uppercase tracking-wider mb-2');
         appendText(desc, 'p', request.description || '-', 'text-[11px] text-slate-300 whitespace-pre-line');
         dom.detail.appendChild(desc);
 
@@ -275,7 +275,7 @@
 
         const reviewer = document.createElement('div');
         reviewer.className = 'mt-3 rounded-lg border border-[#334155] bg-[#111827] p-3';
-        appendText(reviewer, 'p', '처리 정보', 'text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2');
+        appendText(reviewer, 'p', '처리 정보', 'text-[11px] font-black text-slate-500 uppercase tracking-wider mb-2');
         appendText(reviewer, 'p', `처리자: ${request.reviewerName || '-'}`, 'text-[11px] text-slate-300');
         appendText(reviewer, 'p', `처리일: ${formatTime(request.reviewedAt || request.approvedAt)}`, 'mt-1 text-[11px] text-slate-300');
         dom.detail.appendChild(reviewer);
@@ -498,13 +498,13 @@
             nameEl.className = 'truncate text-[11px] font-bold text-slate-200';
             nameEl.textContent = att.name;
             const sizeEl = document.createElement('p');
-            sizeEl.className = 'text-[10px] font-bold text-slate-500';
+            sizeEl.className = 'text-[11px] font-bold text-slate-500';
             sizeEl.textContent = `${att.ext.toUpperCase()} · ${formatBytes(att.size)}`;
             info.appendChild(nameEl);
             info.appendChild(sizeEl);
             const remove = document.createElement('button');
             remove.type = 'button';
-            remove.className = 'shrink-0 h-7 px-2 rounded-md bg-rose-700/70 hover:bg-rose-600 text-white text-[10px] font-black transition-colors disabled:opacity-50';
+            remove.className = 'shrink-0 h-7 px-2 rounded-md bg-rose-700/70 hover:bg-rose-600 text-white text-[11px] font-black transition-colors disabled:opacity-50';
             remove.textContent = '제거';
             remove.disabled = state.submitting;
             remove.addEventListener('click', () => removeAttachment(index));
@@ -519,7 +519,7 @@
         clearNode(dom.attachProgress);
         if (!text) return;
         const p = document.createElement('p');
-        p.className = 'text-[10px] font-black ' + (tone === 'error' ? 'text-rose-300' : 'text-cyan-300');
+        p.className = 'text-[11px] font-black ' + (tone === 'error' ? 'text-rose-300' : 'text-cyan-300');
         p.textContent = text;
         dom.attachProgress.appendChild(p);
     }
@@ -531,7 +531,7 @@
         if (!slots.length) return;
         const box = document.createElement('div');
         box.className = 'mt-3 rounded-lg border border-[#334155] bg-[#111827] p-3';
-        appendText(box, 'p', `첨부파일 (${slots.length})`, 'text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2');
+        appendText(box, 'p', `첨부파일 (${slots.length})`, 'text-[11px] font-black text-slate-500 uppercase tracking-wider mb-2');
         slots.forEach(slot => {
             const meta = attachments[slot];
             const row = document.createElement('div');
@@ -542,13 +542,13 @@
             nameEl.className = 'truncate text-[11px] font-bold text-slate-200';
             nameEl.textContent = meta.name || '(이름 없음)';
             const sizeEl = document.createElement('p');
-            sizeEl.className = 'text-[10px] font-bold text-slate-500';
+            sizeEl.className = 'text-[11px] font-bold text-slate-500';
             sizeEl.textContent = formatBytes(meta.size);
             info.appendChild(nameEl);
             info.appendChild(sizeEl);
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'shrink-0 h-7 px-3 rounded-md bg-slate-700 hover:bg-slate-600 text-white text-[10px] font-black transition-colors';
+            btn.className = 'shrink-0 h-7 px-3 rounded-md bg-slate-700 hover:bg-slate-600 text-white text-[11px] font-black transition-colors';
             btn.textContent = '다운로드';
             btn.addEventListener('click', () => downloadAttachment(meta.storagePath, meta.name));
             row.appendChild(info);

@@ -108,6 +108,9 @@
         #loginPC .pin-collapse-toggle { min-height: 50px; height: 50px; padding: 0 16px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.12); background: linear-gradient(180deg, rgba(255, 255, 255, 0.060) 0%, rgba(255, 255, 255, 0.035) 100%); color: rgba(255, 255, 255, 0.72); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.055); }
         #loginPC .pin-collapse-toggle:hover { border-color: rgba(255, 255, 255, 0.20); background: linear-gradient(180deg, rgba(255, 255, 255, 0.085) 0%, rgba(255, 255, 255, 0.052) 100%); color: rgba(255, 255, 255, 0.88); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.075), 0 10px 22px rgba(0, 0, 0, 0.14); }
         #loginPC .pin-collapse-toggle:focus-visible { outline: none; border-color: rgba(147, 197, 253, 0.36); box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.075); }
+        /* WORK45-C: 전역 키보드 포커스 표시(2px). 어두운 PC·밝은 모바일 모두 대비 확보 */
+        #appPC a:focus-visible, #appPC button:focus-visible, #appPC input:focus-visible, #appPC select:focus-visible, #appPC textarea:focus-visible, #appPC [role="button"]:focus-visible, #appPC [tabindex]:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; border-radius: 4px; }
+        #appMobile a:focus-visible, #appMobile button:focus-visible, #appMobile input:focus-visible, #appMobile select:focus-visible, #appMobile textarea:focus-visible, #appMobile [role="button"]:focus-visible, #appMobile [tabindex]:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; border-radius: 4px; }
         #loginPC .pc-login-card { max-height: calc(95vh - 72px); overflow-y: auto; }
         #loginPC .login-pin-panel { padding: 16px; max-height: min(360px, calc(95vh - 310px)); overflow-y: auto; border-color: rgba(255,255,255,0.10); background: rgba(15,23,42,0.32); box-shadow: inset 0 1px 0 rgba(255,255,255,0.05); }
         #loginPC .role-grid { max-height: 180px; margin-bottom: 14px; }
@@ -150,24 +153,24 @@
         <div class="text-center mb-5">
             <div class="inline-block text-left">
                 <div class="font-black text-blue-900 text-lg mb-1 italic uppercase tracking-tighter">Yongjin ENT.</div>
-                <div id="securityStatus" class="text-[9px] text-slate-400 font-bold uppercase tracking-[0.2em]">Authority Required</div>
+                <div id="securityStatus" class="text-[11px] text-slate-400 font-bold uppercase tracking-[0.2em]">Authority Required</div>
             </div>
         </div>
         <div class="login-method-stack">
             <div class="google-login-panel">
-                <div class="text-[10px] font-black text-blue-700 uppercase tracking-[0.16em] mb-2">Google 로그인</div>
+                <div class="text-[11px] font-black text-blue-700 uppercase tracking-[0.16em] mb-2">Google 로그인</div>
                 <button type="button" onclick="loginWithGoogle()" class="login-action-btn w-full text-white font-black">
                     <span class="google-cta-mark" aria-hidden="true">G</span>
                     <span class="google-cta-text">Google 로그인</span>
                 </button>
-                <div id="mobileGoogleLoginTestResult" class="mt-2 text-[10px] leading-5 text-slate-500 break-all min-h-[18px]"></div>
+                <div id="mobileGoogleLoginTestResult" class="mt-2 text-[11px] leading-5 text-slate-500 break-all min-h-[18px]"></div>
             </div>
             <button id="mobilePinLoginToggle" type="button" onclick="togglePinLoginArea('mobile')" class="pin-collapse-toggle w-full rounded-2xl text-slate-600 font-black transition-colors">
                 기존 방식으로 로그인 ▾
             </button>
         </div>
         <div id="mobilePinLoginArea" class="login-pin-panel hidden mt-4">
-        <div class="text-[10px] font-black text-slate-500 uppercase tracking-[0.16em] mb-3">PIN 로그인(예비)</div>
+        <div class="text-[11px] font-black text-slate-500 uppercase tracking-[0.16em] mb-3">PIN 로그인(예비)</div>
         <div class="role-grid" id="roleGrid"><p class="col-span-2 text-center text-xs text-slate-300 py-10">데이터 연결 중...</p></div>
         <div class="pin-dots">
             <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div><div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
@@ -178,7 +181,7 @@
             <button class="kp-btn" onclick="kp('7')">7</button><button class="kp-btn" onclick="kp('8')">8</button><button class="kp-btn" onclick="kp('9')">9</button>
             <div class="kp-btn invisible"></div><button class="kp-btn" onclick="kp('0')">0</button><button class="kp-btn del" onclick="kpDel()">⌫</button>
         </div>
-        <div id="pinErr" class="text-center text-[10px] text-red-600 mt-3 min-h-[15px] font-bold"></div>
+        <div id="pinErr" class="text-center text-[11px] text-red-600 mt-3 min-h-[15px] font-bold"></div>
         </div>
     </div>
     <div class="system-footer" style="color: rgba(255,255,255,0.3);">
@@ -221,7 +224,7 @@
                         기존 방식으로 로그인 ▾
                     </button>
                 </div>
-                <div id="pcGoogleLoginTestResult" class="mt-3 text-[10px] leading-5 text-slate-300 break-all min-h-[20px]"></div>
+                <div id="pcGoogleLoginTestResult" class="mt-3 text-[11px] leading-5 text-slate-300 break-all min-h-[20px]"></div>
                 <div id="pcPinLoginArea" class="login-pin-panel hidden mt-4">
                     <div class="role-grid" id="pcRoleGrid"><p class="col-span-2 text-center text-xs text-slate-300 py-10">사용자 목록을 불러오는 중...</p></div>
                     <div class="pin-dots">
@@ -233,7 +236,7 @@
                         <button class="kp-btn" onclick="kp('7')">7</button><button class="kp-btn" onclick="kp('8')">8</button><button class="kp-btn" onclick="kp('9')">9</button>
                         <div class="kp-btn invisible"></div><button class="kp-btn" onclick="kp('0')">0</button><button class="kp-btn del" onclick="kpDel()">삭제</button>
                     </div>
-                    <div id="pcPinErr" class="text-center text-[10px] text-red-300 mt-3 min-h-[15px] font-bold"></div>
+                    <div id="pcPinErr" class="text-center text-[11px] text-red-300 mt-3 min-h-[15px] font-bold"></div>
                 </div>
             </div>
         </div>
@@ -286,8 +289,8 @@
                 <h1 class="text-sm font-black text-slate-900 italic">YJ Flow</h1>
                 <div class="flex items-center gap-2">
                     <span id="displayUser" class="h-8 inline-flex items-center leading-none text-xs font-black text-blue-700 underline underline-offset-2 whitespace-nowrap"></span>
-                    <button onclick="switchGoogleAccount()" class="h-8 min-w-[72px] whitespace-nowrap flex items-center justify-center leading-none text-[10px] font-black text-blue-600 bg-blue-100 hover:bg-blue-200 px-3 rounded-lg transition-colors">계정 전환</button>
-                    <button onclick="logout()" class="h-8 min-w-[64px] whitespace-nowrap flex items-center justify-center leading-none text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-red-100 hover:text-red-500 px-3 rounded-lg transition-colors">로그아웃</button>
+                    <button onclick="switchGoogleAccount()" class="h-8 min-w-[72px] whitespace-nowrap flex items-center justify-center leading-none text-[11px] font-black text-blue-600 bg-blue-100 hover:bg-blue-200 px-3 rounded-lg transition-colors">계정 전환</button>
+                    <button onclick="logout()" class="h-8 min-w-[64px] whitespace-nowrap flex items-center justify-center leading-none text-[11px] font-black text-slate-500 bg-slate-100 hover:bg-red-100 hover:text-red-500 px-3 rounded-lg transition-colors">로그아웃</button>
                 </div>
             </div>
             <div class="flex items-center gap-2 mt-1">
@@ -313,7 +316,7 @@
                     <div id="woodThumbContainer" class="w-14 h-14 bg-slate-100 rounded-xl flex items-center justify-center overflow-hidden border border-slate-200">
                         <img id="woodThumbImg" class="hidden w-full h-full object-cover">
                         <div id="woodThumbColor" class="hidden w-full h-full"></div>
-                        <span id="woodThumbText" class="text-[10px] text-slate-400 font-bold">IMG</span>
+                        <span id="woodThumbText" class="text-[11px] text-slate-400 font-bold">IMG</span>
                     </div>
                     <div class="flex-1">
                         <p class="font-bold text-sm text-slate-800" id="selectedWoodName">목재 선택</p>
@@ -340,8 +343,8 @@
                 <div class="preview-container bg-slate-50 rounded-3xl border border-dashed border-slate-200 shadow-inner">
                     <div class="relative">
                         <div id="woodPlate" class="wood-plate bg-slate-300"></div>
-                        <div class="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] font-black text-blue-600 bg-white px-2 py-0.5 rounded-full border shadow-sm" id="labelWidth">0 mm</div>
-                        <div class="absolute -right-12 top-1/2 -translate-y-1/2 text-[9px] font-black text-blue-600 bg-white px-2 py-0.5 rounded-full border shadow-sm rotate-90" id="labelLength">0 mm</div>
+                        <div class="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[11px] font-black text-blue-600 bg-white px-2 py-0.5 rounded-full border shadow-sm" id="labelWidth">0 mm</div>
+                        <div class="absolute -right-12 top-1/2 -translate-y-1/2 text-[11px] font-black text-blue-600 bg-white px-2 py-0.5 rounded-full border shadow-sm rotate-90" id="labelLength">0 mm</div>
                     </div>
                 </div>
 
@@ -351,11 +354,11 @@
                 </div>
                 <div class="grid grid-cols-2 gap-3 mt-2">
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 mb-1 ml-1 uppercase">단가 (KRW)</label>
+                        <label class="block text-[11px] font-bold text-slate-400 mb-1 ml-1 uppercase">단가 (KRW)</label>
                         <input type="number" id="unitPrice" oninput="calculate()" placeholder="0" class="w-full p-4 border border-blue-100 bg-blue-50 text-blue-700 rounded-2xl font-black">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 mb-1 ml-1 uppercase">수량 (장/EA)</label>
+                        <label class="block text-[11px] font-bold text-slate-400 mb-1 ml-1 uppercase">수량 (장/EA)</label>
                         <input type="number" id="qty" oninput="calculate()" value="100" class="w-full p-4 border rounded-2xl font-bold text-slate-800">
                     </div>
                 </div>
@@ -364,7 +367,7 @@
                     <div><label class="font-bold text-red-600 ml-1">입금기한*</label><input type="date" id="payDate" class="w-full p-3 bg-white rounded-xl font-bold mt-1"></div>
                 </div>
                 <div class="gradient-bg p-6 rounded-[2rem] text-white text-center shadow-xl mt-4">
-                    <div class="text-[10px] opacity-80 mb-1 font-bold">예상 총 합계 금액</div>
+                    <div class="text-[11px] opacity-80 mb-1 font-bold">예상 총 합계 금액</div>
                     <div class="text-3xl font-black italic tracking-tighter">₩ <span id="totalDisplay">0</span></div>
                 </div>
                 <button id="btnSubmitOrder" onclick="handleReport()" class="w-full bg-blue-600 text-white py-5 rounded-3xl font-black text-lg active:scale-95 transition-all shadow-lg mt-4">✅ 서버 전송</button>
@@ -375,7 +378,7 @@
             <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-blue-100">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="font-bold text-blue-800">신규 승인 대기</h3>
-                    <button onclick="exportAccountingDashboardExcel()" class="text-[10px] bg-green-600 text-white px-3 py-2 rounded-lg font-bold shadow-sm">회계자료 Excel 저장</button>
+                    <button onclick="exportAccountingDashboardExcel()" class="text-[11px] bg-green-600 text-white px-3 py-2 rounded-lg font-bold shadow-sm">회계자료 Excel 저장</button>
                 </div>
                 <div id="accountingList" class="space-y-4 mb-6"></div>
                 <div class="border-t border-dashed border-gray-200 pt-6 mb-6">
@@ -401,7 +404,7 @@
             <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-amber-200">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="font-bold text-amber-700">채권관리 (미수금)</h3>
-                    <button onclick="exportReceivablesCSV()" class="text-[10px] bg-green-600 text-white px-3 py-2 rounded-lg font-bold shadow-sm">📊 엑셀 저장</button>
+                    <button onclick="exportReceivablesCSV()" class="text-[11px] bg-green-600 text-white px-3 py-2 rounded-lg font-bold shadow-sm">📊 엑셀 저장</button>
                 </div>
                 <div id="receivablesList" class="space-y-4"></div>
             </section>
@@ -410,29 +413,29 @@
         <div id="section-history" class="hidden space-y-6">
             <div class="px-2 flex justify-between items-center mb-2">
                 <h3 class="font-bold text-slate-800 italic">마스터 제어판 (ADMIN)</h3>
-                <button onclick="exportExcel()" class="text-[10px] bg-green-600 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm">EXCEL 저장</button>
+                <button onclick="exportExcel()" class="text-[11px] bg-green-600 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm">EXCEL 저장</button>
             </div>
             <div id="adminUserMonitor" class="hidden bg-white p-4 rounded-[2rem] border-2 border-red-100 mb-4 space-y-2 shadow-sm"></div>
             <section id="adminInviteCodePanel" class="hidden bg-white rounded-[2rem] p-5 shadow-sm border-2 border-blue-100 mb-4">
                 <div class="flex justify-between items-center gap-3 mb-4">
                     <div>
                         <h3 class="font-black text-slate-900 text-sm">초대코드 관리</h3>
-                        <p class="text-[10px] text-slate-500 font-bold mt-1">현재 단계는 발급 UI 골격만 제공합니다. Firestore 생성은 K5D-2/K5E에서 구현합니다.</p>
+                        <p class="text-[11px] text-slate-500 font-bold mt-1">현재 단계는 발급 UI 골격만 제공합니다. Firestore 생성은 K5D-2/K5E에서 구현합니다.</p>
                     </div>
-                    <span class="text-[10px] font-black text-blue-600 bg-blue-50 border border-blue-100 rounded-full px-3 py-1">UI PREVIEW</span>
+                    <span class="text-[11px] font-black text-blue-600 bg-blue-50 border border-blue-100 rounded-full px-3 py-1">UI PREVIEW</span>
                 </div>
                 <div class="grid grid-cols-1 gap-3">
-                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider">role</label>
+                    <label class="text-[11px] font-black text-slate-500 uppercase tracking-wider">role</label>
                     <select id="inviteRoleSelect" class="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold outline-none">
                         <option value="sales">sales</option>
                         <option value="accounting">accounting</option>
                         <option value="factory">factory</option>
                     </select>
-                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider">max_uses</label>
+                    <label class="text-[11px] font-black text-slate-500 uppercase tracking-wider">max_uses</label>
                     <input id="inviteMaxUsesInput" type="number" min="1" max="100" value="1" class="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold outline-none">
-                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider">expires_at</label>
+                    <label class="text-[11px] font-black text-slate-500 uppercase tracking-wider">expires_at</label>
                     <input id="inviteExpiresAtInput" type="date" class="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold outline-none">
-                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider">allowed_domain</label>
+                    <label class="text-[11px] font-black text-slate-500 uppercase tracking-wider">allowed_domain</label>
                     <input id="inviteAllowedDomainInput" type="text" placeholder="선택: 회사 도메인 또는 비워두기" class="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold outline-none">
                     <button id="prepareInviteCodeBtn" type="button" onclick="handleAdminInviteCodePreview()" class="w-full h-11 rounded-xl bg-blue-600 text-white text-xs font-black shadow-sm">초대코드 발급 준비</button>
                     <div id="inviteCodeAdminMessage" class="min-h-[24px] text-[11px] font-bold text-slate-600 bg-slate-50 rounded-xl border border-slate-100 p-3"></div>
@@ -441,7 +444,7 @@
             <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-200">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="font-bold text-slate-800">통합 대시보드</h3>
-                    <button onclick="clearAllData()" class="text-[10px] bg-red-100 text-red-600 px-3 py-2 rounded-lg font-bold" id="clearBtn" style="display:none;"><span class="inline-flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>초기화</span></button>
+                    <button onclick="clearAllData()" class="text-[11px] bg-red-100 text-red-600 px-3 py-2 rounded-lg font-bold" id="clearBtn" style="display:none;"><span class="inline-flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>초기화</span></button>
                 </div>
                 <div id="dashBoard"></div>
                 <div id="historyList" class="space-y-3 mt-4 text-xs"></div>
@@ -475,9 +478,9 @@
             </button>
         </nav>
         <div class="mt-auto p-6 text-left border-t border-[#334155]/50 opacity-60 hover:opacity-100 transition-opacity">
-            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Release: 26.07.10</p>
-            <p class="text-[9px] font-black text-blue-400/80 uppercase tracking-widest mb-1">YJ Flow v2.0.4</p>
-            <p class="text-[9px] text-slate-500 font-bold">Designed by GENE KIM</p>
+            <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Release: 26.07.10</p>
+            <p class="text-[11px] font-black text-blue-400/80 uppercase tracking-widest mb-1">YJ Flow v2.0.4</p>
+            <p class="text-[11px] text-slate-500 font-bold">Designed by GENE KIM</p>
         </div>
     </aside>
 
@@ -497,8 +500,8 @@
                 <button onclick="requestNotificationPermission()" class="hover:text-blue-400 transition-colors" aria-label="알림"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"/></svg></button>
                 <div class="flex items-center gap-2 ml-2">
                     <span id="pcDisplayUser" class="text-sm font-bold text-blue-400 bg-[#1e293b] px-3 py-1.5 rounded-lg border border-[#334155]">관리자</span>
-                    <button onclick="switchGoogleAccount()" class="text-[10px] font-black text-blue-300 bg-[#1e293b] px-3 py-1.5 rounded-lg border border-[#334155] hover:border-blue-400 transition-all">계정 전환</button>
-                    <button onclick="logout()" class="p-1.5 bg-[#1e293b] hover:bg-red-500/20 border border-[#334155] hover:border-red-500/50 rounded-lg text-slate-400 hover:text-red-400 transition-all shadow-sm" title="시스템 로그아웃">
+                    <button onclick="switchGoogleAccount()" class="text-[11px] font-black text-blue-300 bg-[#1e293b] px-3 py-1.5 rounded-lg border border-[#334155] hover:border-blue-400 transition-all">계정 전환</button>
+                    <button onclick="logout()" class="p-1.5 bg-[#1e293b] hover:bg-red-500/20 border border-[#334155] hover:border-red-500/50 rounded-lg text-slate-400 hover:text-red-400 transition-all shadow-sm" title="시스템 로그아웃" aria-label="로그아웃">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                         </svg>
@@ -593,7 +596,7 @@
                     <div class="p-5 border-b border-[#334155] bg-[#111827] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                         <div>
                             <h3 class="text-sm font-bold text-white uppercase tracking-widest">제품 거래처 검색</h3>
-                            <p class="text-[10px] text-slate-500 font-bold mt-1">기존 orders 데이터를 읽어 거래처 단위로 묶어 보여주는 read-only 검색입니다.</p>
+                            <p class="text-[11px] text-slate-500 font-bold mt-1">기존 orders 데이터를 읽어 거래처 단위로 묶어 보여주는 read-only 검색입니다.</p>
                         </div>
                         <div class="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
                             <input id="pcInventoryProductSearchInput" type="text" oninput="renderInventoryClientSearch()" placeholder="제품명, 거래처명, 자재, 색상, 두께, 메모 검색" class="w-full lg:w-[360px] bg-[#0f1522] border border-[#334155] rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-cyan-400 font-bold">
@@ -601,7 +604,7 @@
                         </div>
                     </div>
                     <div class="p-5">
-                        <div class="flex flex-wrap gap-2 mb-4 text-[10px] font-black text-slate-400">
+                        <div class="flex flex-wrap gap-2 mb-4 text-[11px] font-black text-slate-400">
                             <span id="pcInventorySearchMeta" class="bg-[#0f1522] border border-[#334155] rounded-lg px-3 py-1.5">검색어를 입력하세요</span>
                             <span class="bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 rounded-lg px-3 py-1.5">거래처 기준 group by</span>
                             <span class="bg-amber-500/10 text-amber-300 border border-amber-500/20 rounded-lg px-3 py-1.5 yj-fin-only">미수 참고</span>
@@ -632,20 +635,20 @@
                     <div class="flex justify-between items-center gap-3 mb-4">
                         <div>
                             <h3 class="font-black text-white text-sm">초대코드 관리</h3>
-                            <p class="text-[10px] text-slate-400 font-bold mt-1">현재 단계는 발급 UI 골격만 제공합니다. Firestore 생성은 K5D-2/K5E에서 구현합니다.</p>
+                            <p class="text-[11px] text-slate-400 font-bold mt-1">현재 단계는 발급 UI 골격만 제공합니다. Firestore 생성은 K5D-2/K5E에서 구현합니다.</p>
                         </div>
-                        <span class="text-[10px] font-black text-blue-300 bg-blue-500/10 border border-blue-500/20 rounded-full px-3 py-1">UI PREVIEW</span>
+                        <span class="text-[11px] font-black text-blue-300 bg-blue-500/10 border border-blue-500/20 rounded-full px-3 py-1">UI PREVIEW</span>
                     </div>
                     <div class="grid grid-cols-4 gap-3 items-end">
-                        <div><label class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">role</label>
+                        <div><label class="block text-[11px] font-black text-slate-400 uppercase tracking-wider mb-1">role</label>
                             <select id="pcInviteRoleSelect" class="w-full h-10 rounded-lg border border-[#334155] bg-[#0f1522] px-3 text-xs font-bold text-white outline-none">
                                 <option value="sales">sales</option><option value="accounting">accounting</option><option value="factory">factory</option>
                             </select></div>
-                        <div><label class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">max_uses</label>
+                        <div><label class="block text-[11px] font-black text-slate-400 uppercase tracking-wider mb-1">max_uses</label>
                             <input id="pcInviteMaxUsesInput" type="number" min="1" max="100" value="1" class="w-full h-10 rounded-lg border border-[#334155] bg-[#0f1522] px-3 text-xs font-bold text-white outline-none"></div>
-                        <div><label class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">expires_at</label>
+                        <div><label class="block text-[11px] font-black text-slate-400 uppercase tracking-wider mb-1">expires_at</label>
                             <input id="pcInviteExpiresAtInput" type="date" class="w-full h-10 rounded-lg border border-[#334155] bg-[#0f1522] px-3 text-xs font-bold text-white outline-none"></div>
-                        <div><label class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">allowed_domain</label>
+                        <div><label class="block text-[11px] font-black text-slate-400 uppercase tracking-wider mb-1">allowed_domain</label>
                             <input id="pcInviteAllowedDomainInput" type="text" placeholder="선택: 비워두기 가능" class="w-full h-10 rounded-lg border border-[#334155] bg-[#0f1522] px-3 text-xs font-bold text-white outline-none"></div>
                     </div>
                     <button id="pcPrepareInviteCodeBtn" type="button" onclick="handlePcAdminInviteCodePreview()" class="mt-3 h-10 px-5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-black shadow-sm transition-colors">초대코드 발급 준비</button>
@@ -655,9 +658,9 @@
                     <div class="flex justify-between items-start gap-4 mb-4">
                         <div>
                             <h3 class="font-black text-white text-sm">승인 요청 목록</h3>
-                            <p class="text-[10px] text-slate-400 font-bold mt-1 leading-5">Google 계정 승인 요청을 검토하는 영역입니다. 승인 시 assigned role 기준으로 approval_requests와 users 계정 활성화를 함께 처리합니다.</p>
+                            <p class="text-[11px] text-slate-400 font-bold mt-1 leading-5">Google 계정 승인 요청을 검토하는 영역입니다. 승인 시 assigned role 기준으로 approval_requests와 users 계정 활성화를 함께 처리합니다.</p>
                         </div>
-                        <span class="text-[10px] font-black text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-full px-3 py-1">K5G-6 승인 처리</span>
+                        <span class="text-[11px] font-black text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-full px-3 py-1">K5G-6 승인 처리</span>
                     </div>
                     <div class="overflow-x-auto rounded-lg border border-[#334155] bg-[#0f1522]">
                         <table class="w-full min-w-[820px] text-left text-[11px]">
@@ -681,7 +684,7 @@
                         </table>
                     </div>
                     <div class="mt-3 flex flex-wrap items-center gap-2">
-                        <span class="text-[10px] text-slate-500 font-bold">승인은 approval_requests와 users를 함께 처리합니다. 반려/보류는 approval_requests 상태만 변경합니다.</span>
+                        <span class="text-[11px] text-slate-500 font-bold">승인은 approval_requests와 users를 함께 처리합니다. 반려/보류는 approval_requests 상태만 변경합니다.</span>
                     </div>
                 </section>
                 <div class="grid grid-cols-3 gap-4 mb-6 relative z-10">
@@ -708,7 +711,7 @@
                 <div id="pcTopProductSalesCard" class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg mb-6 relative z-10 yj-fin-only">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest">TOP 품목 매출</h3>
-                        <span class="text-[10px] font-black text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-1 rounded">수주 기준</span>
+                        <span class="text-[11px] font-black text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-1 rounded">수주 기준</span>
                     </div>
                     <div id="pcTopProductSalesList" class="grid grid-cols-1 md:grid-cols-5 gap-3">
                         <p class="text-xs text-slate-500 font-bold col-span-full text-center py-4">품목 매출 데이터가 없습니다.</p>
@@ -718,8 +721,8 @@
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest">TOP 품목 미수금</h3>
                         <div class="flex items-center gap-2">
-                            <span class="text-[10px] font-black text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded">계산서 발행 기준</span>
-                            <button id="pcTopProductReceivableViewAllBtn" type="button" onclick="openTopProductReceivableModal()" class="text-[10px] font-black text-slate-300 bg-[#0f1522] border border-[#334155] hover:border-blue-500 hover:text-white px-2 py-1 rounded transition-colors">전체 보기</button>
+                            <span class="text-[11px] font-black text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded">계산서 발행 기준</span>
+                            <button id="pcTopProductReceivableViewAllBtn" type="button" onclick="openTopProductReceivableModal()" class="text-[11px] font-black text-slate-300 bg-[#0f1522] border border-[#334155] hover:border-blue-500 hover:text-white px-2 py-1 rounded transition-colors">전체 보기</button>
                         </div>
                     </div>
                     <div id="pcTopProductReceivableList" class="grid grid-cols-1 md:grid-cols-5 gap-3">
@@ -730,9 +733,9 @@
                     <div class="flex items-center justify-between mb-4">
                         <div>
                             <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest">품목별 미수금 TOP 10</h3>
-                            <p class="text-[10px] text-slate-500 font-bold mt-1">미수금 합계 기준 상위 품목</p>
+                            <p class="text-[11px] text-slate-500 font-bold mt-1">미수금 합계 기준 상위 품목</p>
                         </div>
-                        <span class="text-[10px] font-black text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded">TOP 10</span>
+                        <span class="text-[11px] font-black text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded">TOP 10</span>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left text-[11px] text-slate-300">
@@ -755,7 +758,7 @@
                 <div id="pcMonthlyTopProductCard" class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg mb-6 relative z-10 yj-fin-only">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest">월별 TOP 품목</h3>
-                        <span id="pcMonthlyTopProductMeta" class="text-[10px] font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded">기준월 -</span>
+                        <span id="pcMonthlyTopProductMeta" class="text-[11px] font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded">기준월 -</span>
                     </div>
                     <div id="pcMonthlyTopProductList" class="grid grid-cols-1 md:grid-cols-5 gap-3">
                         <p class="text-xs text-slate-500 font-bold col-span-full text-center py-4">월별 품목 데이터가 없습니다.</p>
@@ -764,7 +767,7 @@
                 <div id="pcClientProductSalesCard" class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg mb-6 relative z-10 yj-fin-only">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest">거래처별 TOP 품목 매출</h3>
-                        <span class="text-[10px] font-black text-violet-400 bg-violet-500/10 border border-violet-500/20 px-2 py-1 rounded">거래처 + 품목</span>
+                        <span class="text-[11px] font-black text-violet-400 bg-violet-500/10 border border-violet-500/20 px-2 py-1 rounded">거래처 + 품목</span>
                     </div>
                     <div id="pcClientProductSalesList" class="grid grid-cols-1 md:grid-cols-5 gap-3">
                         <p class="text-xs text-slate-500 font-bold col-span-full text-center py-4">거래처별 품목 매출 데이터가 없습니다.</p>
@@ -801,16 +804,16 @@
             <div id="pc-page-docbox" class="pc-page hidden">
                 <div class="mx-auto w-full max-w-[1800px] pb-10">
                     <div class="mb-6">
-                        <p class="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">My Document Approval</p>
+                        <p class="text-[11px] font-black uppercase tracking-[0.2em] text-blue-400">My Document Approval</p>
                         <h2 class="mt-1 text-2xl font-black text-white">문서결재함</h2>
                     </div>
                     <article id="pcLiveOpsDocCard" class="hidden rounded-xl border border-[#334155] bg-[#1e293b] p-5 mb-6 shadow-lg">
-                        <div class="flex items-start justify-between gap-3"><h3 class="text-sm font-black text-white">내 문서결재 현황</h3><span id="pcLiveOpsDocScopeBadge" class="shrink-0 rounded-lg bg-cyan-500/10 px-2 py-1 text-[10px] font-black text-cyan-300">-</span></div>
+                        <div class="flex items-start justify-between gap-3"><h3 class="text-sm font-black text-white">내 문서결재 현황</h3><span id="pcLiveOpsDocScopeBadge" class="shrink-0 rounded-lg bg-cyan-500/10 px-2 py-1 text-[11px] font-black text-cyan-300">-</span></div>
                         <div class="mt-4 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
-                            <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[10px] font-bold text-slate-500">결재 대기</p><p id="pcLiveOpsDocPending" class="mt-1 text-xl font-black text-amber-300">0</p></div>
-                            <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[10px] font-bold text-slate-500">보류</p><p id="pcLiveOpsDocHold" class="mt-1 text-xl font-black text-cyan-300">0</p></div>
-                            <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[10px] font-bold text-slate-500">승인 · 최근 7일</p><p id="pcLiveOpsDocApproved7" class="mt-1 text-xl font-black text-emerald-300">0</p></div>
-                            <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[10px] font-bold text-slate-500">반려 · 최근 7일</p><p id="pcLiveOpsDocRejected7" class="mt-1 text-xl font-black text-rose-300">0</p></div>
+                            <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[11px] font-bold text-slate-500">결재 대기</p><p id="pcLiveOpsDocPending" class="mt-1 text-xl font-black text-amber-300">0</p></div>
+                            <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[11px] font-bold text-slate-500">보류</p><p id="pcLiveOpsDocHold" class="mt-1 text-xl font-black text-cyan-300">0</p></div>
+                            <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[11px] font-bold text-slate-500">승인 · 최근 7일</p><p id="pcLiveOpsDocApproved7" class="mt-1 text-xl font-black text-emerald-300">0</p></div>
+                            <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[11px] font-bold text-slate-500">반려 · 최근 7일</p><p id="pcLiveOpsDocRejected7" class="mt-1 text-xl font-black text-rose-300">0</p></div>
                         </div>
                         <p id="pcLiveOpsDocState" class="mt-3 min-h-[16px] text-[11px] font-bold text-slate-400"></p>
                     </article>
@@ -819,7 +822,7 @@
                         <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4 mb-4">
                             <div>
                                 <h3 class="font-black text-white text-sm">내 문서 결재</h3>
-                                <p class="text-[10px] text-slate-400 font-bold mt-1 leading-5">일반 문서 결재를 제출하고 본인 요청의 처리 결과를 확인합니다.</p>
+                                <p class="text-[11px] text-slate-400 font-bold mt-1 leading-5">일반 문서 결재를 제출하고 본인 요청의 처리 결과를 확인합니다.</p>
                             </div>
                             <div class="flex flex-wrap items-center gap-2">
                                 <select id="pcEmployeeDocumentStatusFilter" class="h-10 rounded-lg border border-[#334155] bg-[#0f1522] px-3 text-xs font-black text-slate-100 outline-none">
@@ -835,17 +838,17 @@
                         <div id="pcEmployeeDocumentMessage" class="mb-3 min-h-[28px] rounded-lg border border-[#334155] bg-[#0f1522] px-3 py-2 text-[11px] font-bold text-slate-400">로그인 후 본인 문서 결재 요청을 조회합니다.</div>
                         <div class="grid grid-cols-1 xl:grid-cols-[minmax(320px,0.55fr)_minmax(0,1.45fr)] gap-4">
                             <form id="pcEmployeeDocumentForm" class="rounded-lg border border-[#334155] bg-[#0f1522] p-4">
-                                <label for="pcEmployeeDocumentTitleInput" class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">제목</label>
+                                <label for="pcEmployeeDocumentTitleInput" class="block text-[11px] font-black text-slate-400 uppercase tracking-wider mb-2">제목</label>
                                 <input id="pcEmployeeDocumentTitleInput" type="text" maxlength="80" class="w-full h-10 rounded-lg border border-[#334155] bg-[#111827] px-3 text-xs font-bold text-white outline-none focus:border-cyan-400" placeholder="2~80자">
-                                <label for="pcEmployeeDocumentDescriptionInput" class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mt-4 mb-2">상세 내용</label>
+                                <label for="pcEmployeeDocumentDescriptionInput" class="block text-[11px] font-black text-slate-400 uppercase tracking-wider mt-4 mb-2">상세 내용</label>
                                 <textarea id="pcEmployeeDocumentDescriptionInput" maxlength="1000" rows="8" class="w-full rounded-lg border border-[#334155] bg-[#111827] px-3 py-2 text-xs font-bold text-white outline-none focus:border-cyan-400 resize-none" placeholder="2~1000자"></textarea>
                                 <div class="mt-4">
                                     <div class="flex items-center justify-between gap-2">
-                                        <span class="block text-[10px] font-black text-slate-400 uppercase tracking-wider">증빙 파일 첨부 <span class="text-slate-500 normal-case">(선택)</span></span>
+                                        <span class="block text-[11px] font-black text-slate-400 uppercase tracking-wider">증빙 파일 첨부 <span class="text-slate-500 normal-case">(선택)</span></span>
                                         <button id="pcEmployeeDocumentAttachmentSelectBtn" type="button" class="h-8 px-3 rounded-lg bg-[#111827] border border-[#334155] text-slate-200 hover:text-white hover:border-slate-500 text-[11px] font-black transition-colors">파일 선택</button>
                                     </div>
                                     <input id="pcEmployeeDocumentAttachmentInput" type="file" multiple class="hidden" accept=".pdf,.png,.jpg,.jpeg,.xls,.xlsx,.csv,.doc,.docx,.hwp,.hwpx,application/pdf,image/png,image/jpeg">
-                                    <p id="pcEmployeeDocumentAttachmentHint" class="mt-2 text-[10px] text-slate-500 font-bold leading-4">PDF·PNG·JPG·XLS(X)·CSV·DOC(X)·HWP(X) / 최대 5개 · 개당 10MB · 합계 30MB</p>
+                                    <p id="pcEmployeeDocumentAttachmentHint" class="mt-2 text-[11px] text-slate-500 font-bold leading-4">PDF·PNG·JPG·XLS(X)·CSV·DOC(X)·HWP(X) / 최대 5개 · 개당 10MB · 합계 30MB</p>
                                     <ul id="pcEmployeeDocumentAttachmentList" class="mt-2 space-y-1"></ul>
                                     <div id="pcEmployeeDocumentAttachmentProgress" class="mt-2 min-h-[0px]"></div>
                                 </div>
@@ -881,7 +884,7 @@
             <div id="pc-page-approval" class="pc-page hidden">
                 <div class="mx-auto w-full max-w-[1800px] pb-10">
                     <div class="mb-6">
-                        <p class="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">Admin Approval Console</p>
+                        <p class="text-[11px] font-black uppercase tracking-[0.2em] text-blue-400">Admin Approval Console</p>
                         <h2 class="mt-1 text-2xl font-black text-white">결재</h2>
                     </div>
                     <div class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:items-start">
@@ -890,18 +893,18 @@
                             <section id="pcLiveDocApprovalCard" class="hidden rounded-xl border border-[#334155] bg-[#1e293b] p-5 shadow-lg relative z-10">
                                 <div class="flex items-start justify-between gap-3">
                                     <div>
-                                        <p class="text-[10px] font-black uppercase tracking-wider text-slate-500">Document Approval</p>
+                                        <p class="text-[11px] font-black uppercase tracking-wider text-slate-500">Document Approval</p>
                                         <h3 class="mt-1 text-sm font-black text-white">문서결재 현황</h3>
                                     </div>
-                                    <span id="pcLiveDocScopeBadge" class="shrink-0 rounded-lg bg-cyan-500/10 px-2 py-1 text-[10px] font-black text-cyan-300">-</span>
+                                    <span id="pcLiveDocScopeBadge" class="shrink-0 rounded-lg bg-cyan-500/10 px-2 py-1 text-[11px] font-black text-cyan-300">-</span>
                                 </div>
                                 <div class="mt-4 grid grid-cols-2 gap-2 text-center">
-                                    <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[10px] font-bold text-slate-500">결재 대기</p><p id="pcLiveDocPending" class="mt-1 text-xl font-black text-amber-300">0</p></div>
-                                    <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[10px] font-bold text-slate-500">보류</p><p id="pcLiveDocHold" class="mt-1 text-xl font-black text-cyan-300">0</p></div>
-                                    <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[10px] font-bold text-slate-500">승인 · 최근 7일</p><p id="pcLiveDocApproved7" class="mt-1 text-xl font-black text-emerald-300">0</p></div>
-                                    <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[10px] font-bold text-slate-500">반려 · 최근 7일</p><p id="pcLiveDocRejected7" class="mt-1 text-xl font-black text-rose-300">0</p></div>
+                                    <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[11px] font-bold text-slate-500">결재 대기</p><p id="pcLiveDocPending" class="mt-1 text-xl font-black text-amber-300">0</p></div>
+                                    <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[11px] font-bold text-slate-500">보류</p><p id="pcLiveDocHold" class="mt-1 text-xl font-black text-cyan-300">0</p></div>
+                                    <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[11px] font-bold text-slate-500">승인 · 최근 7일</p><p id="pcLiveDocApproved7" class="mt-1 text-xl font-black text-emerald-300">0</p></div>
+                                    <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[11px] font-bold text-slate-500">반려 · 최근 7일</p><p id="pcLiveDocRejected7" class="mt-1 text-xl font-black text-rose-300">0</p></div>
                                 </div>
-                                <p id="pcLiveDocBasis" class="mt-3 text-[10px] font-bold leading-4 text-slate-500">대기·보류는 누적, 승인·반려는 최근 7일 기준입니다.</p>
+                                <p id="pcLiveDocBasis" class="mt-3 text-[11px] font-bold leading-4 text-slate-500">대기·보류는 누적, 승인·반려는 최근 7일 기준입니다.</p>
                                 <p id="pcLiveDocState" class="mt-2 min-h-[16px] text-[11px] font-bold text-slate-400"></p>
                                 <ul id="pcLiveDocRecent" class="mt-3 min-h-[78px] space-y-2 text-[11px] font-bold text-slate-400"><li>조회 결과 대기 중</li></ul>
                                 <button id="pcLiveDocOpenBtn" type="button" class="mt-4 w-full rounded-lg border border-[#334155] bg-[#0f1522] px-3 py-2 text-xs font-black text-slate-200 transition-colors hover:border-blue-400 hover:text-white">상세 현황으로 이동</button>
@@ -912,7 +915,7 @@
                                 <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4 mb-4">
                                     <div>
                                         <h3 class="font-black text-white text-sm">문서 결재 요청 목록</h3>
-                                        <p class="text-[10px] text-slate-400 font-bold mt-1 leading-5">document_approval_requests 기준의 관리자 전용 결재 처리 영역입니다. 상태 변경은 parent 요청과 history를 같은 transaction에서 기록합니다.</p>
+                                        <p class="text-[11px] text-slate-400 font-bold mt-1 leading-5">document_approval_requests 기준의 관리자 전용 결재 처리 영역입니다. 상태 변경은 parent 요청과 history를 같은 transaction에서 기록합니다.</p>
                                     </div>
                                     <div class="flex flex-wrap items-center gap-2">
                                         <select id="pcDocumentApprovalStatusFilter" class="h-10 rounded-lg border border-[#334155] bg-[#0f1522] px-3 text-xs font-black text-slate-100 outline-none">
@@ -1067,10 +1070,10 @@
                                         <div id="pc-woodThumbContainer" class="w-14 h-14 bg-[#1e293b] rounded-xl flex items-center justify-center overflow-hidden border border-[#334155]">
                                             <img id="pc-woodThumbImg" class="hidden w-full h-full object-cover">
                                             <div id="pc-woodThumbColor" class="hidden w-full h-full"></div>
-                                            <span id="pc-woodThumbText" class="text-[10px] text-slate-500 font-bold uppercase">Material</span>
+                                            <span id="pc-woodThumbText" class="text-[11px] text-slate-500 font-bold uppercase">Material</span>
                                         </div>
                                         <div>
-                                            <p class="text-[10px] text-blue-400 font-bold mb-1 uppercase tracking-widest">Selected Material</p>
+                                            <p class="text-[11px] text-blue-400 font-bold mb-1 uppercase tracking-widest">Selected Material</p>
                                             <p class="font-bold text-white text-lg" id="pc-selectedWoodName">목재를 선택하세요</p>
                                         </div>
                                     </div>
@@ -1150,26 +1153,26 @@
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg relative overflow-hidden">
                             <p class="text-slate-400 text-[11px] font-bold mb-2 uppercase">당월 총 수주액</p>
                         <p class="text-xl font-black text-white mb-1" id="pcFinanceOrderTotal">₩ 0</p>
-                        <p class="text-[10px] font-bold text-green-400 flex items-center gap-1" id="pcFinanceOrderMeta">
+                        <p class="text-[11px] font-bold text-green-400 flex items-center gap-1" id="pcFinanceOrderMeta">
                        조회 데이터 기준
                         </p>    
                         </div>
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
                             <p class="text-slate-400 text-[11px] font-bold mb-2 uppercase">계산서 발행액</p>
                             <p class="text-xl font-black text-blue-400 mb-1" id="pcFinanceIssuedTotal">₩ 0</p>
-                            <p class="text-[10px] font-bold text-slate-500" id="pcFinanceIssuedMeta">완료 건 기준</p>
+                            <p class="text-[11px] font-bold text-slate-500" id="pcFinanceIssuedMeta">완료 건 기준</p>
                         </div>
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg border-l-4 border-l-green-500">
                             <p class="text-slate-400 text-[11px] font-bold mb-2 uppercase">당월 실결제(입금)</p>
                         <p class="text-xl font-black text-green-400 mb-1" id="pcFinancePaidTotal">₩ 0</p>
-<p class="text-[10px] font-bold text-green-400 flex items-center gap-1" id="pcFinancePaidMeta">
+<p class="text-[11px] font-bold text-green-400 flex items-center gap-1" id="pcFinancePaidMeta">
     수금률 0%
 </p>
                         </div>
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg border-l-4 border-l-red-500">
                             <p class="text-slate-400 text-[11px] font-bold mb-2 uppercase text-red-400">전체 미수금 합계</p>
                             <p class="text-xl font-black text-red-500 mb-1" id="pcFinanceDebtTotal">₩ 0</p>
-<p class="text-[10px] font-bold text-red-400 flex items-center gap-1" id="pcFinanceDebtMeta">
+<p class="text-[11px] font-bold text-red-400 flex items-center gap-1" id="pcFinanceDebtMeta">
     미수 0건
 </p>
                         </div>
@@ -1179,7 +1182,7 @@
                         <div class="relative h-[320px] w-full">
                             <canvas id="monthlyComparisonChart"></canvas>
                         </div>
-                        <div class="mt-4 flex justify-center gap-6 text-[10px] font-bold">
+                        <div class="mt-4 flex justify-center gap-6 text-[11px] font-bold">
                             <div class="flex items-center gap-2"><span class="w-3 h-3 bg-cyan-400 rounded-sm"></span> <span class="text-slate-300">수주 금액 (Orders)</span></div>
                             <div class="flex items-center gap-2"><span class="w-3 h-3 bg-green-500 rounded-sm"></span> <span class="text-slate-300">실결제 금액 (Payments)</span></div>
                         </div>
@@ -1188,7 +1191,7 @@
     <div class="p-5 border-b border-[#334155] bg-[#111827] flex justify-between items-center">
         <div>
             <h3 class="text-sm font-bold text-white uppercase tracking-widest">PC 청구 대기 리스트</h3>
-            <p class="text-[10px] text-slate-500 font-bold mt-1">
+            <p class="text-[11px] text-slate-500 font-bold mt-1">
                 생산 완료 후 계산서 발행 및 입금 처리가 필요한 주문
             </p>
         </div>
@@ -1232,24 +1235,24 @@
                     </div>
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                         <div class="bg-[#1e293b] border border-red-500/30 rounded-xl p-5 shadow-lg">
-                            <p class="text-red-400 text-[10px] font-black mb-1 uppercase tracking-tighter">Urgent (Overdue)</p>
+                            <p class="text-red-400 text-[11px] font-black mb-1 uppercase tracking-tighter">Urgent (Overdue)</p>
                          <p class="text-2xl font-black text-red-500" id="pcArOverdueAmount">₩ 0</p>
-                         <p class="text-[9px] text-slate-500 mt-1" id="pcArOverdueMeta">30일 이상 연체 0건</p>   
+                         <p class="text-[11px] text-slate-500 mt-1" id="pcArOverdueMeta">30일 이상 연체 0건</p>   
                         </div>
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
-                            <p class="text-slate-400 text-[10px] font-black mb-1 uppercase tracking-tighter">Normal Receivable</p>
+                            <p class="text-slate-400 text-[11px] font-black mb-1 uppercase tracking-tighter">Normal Receivable</p>
                             <p class="text-2xl font-black text-white" id="pcArNormalAmount">₩ 0</p>
-                            <p class="text-[9px] text-slate-500 mt-1" id="pcArNormalMeta">입금 대기 0건</p>
+                            <p class="text-[11px] text-slate-500 mt-1" id="pcArNormalMeta">입금 대기 0건</p>
                         </div>
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
-                            <p class="text-slate-400 text-[10px] font-black mb-1 uppercase tracking-tighter">Recovery Rate</p>
+                            <p class="text-slate-400 text-[11px] font-black mb-1 uppercase tracking-tighter">Recovery Rate</p>
                             <p class="text-2xl font-black text-green-400" id="pcArRecoveryRate">0%</p>
-<p class="text-[9px] text-slate-500 mt-1" id="pcArRecoveryMeta">조회 기준 회수율</p>
+<p class="text-[11px] text-slate-500 mt-1" id="pcArRecoveryMeta">조회 기준 회수율</p>
                         </div>
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
-                            <p class="text-slate-400 text-[10px] font-black mb-1 uppercase tracking-tighter">Credit Limit</p>
+                            <p class="text-slate-400 text-[11px] font-black mb-1 uppercase tracking-tighter">Credit Limit</p>
                             <p class="text-2xl font-black text-blue-400" id="pcArRiskLabel">SAFE</p>
-<p class="text-[9px] text-slate-500 mt-1" id="pcArRiskMeta">연체 리스크 없음</p>
+<p class="text-[11px] text-slate-500 mt-1" id="pcArRiskMeta">연체 리스크 없음</p>
                         </div>
                     </div>
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -1258,7 +1261,7 @@
                             <div class="flex-1 relative flex items-center justify-center">
                                 <canvas id="receivableStatusChart"></canvas>
                                 <div class="absolute text-center">
-                                 <p class="text-[10px] text-slate-500 font-bold">합계</p>
+                                 <p class="text-[11px] text-slate-500 font-bold">합계</p>
                                  <p class="text-lg font-black text-white" id="receivableChartTotal">0</p>
                                 </div>
                             </div>
@@ -1331,14 +1334,14 @@
                         <div class="relative h-[280px] w-full">
                             <canvas id="productionBarChart"></canvas>
                         </div>
-                        <p class="mt-4 text-[10px] text-center text-slate-500 font-bold">주문품목 기준 상위 10개 · 수량(장) 집계</p>
+                        <p class="mt-4 text-[11px] text-center text-slate-500 font-bold">주문품목 기준 상위 10개 · 수량(장) 집계</p>
                     </div>
                     <div id="pc-factory-material-container" class="bg-[#1e293b] border border-[#334155] rounded-2xl p-6 shadow-xl mt-6">
                         <h3 class="text-sm font-bold text-slate-400 mb-6 uppercase tracking-widest text-center">자재 소요 현황</h3>
                         <div id="pcMaterialUsageSummary" class="text-xs">
                             <p class="text-center text-xs text-slate-500 font-bold py-6">표시할 자재 소요 데이터가 없습니다.</p>
                         </div>
-                        <p class="mt-4 text-[10px] text-center text-slate-500 font-bold">주문품목 생산의 보조 참고 정보 · 총량 상위 5개 자재 · 수량(장) 집계</p>
+                        <p class="mt-4 text-[11px] text-center text-slate-500 font-bold">주문품목 생산의 보조 참고 정보 · 총량 상위 5개 자재 · 수량(장) 집계</p>
                     </div>
                 </div>
             </div>
@@ -1350,7 +1353,7 @@
                             <h2 class="text-2xl font-black text-white">재고관리 대시보드</h2>
                             <p class="text-xs text-slate-500 font-bold mt-2">재고 데이터 소스 연결 전 단계의 표시 전용 화면입니다.</p>
                         </div>
-                        <span class="text-[10px] font-black text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded-lg px-3 py-1.5">UI SHELL</span>
+                        <span class="text-[11px] font-black text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded-lg px-3 py-1.5">UI SHELL</span>
                     </div>
 
 
@@ -1358,22 +1361,22 @@
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
                             <p class="text-slate-400 text-[11px] font-bold mb-2 uppercase">총 재고 품목</p>
                             <p class="text-2xl font-black text-white" id="pcInventoryTotalItems">0</p>
-                            <p class="text-[10px] text-slate-500 font-bold mt-1">등록 품목 기준</p>
+                            <p class="text-[11px] text-slate-500 font-bold mt-1">등록 품목 기준</p>
                         </div>
                         <div class="bg-[#1e293b] border border-red-500/30 rounded-xl p-5 shadow-lg">
                             <p class="text-red-400 text-[11px] font-bold mb-2 uppercase">부족 재고</p>
                             <p class="text-2xl font-black text-red-400" id="pcInventoryShortageItems">0</p>
-                            <p class="text-[10px] text-slate-500 font-bold mt-1">필요 수량 미달</p>
+                            <p class="text-[11px] text-slate-500 font-bold mt-1">필요 수량 미달</p>
                         </div>
                         <div class="bg-[#1e293b] border border-amber-500/30 rounded-xl p-5 shadow-lg">
                             <p class="text-amber-400 text-[11px] font-bold mb-2 uppercase">안전재고 이하</p>
                             <p class="text-2xl font-black text-amber-400" id="pcInventorySafetyItems">0</p>
-                            <p class="text-[10px] text-slate-500 font-bold mt-1">보충 검토 대상</p>
+                            <p class="text-[11px] text-slate-500 font-bold mt-1">보충 검토 대상</p>
                         </div>
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
                             <p class="text-slate-400 text-[11px] font-bold mb-2 uppercase">확인 필요</p>
                             <p class="text-2xl font-black text-blue-400" id="pcInventoryReviewItems">0</p>
-                            <p class="text-[10px] text-slate-500 font-bold mt-1">단가/규격 확인</p>
+                            <p class="text-[11px] text-slate-500 font-bold mt-1">단가/규격 확인</p>
                         </div>
                     </div>
 
@@ -1381,34 +1384,34 @@
                         <section class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
                             <div class="flex items-center justify-between mb-4">
                                 <h3 class="text-sm font-black text-white">합판</h3>
-                                <span class="text-[10px] font-black text-slate-400 bg-[#0f1522] border border-[#334155] px-2 py-1 rounded">0 품목</span>
+                                <span class="text-[11px] font-black text-slate-400 bg-[#0f1522] border border-[#334155] px-2 py-1 rounded">0 품목</span>
                             </div>
                             <div class="h-2 rounded-full bg-[#0f1522] overflow-hidden border border-[#334155]"><div class="h-full w-0 bg-cyan-500"></div></div>
-                            <p class="text-[10px] text-slate-500 font-bold mt-3">데이터 연결 대기</p>
+                            <p class="text-[11px] text-slate-500 font-bold mt-3">데이터 연결 대기</p>
                         </section>
                         <section class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
                             <div class="flex items-center justify-between mb-4">
                                 <h3 class="text-sm font-black text-white">철재</h3>
-                                <span class="text-[10px] font-black text-slate-400 bg-[#0f1522] border border-[#334155] px-2 py-1 rounded">0 품목</span>
+                                <span class="text-[11px] font-black text-slate-400 bg-[#0f1522] border border-[#334155] px-2 py-1 rounded">0 품목</span>
                             </div>
                             <div class="h-2 rounded-full bg-[#0f1522] overflow-hidden border border-[#334155]"><div class="h-full w-0 bg-blue-500"></div></div>
-                            <p class="text-[10px] text-slate-500 font-bold mt-3">데이터 연결 대기</p>
+                            <p class="text-[11px] text-slate-500 font-bold mt-3">데이터 연결 대기</p>
                         </section>
                         <section class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
                             <div class="flex items-center justify-between mb-4">
                                 <h3 class="text-sm font-black text-white">부속품</h3>
-                                <span class="text-[10px] font-black text-slate-400 bg-[#0f1522] border border-[#334155] px-2 py-1 rounded">0 품목</span>
+                                <span class="text-[11px] font-black text-slate-400 bg-[#0f1522] border border-[#334155] px-2 py-1 rounded">0 품목</span>
                             </div>
                             <div class="h-2 rounded-full bg-[#0f1522] overflow-hidden border border-[#334155]"><div class="h-full w-0 bg-emerald-500"></div></div>
-                            <p class="text-[10px] text-slate-500 font-bold mt-3">데이터 연결 대기</p>
+                            <p class="text-[11px] text-slate-500 font-bold mt-3">데이터 연결 대기</p>
                         </section>
                         <section class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
                             <div class="flex items-center justify-between mb-4">
                                 <h3 class="text-sm font-black text-white">기타</h3>
-                                <span class="text-[10px] font-black text-slate-400 bg-[#0f1522] border border-[#334155] px-2 py-1 rounded">0 품목</span>
+                                <span class="text-[11px] font-black text-slate-400 bg-[#0f1522] border border-[#334155] px-2 py-1 rounded">0 품목</span>
                             </div>
                             <div class="h-2 rounded-full bg-[#0f1522] overflow-hidden border border-[#334155]"><div class="h-full w-0 bg-slate-500"></div></div>
-                            <p class="text-[10px] text-slate-500 font-bold mt-3">데이터 연결 대기</p>
+                            <p class="text-[11px] text-slate-500 font-bold mt-3">데이터 연결 대기</p>
                         </section>
                     </div>
 
@@ -1417,9 +1420,9 @@
                             <div class="p-5 border-b border-[#334155] bg-[#111827] flex items-center justify-between">
                                 <div>
                                     <h3 class="text-sm font-bold text-white uppercase tracking-widest">부족 재고 리스트</h3>
-                                    <p class="text-[10px] text-slate-500 font-bold mt-1">현재 PR에서는 실제 재고 차감/주문 연동을 수행하지 않습니다.</p>
+                                    <p class="text-[11px] text-slate-500 font-bold mt-1">현재 PR에서는 실제 재고 차감/주문 연동을 수행하지 않습니다.</p>
                                 </div>
-                                <span class="text-[10px] font-black text-slate-400 bg-[#0f1522] border border-[#334155] px-3 py-1 rounded-lg">0건</span>
+                                <span class="text-[11px] font-black text-slate-400 bg-[#0f1522] border border-[#334155] px-3 py-1 rounded-lg">0건</span>
                             </div>
                             <div class="overflow-x-auto">
                                 <table class="w-full text-left text-[11px] text-slate-300">
@@ -1466,7 +1469,7 @@
         <div id="activeDetailState" class="flex-1 flex flex-col h-full hidden">
             <div class="p-6 border-b border-[#334155] flex justify-between items-center">
                 <h3 class="text-white font-black tracking-tight text-lg">상세 정보</h3>
-                <button onclick="closeDrawer()" class="text-slate-500 hover:text-white xl:hidden">✕</button>
+                <button onclick="closeDrawer()" class="text-slate-500 hover:text-white xl:hidden" aria-label="메뉴 닫기">✕</button>
             </div>
             
             <div class="flex-1 overflow-y-auto p-6 space-y-6">
@@ -1541,7 +1544,7 @@
 
                 <div class="border border-[#334155] rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-not-allowed opacity-50">
                     <span class="text-xl mb-2">🔒</span>
-                    <p class="text-[10px] text-slate-400 font-bold">세금계산서 및 증빙 파일 첨부 기능은<br>다음 업데이트에 활성화됩니다.</p>
+                    <p class="text-[11px] text-slate-400 font-bold">세금계산서 및 증빙 파일 첨부 기능은<br>다음 업데이트에 활성화됩니다.</p>
                 </div>
             </div>
         </div>
@@ -2068,7 +2071,7 @@ function renderInventoryClientSearch() {
             <td class="px-4 py-3 text-slate-400">${escapeDashboardText(item.latestDate)}</td>
             <td class="px-4 py-3 text-right font-black text-slate-200">${item.orderCount.toLocaleString()}건</td>
             <td class="px-4 py-3 text-right font-black text-cyan-300 yj-fin-only">${formatKRW(item.totalAmount)}</td>
-            <td class="px-4 py-3 text-center yj-fin-only">${item.hasOutstanding ? `<span class="bg-amber-500/10 text-amber-300 border border-amber-500/30 px-2 py-1 rounded text-[10px] font-black">미수 참고</span>` : `<span class="bg-slate-500/10 text-slate-400 border border-slate-500/20 px-2 py-1 rounded text-[10px] font-black">확인 필요</span>`}</td>
+            <td class="px-4 py-3 text-center yj-fin-only">${item.hasOutstanding ? `<span class="bg-amber-500/10 text-amber-300 border border-amber-500/30 px-2 py-1 rounded text-[11px] font-black">미수 참고</span>` : `<span class="bg-slate-500/10 text-slate-400 border border-slate-500/20 px-2 py-1 rounded text-[11px] font-black">확인 필요</span>`}</td>
         </tr>`;
     }).join('') || `<tr><td colspan="5" class="px-4 py-10 text-center text-slate-500 font-bold">검색어와 일치하는 거래처 주문 이력이 없습니다.</td></tr>`;
 
@@ -2285,12 +2288,12 @@ function updateTopProductSalesCard(data = filteredOrders) {
         return `
         <div class="bg-[#0f1522] border border-[#334155] rounded-xl p-4 min-w-0">
             <div class="flex items-center justify-between mb-2">
-                <span class="text-[10px] text-blue-400 font-black">${idx + 1}위</span>
-                <span class="text-[10px] text-slate-500 font-bold">${item.count.toLocaleString()}건</span>
+                <span class="text-[11px] text-blue-400 font-black">${idx + 1}위</span>
+                <span class="text-[11px] text-slate-500 font-bold">${item.count.toLocaleString()}건</span>
             </div>
             <p class="text-white text-xs font-black truncate mb-2" title="${productName}">${productName}</p>
             <p class="text-blue-400 text-lg font-black leading-tight">${formatKRW(item.amount)}</p>
-            <p class="text-[10px] text-slate-500 font-bold mt-1">${item.qty.toLocaleString()}장</p>
+            <p class="text-[11px] text-slate-500 font-bold mt-1">${item.qty.toLocaleString()}장</p>
         </div>
     `;
     }).join('');
@@ -2342,12 +2345,12 @@ function updateTopProductReceivableCard(data = filteredOrders) {
         return `
         <div class="bg-[#0f1522] border border-[#334155] rounded-xl p-4 min-w-0">
             <div class="flex items-center justify-between mb-2">
-                <span class="text-[10px] text-amber-400 font-black">${idx + 1}위</span>
-                <span class="text-[10px] text-slate-500 font-bold">${item.count.toLocaleString()}건</span>
+                <span class="text-[11px] text-amber-400 font-black">${idx + 1}위</span>
+                <span class="text-[11px] text-slate-500 font-bold">${item.count.toLocaleString()}건</span>
             </div>
             <p class="text-white text-xs font-black truncate mb-2" title="${productName}">${productName}</p>
             <p class="text-amber-400 text-lg font-black leading-tight">${formatKRW(item.amount)}</p>
-            <p class="text-[10px] text-slate-500 font-bold mt-1">${item.qty.toLocaleString()}장</p>
+            <p class="text-[11px] text-slate-500 font-bold mt-1">${item.qty.toLocaleString()}장</p>
         </div>
     `;
     }).join('');
@@ -2491,12 +2494,12 @@ function updateMonthlyTopProductCard(data = filteredOrders) {
         return `
         <div class="bg-[#0f1522] border border-[#334155] rounded-xl p-4 min-w-0">
             <div class="flex items-center justify-between mb-2">
-                <span class="text-[10px] text-emerald-400 font-black">${idx + 1}위</span>
-                <span class="text-[10px] text-slate-500 font-bold">${item.count.toLocaleString()}건</span>
+                <span class="text-[11px] text-emerald-400 font-black">${idx + 1}위</span>
+                <span class="text-[11px] text-slate-500 font-bold">${item.count.toLocaleString()}건</span>
             </div>
             <p class="text-white text-xs font-black truncate mb-2" title="${productName}">${productName}</p>
             <p class="text-emerald-400 text-lg font-black leading-tight">${formatKRW(item.amount)}</p>
-            <p class="text-[10px] text-slate-500 font-bold mt-1">${item.qty.toLocaleString()}장</p>
+            <p class="text-[11px] text-slate-500 font-bold mt-1">${item.qty.toLocaleString()}장</p>
         </div>
     `;
     }).join('');
@@ -2562,13 +2565,13 @@ function updateClientProductSalesCard(data = filteredOrders) {
         return `
         <div class="bg-[#0f1522] border border-[#334155] rounded-xl p-4 min-w-0">
             <div class="flex items-center justify-between mb-2">
-                <span class="text-[10px] text-violet-400 font-black">${idx + 1}위</span>
-                <span class="text-[10px] text-slate-500 font-bold">${item.count.toLocaleString()}건</span>
+                <span class="text-[11px] text-violet-400 font-black">${idx + 1}위</span>
+                <span class="text-[11px] text-slate-500 font-bold">${item.count.toLocaleString()}건</span>
             </div>
             <p class="text-slate-300 text-[11px] font-black truncate mb-1" title="${clientName}">${clientName}</p>
             <p class="text-white text-xs font-black truncate mb-2" title="${productName}">${productName}</p>
             <p class="text-violet-400 text-lg font-black leading-tight">${formatKRW(item.amount)}</p>
-            <p class="text-[10px] text-slate-500 font-bold mt-1">${item.qty.toLocaleString()}장</p>
+            <p class="text-[11px] text-slate-500 font-bold mt-1">${item.qty.toLocaleString()}장</p>
         </div>
     `;
     }).join('');
@@ -2684,14 +2687,14 @@ function updatePCProductionCards(metrics) {
                 <div class="border border-[#334155] rounded-xl p-4 bg-[#0f1522]/60">
                     <div class="flex justify-between items-start gap-3 mb-3">
                         <div class="min-w-0">
-                            <div class="text-[10px] text-slate-500 font-black uppercase tracking-wider">거래처</div>
+                            <div class="text-[11px] text-slate-500 font-black uppercase tracking-wider">거래처</div>
                             <div class="text-white text-sm font-black truncate">${o.client || '-'}</div>
-                            <div class="text-[10px] text-slate-500 font-black mt-2 uppercase tracking-wider">품목</div>
+                            <div class="text-[11px] text-slate-500 font-black mt-2 uppercase tracking-wider">품목</div>
                             <div class="text-slate-200 text-xs font-bold truncate">${productName}</div>
                         </div>
                         <span class="text-blue-400">${pct}%</span>
                     </div>
-                    <div class="grid grid-cols-2 gap-2 mb-3 text-[10px] font-bold">
+                    <div class="grid grid-cols-2 gap-2 mb-3 text-[11px] font-bold">
                         <div class="bg-[#111827] border border-[#334155] rounded-lg p-2">
                             <div class="text-slate-500 mb-1">자재</div>
                             <div class="text-slate-200">${o.material || '-'}</div>
@@ -2701,8 +2704,8 @@ function updatePCProductionCards(metrics) {
                             <div class="text-slate-200">${getDetailSpecText(o)}</div>
                         </div>
                     </div>
-                    ${(o.materialColor || o.salesMemo) ? `<div class="space-y-1 mb-3 text-[10px] font-bold">${o.materialColor ? `<div class="bg-[#111827] border border-[#334155] rounded-lg p-2"><span class="text-slate-500">색상/마감</span> <span class="text-slate-200 break-words">${escapeDashboardText(o.materialColor)}</span></div>` : ''}${o.salesMemo ? `<div class="bg-[#111827] border border-[#334155] rounded-lg p-2"><span class="text-slate-500">특이사항</span> <span class="text-slate-200 break-words whitespace-pre-line">${escapeDashboardText(o.salesMemo)}</span></div>` : ''}</div>` : ''}
-                    <div class="grid grid-cols-4 gap-2 mb-3 text-[10px] font-bold">
+                    ${(o.materialColor || o.salesMemo) ? `<div class="space-y-1 mb-3 text-[11px] font-bold">${o.materialColor ? `<div class="bg-[#111827] border border-[#334155] rounded-lg p-2"><span class="text-slate-500">색상/마감</span> <span class="text-slate-200 break-words">${escapeDashboardText(o.materialColor)}</span></div>` : ''}${o.salesMemo ? `<div class="bg-[#111827] border border-[#334155] rounded-lg p-2"><span class="text-slate-500">특이사항</span> <span class="text-slate-200 break-words whitespace-pre-line">${escapeDashboardText(o.salesMemo)}</span></div>` : ''}</div>` : ''}
+                    <div class="grid grid-cols-4 gap-2 mb-3 text-[11px] font-bold">
                         <div><span class="text-slate-500">총</span><strong class="block text-white mt-1">${qty.toLocaleString()}장</strong></div>
                         <div><span class="text-slate-500">완료</span><strong class="block text-blue-400 mt-1">${completedQty.toLocaleString()}장</strong></div>
                         <div><span class="text-slate-500">잔여</span><strong class="block text-orange-400 mt-1">${remainQty.toLocaleString()}장</strong></div>
@@ -2760,14 +2763,14 @@ function updatePCFinanceInvoiceWaitList(metrics) {
         const invoiceIssued = isInvoiceIssued(o);
 
         const invoiceBadge = invoiceIssued
-            ? `<span class="bg-green-500/10 text-green-400 border border-green-500/30 px-2 py-1 rounded text-[10px] font-black">발행 완료</span>`
-            : `<span class="bg-slate-700 text-slate-300 border border-slate-600 px-2 py-1 rounded text-[10px] font-black">미발행</span>`;
+            ? `<span class="bg-green-500/10 text-green-400 border border-green-500/30 px-2 py-1 rounded text-[11px] font-black">발행 완료</span>`
+            : `<span class="bg-slate-700 text-slate-300 border border-slate-600 px-2 py-1 rounded text-[11px] font-black">미발행</span>`;
 
         const actionButton = invoiceIssued
-            ? `<button disabled class="px-3 py-2 rounded-lg bg-green-500/10 text-green-400 border border-green-500/30 text-[10px] font-black cursor-not-allowed">발행 완료</button>`
+            ? `<button disabled class="px-3 py-2 rounded-lg bg-green-500/10 text-green-400 border border-green-500/30 text-[11px] font-black cursor-not-allowed">발행 완료</button>`
             : canEditFinance
-                ? `<button onclick="issueInvoice('${o.id}')" class="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black shadow-md transition-colors">계산서 발행</button>`
-                : `<button disabled class="px-3 py-2 rounded-lg bg-slate-700 text-slate-500 text-[10px] font-black cursor-not-allowed">조회 전용</button>`;
+                ? `<button onclick="issueInvoice('${o.id}')" class="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-black shadow-md transition-colors">계산서 발행</button>`
+                : `<button disabled class="px-3 py-2 rounded-lg bg-slate-700 text-slate-500 text-[11px] font-black cursor-not-allowed">조회 전용</button>`;
 
         return `
             <tr class="hover:bg-blue-500/5 transition-colors cursor-pointer pc-table-row border-l-[3px] border-transparent" onclick="selectFinanceDetailRow(this, '${o.id}', event)">
@@ -3582,8 +3585,8 @@ function getAssignableRoleForRequest(request) {
 function createAssignedRoleSelect(request, disabled) {
     const select = document.createElement('select');
     select.className = disabled
-        ? 'w-28 rounded bg-slate-800 border border-slate-700 px-2 py-1 text-[10px] font-black text-slate-500 cursor-not-allowed'
-        : 'w-28 rounded bg-[#0f1522] border border-[#334155] px-2 py-1 text-[10px] font-black text-slate-100 outline-none';
+        ? 'w-28 rounded bg-slate-800 border border-slate-700 px-2 py-1 text-[11px] font-black text-slate-500 cursor-not-allowed'
+        : 'w-28 rounded bg-[#0f1522] border border-[#334155] px-2 py-1 text-[11px] font-black text-slate-100 outline-none';
     select.disabled = disabled;
     const selectedRole = validateAssignableRole(request?.assigned_role) || getAssignableRoleForRequest(request);
     APPROVAL_ASSIGNABLE_ROLES.forEach(role => {
@@ -3658,7 +3661,7 @@ function renderApprovalRequestRows(requests) {
         const isTerminal = request.status === 'approved' || request.status === 'rejected';
         appendApprovalRequestCell(row, formatApprovalRequestTime(request.requested_at));
         appendApprovalRequestCell(row, request.email);
-        appendApprovalRequestCell(row, request.uid, 'px-3 py-3 text-slate-300 font-mono text-[10px] align-top max-w-[180px] truncate');
+        appendApprovalRequestCell(row, request.uid, 'px-3 py-3 text-slate-300 font-mono text-[11px] align-top max-w-[180px] truncate');
         const assignedRoleControl = createAssignedRoleSelect(request, !isAdmin || isTerminal);
         appendApprovalRequestNodeCell(row, assignedRoleControl);
         appendApprovalRequestCell(row, request.requested_role);
@@ -3675,7 +3678,7 @@ function renderApprovalRequestRows(requests) {
         if (isTerminal) {
             // terminal row는 버튼 대신 '처리완료' 표시
             const doneLabel = document.createElement('span');
-            doneLabel.className = 'text-[10px] font-black text-slate-500';
+            doneLabel.className = 'text-[11px] font-black text-slate-500';
             doneLabel.textContent = '처리완료';
             actionCell.appendChild(doneLabel);
         } else {
@@ -3689,8 +3692,8 @@ function renderApprovalRequestRows(requests) {
                 button.type = 'button';
                 button.disabled = !isAdmin;
                 button.className = isAdmin
-                    ? `mr-1 mb-1 px-2 py-1 rounded ${action.activeClass} text-[10px] font-black transition-colors`
-                    : 'mr-1 mb-1 px-2 py-1 rounded bg-slate-700 text-slate-500 text-[10px] font-black cursor-not-allowed';
+                    ? `mr-1 mb-1 px-2 py-1 rounded ${action.activeClass} text-[11px] font-black transition-colors`
+                    : 'mr-1 mb-1 px-2 py-1 rounded bg-slate-700 text-slate-500 text-[11px] font-black cursor-not-allowed';
                 button.textContent = action.label;
                 if (isAdmin) button.addEventListener('click', () => action.handler(request.id, assignedRoleControl.value));
                 actionCell.appendChild(button);
@@ -3851,7 +3854,7 @@ async function renderAdminMonitor() {
     if(monitor) {
         monitor.classList.remove('hidden');
         const snap = await db.collection('users').get(); const allUsers = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
-        monitor.innerHTML = `<p class='text-[11px] font-black text-red-600 mb-2'>🛡️ 실시간 직원 보안 모니터링</p>` + allUsers.map(u => { const isLocked = u.lockoutUntil > Date.now(); return `<div class="flex justify-between items-center text-[10px] bg-slate-50 p-2 rounded-lg border mb-1"><span class="font-bold">${u.name} (${u.attempts || 0}회 실패)</span>${isLocked ? `<button onclick="forceUnlock('${u.id}')" class="bg-red-500 text-white px-3 py-1 rounded-full font-bold">강제 해제</button>` : `<span class='text-green-600 font-bold'>정상</span>`}</div>`; }).join('');
+        monitor.innerHTML = `<p class='text-[11px] font-black text-red-600 mb-2'>🛡️ 실시간 직원 보안 모니터링</p>` + allUsers.map(u => { const isLocked = u.lockoutUntil > Date.now(); return `<div class="flex justify-between items-center text-[11px] bg-slate-50 p-2 rounded-lg border mb-1"><span class="font-bold">${u.name} (${u.attempts || 0}회 실패)</span>${isLocked ? `<button onclick="forceUnlock('${u.id}')" class="bg-red-500 text-white px-3 py-1 rounded-full font-bold">강제 해제</button>` : `<span class='text-green-600 font-bold'>정상</span>`}</div>`; }).join('');
     }
 }
 
@@ -3859,7 +3862,7 @@ async function forceUnlock(uid) { if(!requireWrite('admin', '관리자만 처리
 
 function initTabs() {
     const tabs = getAllowedMobileTabs(); const wrap = document.getElementById('roleTabsWrap');
-    if(wrap) { wrap.style.gridTemplateColumns = `repeat(${tabs.length}, 1fr)`; wrap.innerHTML = tabs.map(t => `<button onclick="switchTab('${t}')" id="role-${t}" class="py-2 text-[10px] font-black bg-slate-100 rounded-lg active:scale-95 transition-all">${TAB_META[t].label}</button>`).join(''); }
+    if(wrap) { wrap.style.gridTemplateColumns = `repeat(${tabs.length}, 1fr)`; wrap.innerHTML = tabs.map(t => `<button onclick="switchTab('${t}')" id="role-${t}" class="py-2 text-[11px] font-black bg-slate-100 rounded-lg active:scale-95 transition-all">${TAB_META[t].label}</button>`).join(''); }
     if (!getHashTargetTab()) switchTab(getDefaultMobileTab());
 }
 
@@ -3995,7 +3998,7 @@ function renderAccounting() {
         <div class="bg-white p-5 rounded-3xl border border-blue-200 mb-4 shadow-sm relative overflow-hidden">
             <div class="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>
             <div class="flex justify-between mb-1"><p class="font-black text-lg pl-2">${o.client}</p><span class="badge badge-pending whitespace-nowrap min-w-max text-center">승인대기</span></div>
-            <p class="text-[10px] text-red-500 font-bold mb-2 pl-2">납기 요청: ${o.dueDate}</p>
+            <p class="text-[11px] text-red-500 font-bold mb-2 pl-2">납기 요청: ${o.dueDate}</p>
             <div class="text-xs text-slate-500 pl-2">자재: ${o.material} | 금액: ₩${((o.price||0)*(o.qty||0)).toLocaleString()}</div>
             <div class="flex gap-2 mt-4 ml-2">${
                 canEditFinance
@@ -4005,7 +4008,7 @@ function renderAccounting() {
         </div>`).join('') || '<p class="text-center py-20 text-slate-400">대기 중인 수주가 없습니다.</p>';
 
     const factoryList = document.getElementById('accountingFactoryList');
-    if(factoryList) factoryList.innerHTML = filteredOrders.filter(o => o.status === 'approved').map(o => { const pct = safePercent(o.completedQty, o.qty); return `<div class="bg-white p-3 rounded-xl border mb-2 text-xs flex justify-between shadow-sm"><span>${o.client}</span><span class="font-bold text-orange-600">${pct}% 진행</span></div>`; }).join('') || '<p class="text-center text-[10px] py-2">공정 없음</p>';
+    if(factoryList) factoryList.innerHTML = filteredOrders.filter(o => o.status === 'approved').map(o => { const pct = safePercent(o.completedQty, o.qty); return `<div class="bg-white p-3 rounded-xl border mb-2 text-xs flex justify-between shadow-sm"><span>${o.client}</span><span class="font-bold text-orange-600">${pct}% 진행</span></div>`; }).join('') || '<p class="text-center text-[11px] py-2">공정 없음</p>';
 
 const accountingItems = filteredOrders.filter(o => o.status === 'completed' && o.paymentStatus !== 'paid');
 const compList = document.getElementById('accountingCompletedList');
@@ -4022,24 +4025,24 @@ if(compList) compList.innerHTML = accountingItems.map(o => {
     <div class="bg-white p-4 rounded-2xl border border-slate-200 mb-4 shadow-sm">
         <div class="flex justify-between items-center mb-2">
             <span class="font-black text-slate-800 text-sm">${o.client}</span>
-            <span class="badge ${o.paymentStatus === 'partial' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'} text-[10px] px-2 py-0.5 rounded-full font-bold">
+            <span class="badge ${o.paymentStatus === 'partial' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'} text-[11px] px-2 py-0.5 rounded-full font-bold">
                 ${o.paymentStatus === 'partial' ? '부분입금' : '미수'}
             </span>
         </div>
 
         <div class="flex justify-between items-center mb-3">
             <div class="text-[11px] text-slate-500">${o.material} / ${o.qty}장 요청</div>
-            <span class="badge ${invoiceBadgeClass} text-[10px] px-2 py-0.5 rounded-full font-bold">
+            <span class="badge ${invoiceBadgeClass} text-[11px] px-2 py-0.5 rounded-full font-bold">
                 계산서 ${invoiceLabel}
             </span>
         </div>
 
         <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
-            <div class="flex justify-between text-[10px] mb-1">
+            <div class="flex justify-between text-[11px] mb-1">
                 <span class="text-slate-400 font-bold">총 청구액</span>
                 <span class="font-bold text-slate-600 text-xs">₩${total.toLocaleString()}</span>
             </div>
-            <div class="flex justify-between text-[10px] mb-2">
+            <div class="flex justify-between text-[11px] mb-2">
                 <span class="text-blue-500 font-bold">누적 입금액</span>
                 <span class="font-bold text-blue-600 text-xs">₩${paid.toLocaleString()}</span>
             </div>
@@ -4089,12 +4092,12 @@ function renderFactory() {
         <div class="bg-white p-5 rounded-3xl border shadow-sm border-l-4 ${isPackingWait ? 'border-l-green-500' : 'border-l-orange-500'} mb-5">
             <div class="flex justify-between items-start gap-3 mb-3">
                 <div class="min-w-0">
-                    <p class="text-[10px] text-slate-400 font-black uppercase">거래처</p>
+                    <p class="text-[11px] text-slate-400 font-black uppercase">거래처</p>
                     <p class="font-black text-lg text-slate-900 break-words">${o.client || '-'}</p>
-                    <p class="text-[10px] text-slate-400 font-black uppercase mt-2">품목</p>
+                    <p class="text-[11px] text-slate-400 font-black uppercase mt-2">품목</p>
                     <p class="text-[13px] text-slate-800 font-black break-words">${productName}</p>
                 </div>
-                <span class="shrink-0 text-[10px] font-black px-2 py-1 rounded-lg ${isPackingWait ? 'text-green-700 bg-green-50' : 'text-orange-700 bg-orange-50'}">${statusLabel}</span>
+                <span class="shrink-0 text-[11px] font-black px-2 py-1 rounded-lg ${isPackingWait ? 'text-green-700 bg-green-50' : 'text-orange-700 bg-orange-50'}">${statusLabel}</span>
             </div>
             <div class="bg-slate-50 border border-slate-100 rounded-2xl p-3 mb-3 text-[11px] font-bold grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 items-baseline">
                 <span class="text-slate-400">자재</span><span class="text-slate-800 break-words">${o.material || '-'}</span>
@@ -4103,11 +4106,11 @@ function renderFactory() {
                 ${o.salesMemo ? `<span class="text-slate-400">특이사항</span><span class="text-slate-800 break-words whitespace-pre-line">${escapeDashboardText(o.salesMemo)}</span>` : ''}
             </div>
             <div class="grid grid-cols-3 gap-2 mb-3 text-center">
-                <div class="bg-slate-50 rounded-xl p-2"><span class="block text-[9px] text-slate-400 font-black">총 수량</span><strong class="text-xs text-slate-800">${qty.toLocaleString()}장</strong></div>
-                <div class="bg-blue-50 rounded-xl p-2"><span class="block text-[9px] text-blue-400 font-black">완료</span><strong class="text-xs text-blue-700">${completedQty.toLocaleString()}장</strong></div>
-                <div class="${isPackingWait ? 'bg-green-50' : 'bg-orange-50'} rounded-xl p-2"><span class="block text-[9px] ${isPackingWait ? 'text-green-500' : 'text-orange-500'} font-black">잔여</span><strong class="text-xs ${isPackingWait ? 'text-green-700' : 'text-orange-700'}">${remainQty.toLocaleString()}장</strong></div>
+                <div class="bg-slate-50 rounded-xl p-2"><span class="block text-[11px] text-slate-400 font-black">총 수량</span><strong class="text-xs text-slate-800">${qty.toLocaleString()}장</strong></div>
+                <div class="bg-blue-50 rounded-xl p-2"><span class="block text-[11px] text-blue-400 font-black">완료</span><strong class="text-xs text-blue-700">${completedQty.toLocaleString()}장</strong></div>
+                <div class="${isPackingWait ? 'bg-green-50' : 'bg-orange-50'} rounded-xl p-2"><span class="block text-[11px] ${isPackingWait ? 'text-green-500' : 'text-orange-500'} font-black">잔여</span><strong class="text-xs ${isPackingWait ? 'text-green-700' : 'text-orange-700'}">${remainQty.toLocaleString()}장</strong></div>
             </div>
-            <div class="flex justify-between items-center text-[10px] font-bold text-slate-500 mb-2"><span>납기: ${o.dueDate || '-'}</span><span>${pct}% 진행</span></div>
+            <div class="flex justify-between items-center text-[11px] font-bold text-slate-500 mb-2"><span>납기: ${o.dueDate || '-'}</span><span>${pct}% 진행</span></div>
             <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden mb-4 border"><div class="${isPackingWait ? 'bg-green-500' : 'bg-orange-500'} h-full rounded-full transition-all" style="width:${pct}%"></div></div>
             ${isPackingWait ? '<p class="text-[11px] text-green-700 font-black bg-green-50 border border-green-100 rounded-xl p-3">생산 완료 후 입금/포장 대기 중인 항목입니다.</p>' : canEditProduction ? `<div class="flex gap-2"><input type="text" id="in-${o.id}" class="min-w-0 flex-1 p-3 bg-slate-50 rounded-xl border font-bold" placeholder="생산 수량"><button onclick="addProgress('${o.id}')" class="shrink-0 px-6 py-3 bg-orange-600 text-white rounded-xl font-bold shadow-md shadow-orange-200">보고</button></div>` : `<div class="flex gap-2"><input type="text" disabled class="min-w-0 flex-1 p-3 bg-slate-100 rounded-xl border font-bold text-slate-400" placeholder="조회 전용"><button disabled class="shrink-0 px-6 py-3 bg-slate-200 text-slate-400 rounded-xl font-bold cursor-not-allowed">조회</button></div>`}
         </div>`;
@@ -4177,7 +4180,7 @@ function renderReceivables() {
     if (bannerWrap) {
         bannerWrap.innerHTML = `
             <div class="receivable-banner shadow-lg shadow-indigo-100">
-                <div><div class="text-[10px] opacity-70 font-bold">미수금 총액 (잔금 합계)</div><div class="text-2xl font-black">₩ ${totalDebt.toLocaleString()}</div></div>
+                <div><div class="text-[11px] opacity-70 font-bold">미수금 총액 (잔금 합계)</div><div class="text-2xl font-black">₩ ${totalDebt.toLocaleString()}</div></div>
                 <div class="text-right font-bold text-xs underline">${debtItems.length}건 관리 중</div>
             </div>`;
     }
@@ -4192,8 +4195,8 @@ function renderReceivables() {
         const arInvoiceIssued = isInvoiceIssued(o);
         return `
         <div class="bg-amber-50 p-5 border border-amber-200 rounded-[2rem] mb-4 shadow-sm">
-            <div class="flex justify-between"><p class="font-black text-amber-900">${escapeDashboardText(o.client || '-')}</p><span class="text-[10px] font-bold ${o.status === 'approved' ? 'text-blue-500' : 'text-red-500'} bg-white px-2 py-1 rounded shadow-sm">${o.status === 'approved' ? '생산 중' : '생산 완료'}</span></div>
-            <p class="text-[10px] text-amber-700 opacity-80 mt-1 font-bold">기한: ${o.payDate || '-'}</p>
+            <div class="flex justify-between"><p class="font-black text-amber-900">${escapeDashboardText(o.client || '-')}</p><span class="text-[11px] font-bold ${o.status === 'approved' ? 'text-blue-500' : 'text-red-500'} bg-white px-2 py-1 rounded shadow-sm">${o.status === 'approved' ? '생산 중' : '생산 완료'}</span></div>
+            <p class="text-[11px] text-amber-700 opacity-80 mt-1 font-bold">기한: ${o.payDate || '-'}</p>
             <div class="mt-2 text-[11px] text-amber-900 font-bold space-y-0.5">
                 <div>${arProductName}</div>
                 <div class="text-amber-700 font-medium">${escapeDashboardText(o.material || '-')}${arSpecText ? ' · ' + escapeDashboardText(arSpecText) : ''}</div>
@@ -4205,7 +4208,7 @@ function renderReceivables() {
                 <div class="flex justify-between text-xs mb-2"><span class="text-blue-600 font-bold">누적 입금액</span><span class="font-black text-blue-600">₩${paid.toLocaleString()}</span></div>
                 <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden mb-2"><div class="bg-blue-500 h-full transition-all" style="width: ${pct}%"></div></div>
                 <div class="flex justify-between items-center border-t border-slate-100 pt-2"><span class="text-red-500 font-bold text-sm">잔금 (미수금)</span><span class="text-lg font-black text-red-600">₩${remaining.toLocaleString()}</span></div>
-                <div class="flex justify-between items-center mt-2 text-[9px] font-black">
+                <div class="flex justify-between items-center mt-2 text-[11px] font-black">
                     <span class="px-2 py-0.5 rounded ${arInvoiceIssued ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}">계산서 ${arInvoiceIssued ? '발행' : '미발행'}</span>
                     <span class="px-2 py-0.5 rounded bg-amber-100 text-amber-700">${escapeDashboardText(getPaymentStatusLabel(o))}</span>
                 </div>
@@ -4223,9 +4226,9 @@ function renderHistory() {
     let pS=0, aS=0, uS=0, cS=0; 
     filteredOrders.forEach(o => { const t = (o.price||0) * (o.qty||0); if(o.status==='pending') pS+=t; else if(o.status==='approved') aS+=t; else if(o.status==='completed' && o.paymentStatus==='unpaid') uS+=t; else if(o.status==='completed' && o.paymentStatus==='paid') cS+=t; });
     const dbEl = document.getElementById('dashBoard');
-    if(dbEl) dbEl.innerHTML = `<div class="grid grid-cols-2 gap-2 mb-4 text-[10px] font-black"><div class="bg-white p-3 rounded-2xl border border-yellow-200 text-yellow-700 shadow-sm">대기: ₩${pS.toLocaleString()}</div><div class="bg-white p-3 rounded-2xl border border-blue-200 text-blue-700 shadow-sm">생산: ₩${aS.toLocaleString()}</div><div class="bg-white p-3 rounded-2xl border border-red-200 text-red-700 shadow-sm">미수: ₩${uS.toLocaleString()}</div><div class="bg-white p-3 rounded-2xl border border-green-200 text-green-700 shadow-sm">완료: ₩${cS.toLocaleString()}</div></div>`;
+    if(dbEl) dbEl.innerHTML = `<div class="grid grid-cols-2 gap-2 mb-4 text-[11px] font-black"><div class="bg-white p-3 rounded-2xl border border-yellow-200 text-yellow-700 shadow-sm">대기: ₩${pS.toLocaleString()}</div><div class="bg-white p-3 rounded-2xl border border-blue-200 text-blue-700 shadow-sm">생산: ₩${aS.toLocaleString()}</div><div class="bg-white p-3 rounded-2xl border border-red-200 text-red-700 shadow-sm">미수: ₩${uS.toLocaleString()}</div><div class="bg-white p-3 rounded-2xl border border-green-200 text-green-700 shadow-sm">완료: ₩${cS.toLocaleString()}</div></div>`;
     const hList = document.getElementById('historyList');
-    if(hList) hList.innerHTML = filteredOrders.map(o => `<div class="bg-white p-4 border rounded-2xl mb-2 text-[11px] shadow-sm"><div class="flex justify-between items-center mb-1"><span class="font-bold text-sm text-slate-800">${o.client}</span><span class="badge ${o.status==='pending'?'badge-pending':o.status==='approved'?'badge-approved':'badge-completed'}">${getDisplayStatusLabel(o)}</span></div><div class="flex justify-between"><span class="text-slate-500 font-bold"><span class="text-slate-800">${getOrderProductName(o)}</span><br>${o.material || '-'}<br><span class="text-blue-500 text-[10px]">출고: ${o.dueDate}</span></span><span class="text-right text-slate-900 font-black text-xs">₩${((o.price||0)*(o.qty||0)).toLocaleString()}<br>${o.paymentStatus==='paid'?'<span class="text-green-600">입금완료</span>':'<span class="text-red-500">미수</span>'}</span></div>${o.rejectReason ? `<div class="reject-reason-box mt-2">❌ 거절 사유: ${o.rejectReason}</div>` : ''}</div>`).join('');
+    if(hList) hList.innerHTML = filteredOrders.map(o => `<div class="bg-white p-4 border rounded-2xl mb-2 text-[11px] shadow-sm"><div class="flex justify-between items-center mb-1"><span class="font-bold text-sm text-slate-800">${o.client}</span><span class="badge ${o.status==='pending'?'badge-pending':o.status==='approved'?'badge-approved':'badge-completed'}">${getDisplayStatusLabel(o)}</span></div><div class="flex justify-between"><span class="text-slate-500 font-bold"><span class="text-slate-800">${getOrderProductName(o)}</span><br>${o.material || '-'}<br><span class="text-blue-500 text-[11px]">출고: ${o.dueDate}</span></span><span class="text-right text-slate-900 font-black text-xs">₩${((o.price||0)*(o.qty||0)).toLocaleString()}<br>${o.paymentStatus==='paid'?'<span class="text-green-600">입금완료</span>':'<span class="text-red-500">미수</span>'}</span></div>${o.rejectReason ? `<div class="reject-reason-box mt-2">❌ 거절 사유: ${o.rejectReason}</div>` : ''}</div>`).join('');
 }
 
 async function updateStatus(id, s) { 
@@ -4321,7 +4324,7 @@ async function confirmPayment(id) {
 }
 
 function openWoodModal() {
-    const items = WOODS_DATA.map(([name, img, color]) => `<div class="wood-btn-wrapper" onclick="selectWood('${name}','${img}','${color}')">${renderWoodVisual(img, color)}<span class="text-[10px] font-black text-slate-700 mt-2 text-center break-keep">${name}</span></div>`).join('');
+    const items = WOODS_DATA.map(([name, img, color]) => `<div class="wood-btn-wrapper" onclick="selectWood('${name}','${img}','${color}')">${renderWoodVisual(img, color)}<span class="text-[11px] font-black text-slate-700 mt-2 text-center break-keep">${name}</span></div>`).join('');
     document.getElementById('modalContainer').innerHTML = `<div class="fixed inset-0 z-[100] bg-black/70 backdrop-blur-md flex items-end justify-center"><div class="bg-white w-full max-w-md p-6 rounded-t-[3rem] h-[85vh] flex flex-col shadow-2xl transition-all"><div class="flex justify-between items-center mb-6 px-2"><b class="text-xl font-black italic">MATERIAL SELECT</b><button onclick="closeWoodModal()" class="w-10 h-10 bg-slate-100 rounded-full font-black">✕</button></div><div class="flex-1 overflow-y-auto grid grid-cols-2 gap-4 pb-10 px-2">${items}</div></div></div>`;
 }
 
@@ -4345,7 +4348,7 @@ function openTopProductReceivableModal() {
             </tr>`;
         }).join('')
         : `<tr><td colspan="6" class="px-3 py-10 text-center text-slate-500 font-bold">품목 미수금 데이터가 없습니다.</td></tr>`;
-    document.getElementById('modalContainer').innerHTML = `<div class="fixed inset-0 z-[100] bg-black/70 backdrop-blur-md flex items-center justify-center p-4" onclick="if(event.target===this)closeTopProductReceivableModal()"><div class="bg-[#1e293b] border border-[#334155] w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col max-h-[85vh]"><div class="flex justify-between items-center p-5 border-b border-[#334155]"><div class="flex items-center gap-3"><h3 class="text-base font-black text-white">품목별 미수금 전체 보기</h3><span class="text-[10px] font-black text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded">계산서 발행 기준</span></div><button onclick="closeTopProductReceivableModal()" class="w-9 h-9 bg-[#0f1522] border border-[#334155] rounded-full text-slate-300 font-black hover:border-blue-500 transition-colors">✕</button></div><div class="flex-1 overflow-y-auto p-5"><table class="w-full text-left text-[11px] text-slate-300"><thead class="text-slate-500 font-bold border-b border-[#334155]"><tr><th class="px-3 py-2">순위</th><th class="px-3 py-2">품목명</th><th class="px-3 py-2 text-right">미수금액</th><th class="px-3 py-2 text-right">수량</th><th class="px-3 py-2 text-right">건수</th><th class="px-3 py-2 text-right">비중</th></tr></thead><tbody>${rows}</tbody></table></div><div class="p-4 border-t border-[#334155] text-right"><button onclick="closeTopProductReceivableModal()" class="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-black transition-colors">닫기</button></div></div></div>`;
+    document.getElementById('modalContainer').innerHTML = `<div class="fixed inset-0 z-[100] bg-black/70 backdrop-blur-md flex items-center justify-center p-4" onclick="if(event.target===this)closeTopProductReceivableModal()"><div class="bg-[#1e293b] border border-[#334155] w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col max-h-[85vh]"><div class="flex justify-between items-center p-5 border-b border-[#334155]"><div class="flex items-center gap-3"><h3 class="text-base font-black text-white">품목별 미수금 전체 보기</h3><span class="text-[11px] font-black text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded">계산서 발행 기준</span></div><button onclick="closeTopProductReceivableModal()" class="w-9 h-9 bg-[#0f1522] border border-[#334155] rounded-full text-slate-300 font-black hover:border-blue-500 transition-colors">✕</button></div><div class="flex-1 overflow-y-auto p-5"><table class="w-full text-left text-[11px] text-slate-300"><thead class="text-slate-500 font-bold border-b border-[#334155]"><tr><th class="px-3 py-2">순위</th><th class="px-3 py-2">품목명</th><th class="px-3 py-2 text-right">미수금액</th><th class="px-3 py-2 text-right">수량</th><th class="px-3 py-2 text-right">건수</th><th class="px-3 py-2 text-right">비중</th></tr></thead><tbody>${rows}</tbody></table></div><div class="p-4 border-t border-[#334155] text-right"><button onclick="closeTopProductReceivableModal()" class="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-black transition-colors">닫기</button></div></div></div>`;
 }
 function closeTopProductReceivableModal() { document.getElementById('modalContainer').innerHTML = ''; }
 
@@ -4708,7 +4711,7 @@ function renderMaterialUsageSummary(summary = {}) {
             </span>
             <span class="text-right text-slate-300 tabular-nums whitespace-nowrap">
                 <strong class="text-white">${r.total.toLocaleString()}장</strong>
-                <span class="block text-[10px] text-slate-500 font-bold">진행 ${r.active.toLocaleString()} · 완료 ${r.completed.toLocaleString()}</span>
+                <span class="block text-[11px] text-slate-500 font-bold">진행 ${r.active.toLocaleString()} · 완료 ${r.completed.toLocaleString()}</span>
             </span>
         </div>`).join('');
 }

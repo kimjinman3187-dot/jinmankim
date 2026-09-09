@@ -245,7 +245,7 @@
         left.className = 'flex min-w-0 items-center gap-1.5';
         if (isTestOrder(order)) {
             const testBadge = document.createElement('span');
-            testBadge.className = 'shrink-0 rounded bg-slate-600/60 px-1.5 py-0.5 text-[10px] font-black text-slate-200';
+            testBadge.className = 'shrink-0 rounded bg-slate-600/60 px-1.5 py-0.5 text-[11px] font-black text-slate-200';
             testBadge.textContent = '테스트';
             left.appendChild(testBadge);
         }
@@ -375,13 +375,13 @@
             line1.textContent = `${docNumber(request)} · ${documentTitle(request)}`;
             main.appendChild(line1);
             const line2 = document.createElement('p');
-            line2.className = 'mt-1 truncate text-[10px] font-bold text-slate-500';
+            line2.className = 'mt-1 truncate text-[11px] font-bold text-slate-500';
             line2.textContent = showRequester
                 ? `${documentRequester(request)} · ${formatTime(request?.createdAt)}`
                 : formatTime(request?.createdAt);
             main.appendChild(line2);
             const badge = document.createElement('span');
-            badge.className = `shrink-0 text-[10px] font-black ${DOC_STATUS_CLASS[request?.status] || 'text-slate-400'}`;
+            badge.className = `shrink-0 text-[11px] font-black ${DOC_STATUS_CLASS[request?.status] || 'text-slate-400'}`;
             badge.textContent = documentStatusLabel(request?.status);
             item.append(main, badge);
             list.appendChild(item);

@@ -90,8 +90,8 @@
                 if (!card || card.querySelector('.yj-payment-date-meta')) return;
                 const meta = document.createElement(card.tagName === 'TR' ? 'td' : 'div');
                 meta.className = card.tagName === 'TR'
-                    ? 'yj-payment-date-meta px-4 py-3 text-[10px] text-slate-400 leading-5'
-                    : 'yj-payment-date-meta mt-3 p-3 rounded-xl border border-slate-100 bg-slate-50 text-[10px] font-bold text-slate-500 leading-5';
+                    ? 'yj-payment-date-meta px-4 py-3 text-[11px] text-slate-400 leading-5'
+                    : 'yj-payment-date-meta mt-3 p-3 rounded-xl border border-slate-100 bg-slate-50 text-[11px] font-bold text-slate-500 leading-5';
                 meta.innerHTML = `
                     <div>입금기한: <span class="text-slate-700">${order.payDate || '-'}</span></div>
                     <div>최근입금일: <span class="text-blue-600">${dateText(order.lastPaymentAt)}</span></div>
