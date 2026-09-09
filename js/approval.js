@@ -184,7 +184,7 @@
             draft: 'bg-blue-500/10 text-blue-300 border-blue-500/30',
             applied: 'bg-purple-500/10 text-purple-300 border-purple-500/30'
         }[status] || 'bg-slate-500/10 text-slate-300 border-slate-500/30';
-        span.className = `inline-flex items-center rounded border px-2 py-1 text-[10px] font-black ${tone}`;
+        span.className = `inline-flex items-center rounded border px-2 py-1 text-[11px] font-black ${tone}`;
         span.textContent = statusLabel(status);
         parent.appendChild(span);
     }
@@ -200,7 +200,7 @@
     }
 
     function baseButtonClass(tone) {
-        const base = 'mr-1 mb-1 px-3 py-2 rounded-lg text-[10px] font-black transition-colors disabled:cursor-not-allowed disabled:opacity-50 ';
+        const base = 'mr-1 mb-1 px-3 py-2 rounded-lg text-[11px] font-black transition-colors disabled:cursor-not-allowed disabled:opacity-50 ';
         if (tone === 'approve') return base + 'bg-emerald-700 hover:bg-emerald-600 text-white';
         if (tone === 'reject') return base + 'bg-rose-700 hover:bg-rose-600 text-white';
         if (tone === 'hold') return base + 'bg-amber-700 hover:bg-amber-600 text-white';
@@ -211,7 +211,7 @@
         const status = String(request.status || '');
         const isProcessing = state.processingRequestIds.has(request.id);
         if (!ADMIN_TRANSITIONS[status]) {
-            appendText(cell, 'span', '처리 불가', 'text-[10px] font-black text-slate-500');
+            appendText(cell, 'span', '처리 불가', 'text-[11px] font-black text-slate-500');
             return;
         }
         if (canTransition(status, 'approved')) {
@@ -245,17 +245,17 @@
             const docCell = document.createElement('td');
             docCell.className = 'px-3 py-3 align-top min-w-[220px]';
             appendText(docCell, 'div', requestTitle(request), 'font-black text-white text-[12px] leading-snug');
-            appendText(docCell, 'div', displayValue(request, ['documentType', 'requestType'], '문서'), 'text-[10px] text-slate-500 font-bold mt-1');
+            appendText(docCell, 'div', displayValue(request, ['documentType', 'requestType'], '문서'), 'text-[11px] text-slate-500 font-bold mt-1');
             const attCount = attachmentSlots(request).length;
             if (attCount > 0) {
-                appendText(docCell, 'div', `첨부 ${attCount}개`, 'inline-flex items-center rounded border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 px-2 py-0.5 text-[9px] font-black mt-1');
+                appendText(docCell, 'div', `첨부 ${attCount}개`, 'inline-flex items-center rounded border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 px-2 py-0.5 text-[11px] font-black mt-1');
             }
             row.appendChild(docCell);
 
             const requesterCell = document.createElement('td');
             requesterCell.className = 'px-3 py-3 align-top min-w-[160px]';
             appendText(requesterCell, 'div', requesterName(request), 'font-bold text-slate-200');
-            appendText(requesterCell, 'div', displayValue(request, ['requesterRole', 'requesterSite'], '-'), 'text-[10px] text-slate-500 font-bold mt-1');
+            appendText(requesterCell, 'div', displayValue(request, ['requesterRole', 'requesterSite'], '-'), 'text-[11px] text-slate-500 font-bold mt-1');
             row.appendChild(requesterCell);
 
             const statusCell = document.createElement('td');
@@ -319,7 +319,7 @@
         const attachments = request.attachments;
         const box = document.createElement('div');
         box.className = 'mt-3 rounded-lg border border-[#334155] bg-[#111827] p-3';
-        appendText(box, 'p', `첨부파일 (${slots.length})`, 'text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2');
+        appendText(box, 'p', `첨부파일 (${slots.length})`, 'text-[11px] font-black text-slate-500 uppercase tracking-wider mb-2');
         slots.forEach(slot => {
             const meta = attachments[slot];
             const row = document.createElement('div');
@@ -330,13 +330,13 @@
             nameEl.className = 'truncate text-[11px] font-bold text-slate-200';
             nameEl.textContent = meta.name || '(이름 없음)';
             const metaEl = document.createElement('p');
-            metaEl.className = 'text-[10px] font-bold text-slate-500';
+            metaEl.className = 'text-[11px] font-bold text-slate-500';
             metaEl.textContent = `${formatBytes(meta.size)} · ${meta.contentType || '-'}`;
             info.appendChild(nameEl);
             info.appendChild(metaEl);
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'shrink-0 h-7 px-3 rounded-md bg-slate-700 hover:bg-slate-600 text-white text-[10px] font-black transition-colors';
+            btn.className = 'shrink-0 h-7 px-3 rounded-md bg-slate-700 hover:bg-slate-600 text-white text-[11px] font-black transition-colors';
             btn.textContent = '다운로드';
             btn.addEventListener('click', () => downloadAttachment(meta.storagePath, meta.name));
             row.appendChild(info);
@@ -350,7 +350,7 @@
         const payload = request?.payload;
         const box = document.createElement('div');
         box.className = 'mt-3 rounded-lg border border-[#334155] bg-[#111827] p-3';
-        appendText(box, 'p', '요청 내용', 'text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2');
+        appendText(box, 'p', '요청 내용', 'text-[11px] font-black text-slate-500 uppercase tracking-wider mb-2');
         if (!payload || typeof payload !== 'object') {
             appendText(box, 'p', displayValue(request, ['description'], '내용 없음'), 'text-[11px] text-slate-300 whitespace-pre-line');
         } else {
@@ -370,7 +370,7 @@
         const wrapper = document.createElement('div');
         wrapper.className = 'mt-4 rounded-lg border border-[#334155] bg-[#111827] p-3';
         const label = action === 'approved' ? '승인 의견' : action === 'rejected' ? '반려 사유' : '보류 사유';
-        appendText(wrapper, 'label', label, 'block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2');
+        appendText(wrapper, 'label', label, 'block text-[11px] font-black text-slate-400 uppercase tracking-wider mb-2');
         const textarea = document.createElement('textarea');
         textarea.id = 'pcDocumentApprovalReasonInput';
         textarea.rows = 4;
@@ -410,7 +410,7 @@
         if (description && description !== '-') {
             const desc = document.createElement('div');
             desc.className = 'mt-3 rounded-lg border border-[#334155] bg-[#111827] p-3';
-            appendText(desc, 'p', '설명', 'text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2');
+            appendText(desc, 'p', '설명', 'text-[11px] font-black text-slate-500 uppercase tracking-wider mb-2');
             appendText(desc, 'p', description, 'text-[11px] text-slate-300 whitespace-pre-line');
             dom.detail.appendChild(desc);
         }
