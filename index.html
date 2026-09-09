@@ -108,6 +108,9 @@
         #loginPC .pin-collapse-toggle { min-height: 50px; height: 50px; padding: 0 16px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.12); background: linear-gradient(180deg, rgba(255, 255, 255, 0.060) 0%, rgba(255, 255, 255, 0.035) 100%); color: rgba(255, 255, 255, 0.72); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.055); }
         #loginPC .pin-collapse-toggle:hover { border-color: rgba(255, 255, 255, 0.20); background: linear-gradient(180deg, rgba(255, 255, 255, 0.085) 0%, rgba(255, 255, 255, 0.052) 100%); color: rgba(255, 255, 255, 0.88); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.075), 0 10px 22px rgba(0, 0, 0, 0.14); }
         #loginPC .pin-collapse-toggle:focus-visible { outline: none; border-color: rgba(147, 197, 253, 0.36); box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.075); }
+        /* WORK45-C: 전역 키보드 포커스 표시(2px). 어두운 PC·밝은 모바일 모두 대비 확보 */
+        #appPC a:focus-visible, #appPC button:focus-visible, #appPC input:focus-visible, #appPC select:focus-visible, #appPC textarea:focus-visible, #appPC [role="button"]:focus-visible, #appPC [tabindex]:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; border-radius: 4px; }
+        #appMobile a:focus-visible, #appMobile button:focus-visible, #appMobile input:focus-visible, #appMobile select:focus-visible, #appMobile textarea:focus-visible, #appMobile [role="button"]:focus-visible, #appMobile [tabindex]:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; border-radius: 4px; }
         #loginPC .pc-login-card { max-height: calc(95vh - 72px); overflow-y: auto; }
         #loginPC .login-pin-panel { padding: 16px; max-height: min(360px, calc(95vh - 310px)); overflow-y: auto; border-color: rgba(255,255,255,0.10); background: rgba(15,23,42,0.32); box-shadow: inset 0 1px 0 rgba(255,255,255,0.05); }
         #loginPC .role-grid { max-height: 180px; margin-bottom: 14px; }
@@ -498,7 +501,7 @@
                 <div class="flex items-center gap-2 ml-2">
                     <span id="pcDisplayUser" class="text-sm font-bold text-blue-400 bg-[#1e293b] px-3 py-1.5 rounded-lg border border-[#334155]">관리자</span>
                     <button onclick="switchGoogleAccount()" class="text-[11px] font-black text-blue-300 bg-[#1e293b] px-3 py-1.5 rounded-lg border border-[#334155] hover:border-blue-400 transition-all">계정 전환</button>
-                    <button onclick="logout()" class="p-1.5 bg-[#1e293b] hover:bg-red-500/20 border border-[#334155] hover:border-red-500/50 rounded-lg text-slate-400 hover:text-red-400 transition-all shadow-sm" title="시스템 로그아웃">
+                    <button onclick="logout()" class="p-1.5 bg-[#1e293b] hover:bg-red-500/20 border border-[#334155] hover:border-red-500/50 rounded-lg text-slate-400 hover:text-red-400 transition-all shadow-sm" title="시스템 로그아웃" aria-label="로그아웃">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                         </svg>
@@ -1466,7 +1469,7 @@
         <div id="activeDetailState" class="flex-1 flex flex-col h-full hidden">
             <div class="p-6 border-b border-[#334155] flex justify-between items-center">
                 <h3 class="text-white font-black tracking-tight text-lg">상세 정보</h3>
-                <button onclick="closeDrawer()" class="text-slate-500 hover:text-white xl:hidden">✕</button>
+                <button onclick="closeDrawer()" class="text-slate-500 hover:text-white xl:hidden" aria-label="메뉴 닫기">✕</button>
             </div>
             
             <div class="flex-1 overflow-y-auto p-6 space-y-6">
