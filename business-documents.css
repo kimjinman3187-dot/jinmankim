@@ -1,0 +1,185 @@
+#yjBusinessDocuments {
+  background: #f8fafc;
+  color: #172033;
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  padding: 24px;
+  margin: 0 0 28px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+#yjBusinessDocuments h3 {
+  font-size: 22px;
+  font-weight: 800;
+}
+#yjBusinessDocuments h4 {
+  font-size: 16px;
+  font-weight: 750;
+  margin: 16px 0 10px;
+}
+#yjBusinessDocuments .yb-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 16px;
+}
+#yjBusinessDocuments .yb-eyebrow {
+  color: #2563eb;
+  font-weight: 750;
+  font-size: 12px;
+}
+#yjBusinessDocuments .yb-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(320px, 1.1fr);
+  gap: 28px;
+}
+#yjBusinessDocuments .yb-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+#yjBusinessDocuments label {
+  display: block;
+  font-weight: 650;
+  margin: 10px 0;
+}
+#yjBusinessDocuments input,
+#yjBusinessDocuments select,
+#yjBusinessDocuments textarea {
+  display: block;
+  width: 100%;
+  color: #172033;
+  background: white;
+  border: 1px solid #94a3b8;
+  border-radius: 8px;
+  padding: 9px;
+  font: inherit;
+  min-width: 0;
+}
+#yjBusinessDocuments textarea {
+  min-height: 86px;
+}
+#yjBusinessDocuments button {
+  background: white;
+  color: #1d4ed8;
+  border: 1px solid #93a4bc;
+  border-radius: 8px;
+  padding: 9px 13px;
+  cursor: pointer;
+  font-weight: 650;
+  margin: 5px 5px 5px 0;
+}
+#yjBusinessDocuments button:focus-visible,
+#yjBusinessDocuments input:focus-visible,
+#yjBusinessDocuments select:focus-visible,
+#yjBusinessDocuments textarea:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+#yjBusinessDocuments button.yb-primary {
+  background: #1d4ed8;
+  color: white;
+  border-color: #1d4ed8;
+}
+#yjBusinessDocuments fieldset:disabled {
+  opacity: 0.65;
+}
+#yjBusinessDocuments .yb-help {
+  font-size: 12px;
+  color: #475569;
+}
+#yjBusinessDocuments .yb-row {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  text-align: left;
+  color: #172033;
+  margin-bottom: 8px;
+}
+#yjBusinessDocuments .yb-row span {
+  font-size: 12px;
+  color: #475569;
+}
+#yjBusinessDocuments .yb-message {
+  padding: 12px;
+  background: #e0f2fe;
+  border-radius: 8px;
+  margin: 14px 0;
+}
+#yjBusinessDocuments .yb-error {
+  padding: 12px;
+  color: #991b1b;
+  background: #fee2e2;
+  border-radius: 8px;
+  margin: 14px 0;
+}
+#ybList {
+  max-height: 360px;
+  overflow: auto;
+}
+#ybDetail {
+  border-top: 1px solid #cbd5e1;
+  margin-top: 20px;
+  overflow-wrap: anywhere;
+}
+#yjBusinessDocuments .yb-pair {
+  display: grid;
+  grid-template-columns: 135px 1fr;
+  gap: 10px;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 7px 0;
+}
+#yjBusinessDocuments dd {
+  white-space: pre-wrap;
+}
+#yjBusinessDocuments .yb-payment {
+  padding: 16px;
+  background: #e0f2fe;
+  border-radius: 12px;
+}
+.yb-print {
+  display: none;
+}
+@media (max-width: 900px) {
+  #yjBusinessDocuments .yb-layout {
+    grid-template-columns: 1fr;
+  }
+  #yjBusinessDocuments {
+    padding: 16px;
+  }
+}
+@media (max-width: 500px) {
+  #yjBusinessDocuments .yb-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media print {
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+  body.yb-printing > * {
+    display: none !important;
+  }
+  body.yb-printing > #ybPrint {
+    display: block !important;
+    background: white !important;
+    color: black !important;
+    font: 12px/1.6 sans-serif;
+  }
+  #ybPrint .yb-pair {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    border-bottom: 1px solid #ddd;
+    padding: 5px;
+  }
+  #ybPrint h1 {
+    font-size: 22px;
+  }
+  #ybPrint h4 {
+    margin-top: 20px;
+  }
+  #ybPrint {
+    overflow-wrap: anywhere;
+  }
+}
