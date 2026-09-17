@@ -162,3 +162,5 @@ exports.transitionExpenseApproval = onCall({ region: REGION }, async request => 
 });
 
 exports._test = { submitExpenseApprovalImpl, transitionExpenseApprovalImpl };
+
+exports.businessDocument = require('./business-documents').businessDocument;

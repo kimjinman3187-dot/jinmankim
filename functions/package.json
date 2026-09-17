@@ -6,7 +6,10 @@
     "node": "22"
   },
   "scripts": {
-    "test": "node --test --test-concurrency=1 expense-approval.test.js"
+    "test": "node --test --test-concurrency=1 expense-approval.test.js business-document-core.test.js",
+    "test:business-integration": "node --test --test-concurrency=1 business-documents.integration.test.js",
+    "test:business-rules": "node --test business-documents.rules.test.js business-documents.storage.test.js",
+    "test:business-browser": "node --test business-documents.browser.test.js"
   },
   "dependencies": {
     "firebase-admin": "14.2.0",

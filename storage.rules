@@ -83,6 +83,45 @@ service firebase.storage {
         );
     }
 
+    // WORK46: no replacement/deletion of registered evidence. Submission locks uploads.
+    function businessActive() {
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider != "anonymous"
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.status == "active";
+    }
+    function businessReader(d) {
+      return businessActive() && (
+        d.requesterUid == request.auth.uid
+        || request.auth.uid in d.approverUids
+        || firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == "admin"
+        || (d.kind in ["expense", "purchase"]
+          && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == "accounting")
+      );
+    }
+    function businessFileMatches(a) {
+      return resource == null && request.resource != null
+        && request.resource.size == a.size && request.resource.size > 0
+        && request.resource.size <= 10485760
+        && request.resource.contentType == a.contentType
+        && allowedAttachmentContentType(request.resource.contentType);
+    }
+    match /business-document-files/{documentId}/{slot} {
+      allow read: if businessReader(firestore.get(/databases/(default)/documents/business_documents/$(documentId)).data);
+      allow write: if businessActive() && validSlot(slot)
+        && firestore.get(/databases/(default)/documents/business_documents/$(documentId)).data.requesterUid == request.auth.uid
+        && firestore.get(/databases/(default)/documents/business_documents/$(documentId)).data.status == "draft"
+        && businessFileMatches(firestore.get(/databases/(default)/documents/business_documents/$(documentId)).data.attachments[slot]);
+    }
+    match /business-payment-files/{documentId}/{paymentId}/proof {
+      allow read: if businessReader(firestore.get(/databases/(default)/documents/business_documents/$(documentId)).data);
+      allow write: if businessActive()
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ["admin", "accounting"]
+        && firestore.get(/databases/(default)/documents/business_documents/$(documentId)).data.status == "approved"
+        && firestore.get(/databases/(default)/documents/business_documents/$(documentId)/payments/$(paymentId)).data.actorUid == request.auth.uid
+        && firestore.get(/databases/(default)/documents/business_documents/$(documentId)/payments/$(paymentId)).data.status == "draft"
+        && businessFileMatches(firestore.get(/databases/(default)/documents/business_documents/$(documentId)/payments/$(paymentId)).data.proof);
+    }
+
     // 그 외 모든 경로 차단
     match /{allPaths=**} {
       allow read, write: if false;

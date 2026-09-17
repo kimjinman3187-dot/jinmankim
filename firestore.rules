@@ -710,6 +710,12 @@ service cloud.firestore {
       }
     }
 
+    // WORK46: standardized documents use the authenticated callable as their only API.
+    // Do not permit client writes, including admins; history and payment receipts are immutable.
+    match /business_documents/{path=**} { allow read, write: if false; }
+    match /business_document_sequences/{id} { allow read, write: if false; }
+    match /business_payment_references/{id} { allow read, write: if false; }
+
     match /expense_approval_requests/{requestId} {
       allow read: if arIsAdmin() || isExpenseApprovalOwner() || arIsAccounting();
       allow create: if arIsActiveUser()
