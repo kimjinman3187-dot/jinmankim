@@ -7,6 +7,7 @@ const os = require("node:os");
 const { chromium } = require("playwright");
 let browser, page;
 const requests = [];
+let listDocuments = [];
 const users = [
   { uid: "finance", name: "회계 직원", role: "accounting" },
   { uid: "admin", name: "최종 승인자", role: "admin" },
@@ -16,7 +17,7 @@ async function mount() {
   await page.route("https://yj.test/", (r) =>
     r.fulfill({
       contentType: "text/html",
-      body: '<html lang="ko"><body><main style="padding:20px;background:#0f172a"><section id="yjBusinessDocuments"></section></main></body></html>',
+      body: '<html lang="ko"><body><main style="padding:20px;background:#0f172a"><span id="pcHubDocGlanceTotal"></span><span id="pcHubDocGlancePending"></span><span id="pcHubDocGlanceRejected"></span><span id="pcHubDocGlancePayment"></span><p id="pcHubDocGlanceState"></p><section id="yjUnifiedApprovalInbox"></section><section id="yjBusinessDocuments"></section></main></body></html>',
     }),
   );
   await page.goto("https://yj.test/");
@@ -73,7 +74,7 @@ test.before(async () => {
   await page.exposeFunction("backend", async (data) => {
     requests.push(data);
     if (data.action === "directory") return { users };
-    if (data.action === "list") return { documents: [], capped: false };
+    if (data.action === "list") return { documents: listDocuments, capped: false };
     if (data.action === "create") return { document: { attachments: {} } };
     if (data.action === "submit") return { ok: true };
     if (data.action === "detail") throw new Error("simulated refresh failure");
@@ -84,6 +85,7 @@ test.after(async () => {
   await browser?.close();
 });
 test("all five forms render; form values survive disabled fieldset during submission", async () => {
+  listDocuments = [];
   await mount();
   await page.getByRole("button", { name: "새로고침", exact: true }).click();
   await page.getByText("표준 문서 0건을 확인했습니다.").waitFor();
@@ -117,7 +119,67 @@ test("all five forms render; form values survive disabled fieldset during submis
   assert.equal(create.approverUid, "admin");
   assert.equal(requests.filter((x) => x.action === "submit").length, 1);
 });
+test("unified workspace separates my documents, approval inbox and dashboard metrics", async () => {
+  listDocuments = [
+    {
+      id: "mine",
+      number: "YJ-GEN-1",
+      kind: "general",
+      status: "rejected",
+      requesterUid: "employee",
+      requesterName: "시험 직원",
+      approverUids: ["admin"],
+      step: 0,
+      details: { title: "내 반려 문서" },
+    },
+    {
+      id: "inbox",
+      number: "YJ-GEN-2",
+      kind: "general",
+      status: "pending",
+      requesterUid: "other",
+      requesterName: "다른 직원",
+      approverUids: ["employee"],
+      step: 0,
+      details: { title: "내 결재 대상" },
+    },
+    {
+      id: "payment",
+      number: "YJ-EXP-3",
+      kind: "expense",
+      status: "approved",
+      paymentStatus: "partial",
+      requesterUid: "other",
+      requesterName: "다른 직원",
+      approverUids: ["admin"],
+      step: 0,
+      details: { title: "일부 지급 문서" },
+    },
+  ];
+  await mount();
+  await page.getByRole("button", { name: "새로고침", exact: true }).click();
+  await page.getByText("표준 문서 3건을 확인했습니다.").waitFor();
+  assert.equal(await page.locator("#ybMetricMine").innerText(), "1");
+  assert.equal(await page.locator("#ybMetricPending").innerText(), "1");
+  assert.equal(await page.locator("#ybMetricRejected").innerText(), "1");
+  assert.equal(await page.locator("#pcHubDocGlancePending").innerText(), "1");
+  assert.match(await page.locator("#yjUnifiedApprovalInbox").innerText(), /내 결재 대상/);
+  await page.getByRole("button", { name: "내 문서", exact: true }).click();
+  assert.match(await page.locator("#ybList").innerText(), /내 반려 문서/);
+  assert.doesNotMatch(await page.locator("#ybList").innerText(), /내 결재 대상/);
+  await page.getByRole("button", { name: "결재함", exact: true }).click();
+  assert.match(await page.locator("#ybList").innerText(), /내 결재 대상/);
+  assert.equal(await page.locator("#ybForm").isVisible(), false);
+});
+test("legacy document areas are marked as collapsed read-only archives", () => {
+  const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
+  assert.match(html, /이전 문서 보관함/);
+  assert.match(html, /이전 결재 기록/);
+  assert.equal((html.match(/data-yj-legacy-readonly="true"/g) || []).length, 2);
+});
 test("account switch clears sensitive form values and invalidates old session", async () => {
+  listDocuments = [];
+  await mount();
   await page.locator("#yb-title").fill("비공개 비용");
   await page.evaluate(() => {
     window.auth.currentUser = { uid: "other" };

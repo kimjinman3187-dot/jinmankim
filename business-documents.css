@@ -1,7 +1,7 @@
 #yjBusinessDocuments {
-  background: #f8fafc;
-  color: #172033;
-  border: 1px solid #cbd5e1;
+  background: #172033;
+  color: #e5edf8;
+  border: 1px solid #334155;
   border-radius: 16px;
   padding: 24px;
   margin: 0 0 28px;
@@ -24,7 +24,7 @@
   gap: 16px;
 }
 #yjBusinessDocuments .yb-eyebrow {
-  color: #2563eb;
+  color: #60a5fa;
   font-weight: 750;
   font-size: 12px;
 }
@@ -33,10 +33,64 @@
   grid-template-columns: minmax(260px, 0.9fr) minmax(320px, 1.1fr);
   gap: 28px;
 }
+#yjBusinessDocuments .yb-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 22px 0 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #334155;
+}
+#yjBusinessDocuments .yb-tabs button {
+  color: #94a3b8;
+  background: #0f1522;
+  border-color: #334155;
+}
+#yjBusinessDocuments .yb-tabs button.is-active {
+  color: #eff6ff;
+  background: #1d4ed8;
+  border-color: #3b82f6;
+}
+#yjBusinessDocuments .yb-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+#yjBusinessDocuments .yb-summary > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  background: #0f1522;
+  padding: 12px 14px;
+}
+#yjBusinessDocuments .yb-summary span,
+#yjBusinessDocuments .yb-help {
+  color: #94a3b8;
+  font-size: 12px;
+}
+#yjBusinessDocuments .yb-summary strong {
+  color: #f8fafc;
+  font-size: 20px;
+}
+#yjBusinessDocuments .yb-toolbar,
+.yb-inbox-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
 #yjBusinessDocuments .yb-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+}
+#yjBusinessDocuments fieldset {
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 16px;
 }
 #yjBusinessDocuments label {
   display: block;
@@ -48,9 +102,9 @@
 #yjBusinessDocuments textarea {
   display: block;
   width: 100%;
-  color: #172033;
-  background: white;
-  border: 1px solid #94a3b8;
+  color: #f8fafc;
+  background: #0f1522;
+  border: 1px solid #475569;
   border-radius: 8px;
   padding: 9px;
   font: inherit;
@@ -60,9 +114,9 @@
   min-height: 86px;
 }
 #yjBusinessDocuments button {
-  background: white;
-  color: #1d4ed8;
-  border: 1px solid #93a4bc;
+  background: #0f1522;
+  color: #bfdbfe;
+  border: 1px solid #475569;
   border-radius: 8px;
   padding: 9px 13px;
   cursor: pointer;
@@ -84,25 +138,22 @@
 #yjBusinessDocuments fieldset:disabled {
   opacity: 0.65;
 }
-#yjBusinessDocuments .yb-help {
-  font-size: 12px;
-  color: #475569;
-}
 #yjBusinessDocuments .yb-row {
   display: flex;
   flex-direction: column;
   width: 100%;
   text-align: left;
-  color: #172033;
+  color: #f8fafc;
   margin-bottom: 8px;
 }
 #yjBusinessDocuments .yb-row span {
   font-size: 12px;
-  color: #475569;
+  color: #94a3b8;
 }
 #yjBusinessDocuments .yb-message {
   padding: 12px;
-  background: #e0f2fe;
+  color: #bfdbfe;
+  background: #172554;
   border-radius: 8px;
   margin: 14px 0;
 }
@@ -118,7 +169,7 @@
   overflow: auto;
 }
 #ybDetail {
-  border-top: 1px solid #cbd5e1;
+  border-top: 1px solid #334155;
   margin-top: 20px;
   overflow-wrap: anywhere;
 }
@@ -126,7 +177,7 @@
   display: grid;
   grid-template-columns: 135px 1fr;
   gap: 10px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #334155;
   padding: 7px 0;
 }
 #yjBusinessDocuments dd {
@@ -134,11 +185,90 @@
 }
 #yjBusinessDocuments .yb-payment {
   padding: 16px;
-  background: #e0f2fe;
+  color: #dbeafe;
+  background: #172554;
   border-radius: 12px;
 }
 .yb-print {
   display: none;
+}
+.yb-inbox-header,
+.yb-inbox-list,
+.yj-legacy-archive {
+  border: 1px solid #334155;
+  border-radius: 14px;
+  background: #172033;
+}
+.yb-inbox-header {
+  padding: 20px;
+}
+.yb-inbox-header h3 {
+  color: #f8fafc;
+  font-size: 18px;
+  font-weight: 800;
+}
+.yb-inbox-header p,
+.yb-inbox-list p {
+  color: #94a3b8;
+  font-size: 12px;
+}
+.yb-inbox-header button,
+.yb-inbox-list .yb-row {
+  border: 1px solid #475569;
+  border-radius: 9px;
+  background: #0f1522;
+  color: #e5edf8;
+  padding: 10px 14px;
+  font-weight: 750;
+}
+.yb-inbox-list {
+  margin-top: 10px;
+  padding: 14px;
+}
+.yb-inbox-list .yb-row {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-bottom: 8px;
+  text-align: left;
+}
+.yb-inbox-list .yb-row span {
+  color: #94a3b8;
+  font-size: 11px;
+}
+.yj-legacy-archive {
+  margin-top: 24px;
+  overflow: hidden;
+}
+.yj-legacy-archive > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  cursor: pointer;
+  padding: 16px 20px;
+  color: #cbd5e1;
+  font-size: 13px;
+  font-weight: 800;
+  list-style: none;
+}
+.yj-legacy-archive > summary::-webkit-details-marker {
+  display: none;
+}
+.yj-legacy-archive > summary small {
+  color: #64748b;
+  font-size: 11px;
+}
+.yj-legacy-archive[open] > summary {
+  border-bottom: 1px solid #334155;
+}
+.yj-legacy-archive__body {
+  padding: 16px;
+  opacity: 0.88;
+}
+[data-yj-legacy-readonly="true"] button:not([id$="RefreshBtn"]),
+[data-yj-legacy-readonly="true"] form {
+  display: none !important;
 }
 @media (max-width: 900px) {
   #yjBusinessDocuments .yb-layout {
@@ -147,10 +277,28 @@
   #yjBusinessDocuments {
     padding: 16px;
   }
+  #yjBusinessDocuments .yb-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 @media (max-width: 500px) {
+  #yjBusinessDocuments .yb-header {
+    flex-direction: column;
+  }
+  #yjBusinessDocuments #ybRefresh {
+    width: 100%;
+    margin-right: 0;
+  }
   #yjBusinessDocuments .yb-grid {
     grid-template-columns: 1fr;
+  }
+  #yjBusinessDocuments .yb-summary {
+    grid-template-columns: 1fr;
+  }
+  #yjBusinessDocuments .yb-toolbar,
+  .yb-inbox-header,
+  .yj-legacy-archive > summary {
+    flex-direction: column;
   }
 }
 @media print {

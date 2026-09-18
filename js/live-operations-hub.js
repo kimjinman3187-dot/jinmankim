@@ -411,26 +411,27 @@
         setText('pcLiveOpsDocHold', c.onHold);
         setText('pcLiveOpsDocApproved7', c.approved7);
         setText('pcLiveOpsDocRejected7', c.rejected7);
-        setText('pcHubDocGlancePending', c.pending);
-        setText('pcHubDocGlanceHold', c.onHold);
-        // WORK41: 문서결재 예외 카드 합계·상태 문구(조회 실패를 0건으로 표시하지 않음)
-        const docGlanceTotal = (Number(c.pending) || 0) + (Number(c.onHold) || 0);
-        setText('pcHubDocGlanceTotal', `${docGlanceTotal}건`);
-        const docGlanceBadge = $('pcHubDocGlanceTotal');
-        if (docGlanceBadge) {
-            docGlanceBadge.classList.toggle('text-amber-200', docGlanceTotal > 0);
-            docGlanceBadge.classList.toggle('text-slate-200', docGlanceTotal === 0);
-        }
-        const docGlanceStateNode = $('pcHubDocGlanceState');
-        if (docGlanceStateNode) {
-            docGlanceStateNode.textContent = {
-                loading: '불러오는 중입니다.',
-                denied: '조회 권한 확인 필요',
-                error: '조회 실패 · 다시 시도',
-                empty: '',
-                ready: '',
-                idle: ''
-            }[c.status] || '';
+        if (!window.YJBusinessDocuments) {
+            setText('pcHubDocGlancePending', c.pending);
+            setText('pcHubDocGlanceHold', c.onHold);
+            const docGlanceTotal = (Number(c.pending) || 0) + (Number(c.onHold) || 0);
+            setText('pcHubDocGlanceTotal', `${docGlanceTotal}건`);
+            const docGlanceBadge = $('pcHubDocGlanceTotal');
+            if (docGlanceBadge) {
+                docGlanceBadge.classList.toggle('text-amber-200', docGlanceTotal > 0);
+                docGlanceBadge.classList.toggle('text-slate-200', docGlanceTotal === 0);
+            }
+            const docGlanceStateNode = $('pcHubDocGlanceState');
+            if (docGlanceStateNode) {
+                docGlanceStateNode.textContent = {
+                    loading: '불러오는 중입니다.',
+                    denied: '조회 권한 확인 필요',
+                    error: '조회 실패 · 다시 시도',
+                    empty: '',
+                    ready: '',
+                    idle: ''
+                }[c.status] || '';
+            }
         }
 
         const basis = $('pcLiveDocBasis');

@@ -151,7 +151,12 @@
         return request?.schemaVersion === 3 && request?.documentType === 'EXPENSE_REPORT';
     }
 
+    function legacyArchiveReadonly() {
+        return document.getElementById('pcDocumentApprovalPanel')?.dataset?.yjLegacyReadonly === 'true';
+    }
+
     function canProcessRequest(request, action, user = currentUser()) {
+        if (legacyArchiveReadonly()) return false;
         if (!request || !user || request.requesterUid === getReviewerUid()) return false;
         if (!isExpenseRequest(request)) return user.role === 'admin' && canTransition(request.status, action);
         if (request.status !== 'pending' || !['approved', 'rejected'].includes(action)) return false;
@@ -228,7 +233,7 @@
         const status = String(request.status || '');
         const isProcessing = state.processingRequestIds.has(request.id);
         if (!canProcessRequest(request, 'approved') && !canProcessRequest(request, 'rejected') && !canProcessRequest(request, 'on_hold')) {
-            appendText(cell, 'span', '처리 불가', 'text-[10px] font-black text-slate-500');
+            appendText(cell, 'span', legacyArchiveReadonly() ? '읽기 전용' : '처리 불가', 'text-[10px] font-black text-slate-500');
             return;
         }
         if (canProcessRequest(request, 'approved')) {
