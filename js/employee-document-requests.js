@@ -956,6 +956,10 @@
 
     async function submit(event) {
         event.preventDefault();
+        if (dom.panel?.dataset?.yjLegacyReadonly === 'true') {
+            setMessage('이전 문서는 읽기 전용입니다. 신규 업무는 위 표준 문서 5종을 사용하세요.', 'error');
+            return;
+        }
         if (state.submitting) return;
         // D5: 제출 직전에도 첨부 소유자와 현재 사용자가 일치하는지 확인한다.
         if (!enforceUserContext()) return;

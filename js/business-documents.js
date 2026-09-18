@@ -114,6 +114,7 @@
     revise: null,
     operations: new Map(),
     loaded: false,
+    view: "create",
   };
   const uuid = () => crypto.randomUUID();
   const money = (n) => Number(n || 0).toLocaleString("ko-KR") + "원";
@@ -130,9 +131,20 @@
     return b;
   }
   root.innerHTML =
-    '<div class="yb-header"><div><p class="yb-eyebrow">용진 표준 문서</p><h3>문서 작성부터 지급·처리 완료까지</h3><p>결재 상태와 실제 처리 결과를 따로 확인합니다. 지급 기록은 실제 송금을 실행하지 않습니다.</p></div><button type="button" id="ybRefresh">새로고침</button></div><p id="ybMessage" role="status" aria-live="polite"></p><div class="yb-layout"><form id="ybForm"><fieldset id="ybFieldset"><h4>새 문서 작성</h4><div id="ybCommon"></div><div id="ybFields" class="yb-grid"></div><div id="ybRoute" class="yb-grid"></div><label>첨부파일 (최대 5개, 각 10MB·합계 30MB)<input id="ybFiles" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx,.csv"></label><p class="yb-help">지출은 증빙 필수 · 구매·수리는 견적 첨부 권장</p><button type="submit" class="yb-primary">저장하고 결재 요청</button><button type="button" id="ybNew">새 양식</button></fieldset></form><div><h4>표준 문서 목록</h4><p class="yb-help">기존 일반문서·v3 지출결의는 아래 기존 결재함에서 확인합니다.</p><label>문서 종류<select id="ybFilter"><option value="all">전체</option></select></label><div id="ybList"></div><div id="ybDetail"></div></div></div>';
+    '<div class="yb-header"><div><p class="yb-eyebrow">YJ FLOW DOCUMENT WORKSPACE</p><h3>문서 작성·결재·지급을 한곳에서 처리합니다</h3><p>신규 업무는 표준 문서 5종으로 작성하고, 결재 상태와 실제 처리 결과를 함께 확인합니다.</p></div><button type="button" id="ybRefresh">새로고침</button></div>' +
+    '<nav class="yb-tabs" aria-label="문서 업무 구분"><button type="button" data-yb-view="create">새 문서 작성</button><button type="button" data-yb-view="my">내 문서</button><button type="button" data-yb-view="inbox">결재함</button><button type="button" data-yb-view="payments">지급관리</button><button type="button" data-yb-view="all">전체 문서</button></nav>' +
+    '<div class="yb-summary"><div><span>내 문서</span><strong id="ybMetricMine">0</strong></div><div><span>결재 대기</span><strong id="ybMetricPending">0</strong></div><div><span>반려</span><strong id="ybMetricRejected">0</strong></div><div><span>지급 대기</span><strong id="ybMetricPayment">0</strong></div></div>' +
+    '<p id="ybMessage" role="status" aria-live="polite"></p><div class="yb-layout"><form id="ybForm"><fieldset id="ybFieldset"><h4>새 문서 작성</h4><div id="ybCommon"></div><div id="ybFields" class="yb-grid"></div><div id="ybRoute" class="yb-grid"></div><label>첨부파일 (최대 5개, 각 10MB·합계 30MB)<input id="ybFiles" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx,.csv"></label><p class="yb-help">지출은 증빙 필수 · 구매·수리는 견적 첨부 권장</p><button type="submit" class="yb-primary">저장하고 결재 요청</button><button type="button" id="ybNew">새 양식</button></fieldset></form><section id="ybRecords"><div class="yb-toolbar"><div><h4 id="ybListTitle">내 문서</h4><p id="ybListHelp" class="yb-help">작성한 표준 문서를 확인합니다.</p></div><label>문서 종류<select id="ybFilter"><option value="all">전체</option></select></label></div><div id="ybList"></div><div id="ybDetail"></div></section></div>';
   const $ = (id) => document.getElementById(id);
   const form = $("ybForm");
+  const views = ["create", "my", "inbox", "payments", "all"];
+  const viewCopy = {
+    create: ["최근 작성 문서", "새 문서를 작성하면서 최근 기록을 함께 확인합니다."],
+    my: ["내 문서", "내가 작성한 표준 문서와 처리 상태입니다."],
+    inbox: ["결재함", "현재 내가 검토하거나 승인해야 하는 문서입니다."],
+    payments: ["지급관리", "승인 후 지급 전이거나 일부 지급된 지출결의입니다."],
+    all: ["전체 문서", "권한 범위에서 확인할 수 있는 표준 문서 전체입니다."],
+  };
   function message(s, error = false) {
     $("ybMessage").textContent = s;
     $("ybMessage").className = error ? "yb-error" : "yb-message";
@@ -253,10 +265,12 @@
       state.selected = null;
       state.revise = null;
       state.operations.clear();
+      state.view = "create";
       $("ybList").replaceChildren();
       $("ybDetail").replaceChildren();
       form.reset();
       renderFields();
+      renderWorkspace();
       message(
         key
           ? "표준 문서를 불러오려면 새로고침하세요."
@@ -353,7 +367,7 @@
       );
       holder.replaceWith(replacement.firstChild);
     }
-    renderList();
+    renderWorkspace();
     message(
       a.capped
         ? "조회 상한에 도달했습니다. 목록은 일부 자료이며 전체 합계가 아닙니다."
@@ -362,6 +376,9 @@
   }
   $("ybRefresh").onclick = () => run(load);
   $("ybFilter").onchange = renderList;
+  root.querySelectorAll("[data-yb-view]").forEach((tab) => {
+    tab.addEventListener("click", () => setView(tab.dataset.ybView));
+  });
   $("ybNew").onclick = () => {
     state.draft = null;
     state.revise = null;
@@ -371,12 +388,120 @@
       "새 문서를 작성합니다. 저장된 작성 중 문서는 목록에서 확인할 수 있습니다.",
     );
   };
+  function isFinance() {
+    return ["admin", "accounting"].includes(state.user?.role);
+  }
+  function visibleRows() {
+    let rows = state.rows;
+    if (["create", "my"].includes(state.view))
+      rows = rows.filter((d) => d.requesterUid === state.uid);
+    else if (state.view === "inbox")
+      rows = rows.filter(
+        (d) => d.status === "pending" && d.approverUids?.[d.step] === state.uid,
+      );
+    else if (state.view === "payments")
+      rows = isFinance()
+        ? rows.filter(
+            (d) =>
+              d.kind === "expense" &&
+              d.status === "approved" &&
+              ["unpaid", "partial"].includes(d.paymentStatus),
+          )
+        : [];
+    return rows.filter(
+      (d) => $("ybFilter").value === "all" || d.kind === $("ybFilter").value,
+    );
+  }
+  function setView(view) {
+    state.view = views.includes(view) ? view : "my";
+    form.hidden = state.view !== "create";
+    root.querySelectorAll("[data-yb-view]").forEach((tab) => {
+      const active = tab.dataset.ybView === state.view;
+      tab.classList.toggle("is-active", active);
+      tab.setAttribute("aria-current", active ? "page" : "false");
+    });
+    const copy = viewCopy[state.view];
+    $("ybListTitle").textContent = copy[0];
+    $("ybListHelp").textContent = copy[1];
+    renderList();
+  }
+  function renderMetrics() {
+    const actionable = state.rows.filter(
+      (d) => d.status === "pending" && d.approverUids?.[d.step] === state.uid,
+    );
+    const rejected = state.rows.filter((d) => d.status === "rejected");
+    const payments = state.rows.filter(
+      (d) =>
+        d.kind === "expense" &&
+        d.status === "approved" &&
+        ["unpaid", "partial"].includes(d.paymentStatus),
+    );
+    const mine = state.rows.filter((d) => d.requesterUid === state.uid);
+    $("ybMetricMine").textContent = mine.length;
+    $("ybMetricPending").textContent = actionable.length;
+    $("ybMetricRejected").textContent = rejected.length;
+    $("ybMetricPayment").textContent = isFinance() ? payments.length : 0;
+    const set = (id, value) => {
+      const node = document.getElementById(id);
+      if (node) node.textContent = value;
+    };
+    set("pcHubDocGlancePending", actionable.length);
+    set("pcHubDocGlanceRejected", rejected.length);
+    set("pcHubDocGlancePayment", isFinance() ? payments.length : 0);
+    set(
+      "pcHubDocGlanceTotal",
+      `${actionable.length + rejected.length + (isFinance() ? payments.length : 0)}건`,
+    );
+    const stateNode = document.getElementById("pcHubDocGlanceState");
+    if (stateNode)
+      stateNode.textContent = state.loaded
+        ? "표준 문서 기준 · 기존 문서는 보관함에서 조회"
+        : "표준 문서 조회 전";
+    renderApprovalInbox(actionable);
+  }
+  function renderApprovalInbox(rows) {
+    const host = document.getElementById("yjUnifiedApprovalInbox");
+    if (!host) return;
+    host.replaceChildren();
+    const header = el("div", undefined, "yb-inbox-header");
+    const copy = el("div");
+    copy.append(
+      el("p", "STANDARD DOCUMENT APPROVAL", "yb-eyebrow"),
+      el("h3", "통합 결재함"),
+      el("p", "표준 문서 5종의 검토·승인 대상을 한곳에서 처리합니다."),
+    );
+    const open = button("전체 결재함 열기", () => {
+      window.switchPCTab?.("docbox");
+      setView("inbox");
+    });
+    header.append(copy, open);
+    host.append(header);
+    const list = el("div", undefined, "yb-inbox-list");
+    if (!rows.length) list.append(el("p", "현재 처리할 표준 문서가 없습니다."));
+    rows.slice(0, 8).forEach((d) => {
+      const row = button("", () => {
+        window.switchPCTab?.("docbox");
+        setView("inbox");
+        run((epoch) => detail(d.id, epoch));
+      });
+      row.className = "yb-row";
+      row.append(
+        el("strong", d.details.title),
+        el("span", `${d.number} · ${kinds[d.kind]} · ${d.requesterName}`),
+        el("span", "결재 대기"),
+      );
+      list.append(row);
+    });
+    host.append(list);
+  }
+  function renderWorkspace() {
+    setView(state.view);
+    renderMetrics();
+  }
   function renderList() {
     const list = $("ybList");
     list.replaceChildren();
-    const rows = state.rows.filter(
-      (d) => $("ybFilter").value === "all" || d.kind === $("ybFilter").value,
-    );
+    const rows = visibleRows();
     if (!rows.length) list.append(el("p", "표시할 문서가 없습니다."));
     for (const d of rows) {
       const b = button("", () => run((e) => detail(d.id, e)));
@@ -846,4 +971,9 @@
   }, 500);
   watchAuth();
   sync();
+  window.YJBusinessDocuments = {
+    refresh: () => run(load),
+    setView,
+    getRows: () => state.rows.slice(),
+  };
 })();
