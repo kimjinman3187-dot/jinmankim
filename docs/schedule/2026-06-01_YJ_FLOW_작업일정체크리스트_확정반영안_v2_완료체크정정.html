@@ -68,6 +68,56 @@
       padding: 14px 16px;
       margin-top: 16px;
     }
+    .schedule-summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 20px;
+    }
+    .schedule-card {
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 14px;
+      background: #f8fafc;
+    }
+    .schedule-label {
+      margin: 0;
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .schedule-value {
+      margin: 4px 0 0;
+      font-size: 19px;
+      font-weight: 900;
+    }
+    .schedule-progress {
+      height: 10px;
+      overflow: hidden;
+      margin-top: 12px;
+      border-radius: 999px;
+      background: #e2e8f0;
+    }
+    .schedule-progress > span {
+      display: block;
+      width: 0;
+      height: 100%;
+      background: #2563eb;
+      transition: width .2s ease;
+    }
+    .schedule-sync {
+      min-height: 22px;
+      margin: 10px 0 0;
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .schedule-sync-error { color: #b45309; }
+    @media (max-width: 760px) {
+      body { padding: 14px; }
+      main { padding: 20px; }
+      .schedule-summary { grid-template-columns: 1fr 1fr; }
+    }
     ul {
       margin: 10px 0 0 20px;
       padding: 0;
@@ -80,6 +130,41 @@
     <p class="meta">작성일: 2026-06-01</p>
     <p class="meta">작업명: SCHEDULE-GITHUB-INTEGRATION-001</p>
     <p class="meta">문서 목적: Schedule Master v2의 완료 체크 상태를 정정하고 GitHub 문서 이력에 반영한다.</p>
+
+    <section id="scheduleAutoReflect" aria-labelledby="scheduleAutoReflectTitle">
+      <h2 id="scheduleAutoReflectTitle">GitHub 병합 자동 반영</h2>
+      <div class="schedule-summary">
+        <div class="schedule-card">
+          <p class="schedule-label">완료 작업</p>
+          <p id="scheduleCompletedCount" class="schedule-value">3 / 4</p>
+        </div>
+        <div class="schedule-card">
+          <p class="schedule-label">전체 진행률</p>
+          <p id="scheduleProgressValue" class="schedule-value">75%</p>
+        </div>
+        <div class="schedule-card">
+          <p class="schedule-label">릴리즈 준비</p>
+          <p id="scheduleReleaseState" class="schedule-value status-check">준비 중</p>
+        </div>
+        <div class="schedule-card">
+          <p class="schedule-label">다음 작업</p>
+          <p id="scheduleNextWork" class="schedule-value">WORK34</p>
+        </div>
+      </div>
+      <div class="schedule-progress" aria-hidden="true"><span id="scheduleProgressBar" style="width:75%"></span></div>
+      <p id="scheduleSyncState" class="schedule-sync">기준선: WORK31·WORK32·WORK33 완료 / WORK34 진행 예정</p>
+      <table>
+        <thead>
+          <tr><th>WORK</th><th>PR</th><th>상태</th><th>병합 근거</th></tr>
+        </thead>
+        <tbody id="scheduleWorkBody">
+          <tr><td>WORK31</td><td>#167</td><td class="status-done">완료</td><td>기준선 병합 완료</td></tr>
+          <tr><td>WORK32</td><td>#168</td><td class="status-done">완료</td><td>기준선 병합 완료</td></tr>
+          <tr><td>WORK33</td><td>#169</td><td class="status-done">완료</td><td>기준선 병합 완료</td></tr>
+          <tr><td>WORK34</td><td>-</td><td class="status-check">진행 예정</td><td>병합 PR 자동 탐색</td></tr>
+        </tbody>
+      </table>
+    </section>
 
     <section class="note">
       <strong>정정 핵심</strong>
@@ -406,5 +491,6 @@
     <h2>운영 코드 변경 여부</h2>
     <p>이번 closeout 작업은 문서 2개만 수정한다. `index.html`, `js` 폴더, `firebase-shared.js`, `work22-payment-hotfix.js`, GitHub Pages 운영 화면 코드, 결제/생산/승인/Reset Data 로직은 수정하지 않는다.</p>
   </main>
+  <script src="schedule-auto-reflect.js"></script>
 </body>
 </html>
