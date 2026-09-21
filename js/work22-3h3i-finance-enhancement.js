@@ -166,8 +166,11 @@
         return Number.isFinite(number) ? number : 0;
     }
 
+    // WORK51: 회계 페이지 4개 금액 KPI는 정확 금액(원 단위) 유지 — 축약(억/천만/만) 제외
+    const FINANCE_EXACT_KPI_IDS = new Set(['pcFinanceOrderTotal', 'pcFinanceIssuedTotal', 'pcFinancePaidTotal', 'pcFinanceDebtTotal']);
     function compactMoneyKpis() {
         MONEY_KPI_IDS.forEach(id => {
+            if (FINANCE_EXACT_KPI_IDS.has(id)) return;
             const el = document.getElementById(id);
             if (!el) return;
             const text = el.textContent || '';
@@ -386,6 +389,9 @@
         }
 
         function injectSummaryGrid() {
+            // WORK51: 회계 KPI를 한글 1행(5장)으로 통합 — 정적 행에 '처리 필요'(pcFinanceActionQueue) 카드가 있으면
+            // 기존 영문 요약 그리드(Invoice Wait/Collection Wait/Completed/Action Queue)는 주입하지 않는다.
+            if (document.getElementById('pcFinanceActionQueue')) return;
             if (document.getElementById('pcFinanceEnhanceSummary')) return;
             const anchor = document.getElementById('pcFinanceApprovalWaitSection') || document.getElementById('pcFinanceProductionProgressSection') || findSection({ id: 'pcFinanceInvoiceWaitBody', sectionFromBody: true });
             if (!anchor || !anchor.parentElement) return;
@@ -423,6 +429,9 @@
 
         function renderFinanceSummary(summary) {
             injectSummaryGrid();
+            // WORK51: 통합 '처리 필요' KPI 카드(한글 1행). 영문 요약 그리드가 없을 때만 실제로 표시된다.
+            setText('pcFinanceActionQueue', `${summary.actionQueueCount}건`);
+            setText('pcFinanceActionQueueMeta', '승인·생산·청구·수금 대기 합계');
             const range = getFinancePeriodRange();
             setText('pcFinanceSummaryInvoiceWait', `${summary.invoiceWaitCount}건`);
             setText('pcFinanceSummaryInvoiceAmount', `청구 예정 ${krw(summary.invoiceWaitAmount)}`);
