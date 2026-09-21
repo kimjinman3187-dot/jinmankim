@@ -157,8 +157,8 @@ console.log('📦 firebase-shared.js 로드 완료');
     };
 
     window.yjPatchFooterVersion = function yjPatchFooterVersion() {
-        const PATCH_VERSION = 'V2.0.3';
-        const PATCH_DATE = '26.05.26';
+        const PATCH_VERSION = 'V2.2.0';
+        const PATCH_DATE = '26.09.21';
         document.querySelectorAll('.system-footer p').forEach(p => {
             const text = (p.textContent || '').toLowerCase();
             if (text.includes('last updated')) p.textContent = `LAST UPDATED: ${PATCH_DATE}`;
