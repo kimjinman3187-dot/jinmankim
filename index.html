@@ -2979,7 +2979,6 @@ function updatePCProductionCards(metrics) {
 
 function updatePCFinanceInvoiceWaitList(metrics) {
     const canEditFinance = canWrite('finance');
-    const canRecordPayment = canWrite('ar'); // WORK51: 회계 청구 대기에서 입금 처리 가능 여부
     const tbody = document.getElementById('pcFinanceInvoiceWaitBody');
     const meta = document.getElementById('pcFinanceInvoiceWaitMeta');
 
@@ -3010,11 +3009,6 @@ function updatePCFinanceInvoiceWaitList(metrics) {
                 ? `<button onclick="issueInvoice('${o.id}')" class="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black shadow-md transition-colors">계산서 발행</button>`
                 : `<button disabled class="px-3 py-2 rounded-lg bg-slate-700 text-slate-500 text-[10px] font-black cursor-not-allowed">조회 전용</button>`;
 
-        // WORK51: 입금 처리 인라인 버튼 (기존 prompt/confirm 대신 openPaymentModal 사용). 행 클릭과 분리(stopPropagation).
-        const paymentButton = canRecordPayment
-            ? `<button onclick="event.stopPropagation(); openPaymentModal('${o.id}')" class="px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-white text-[10px] font-black shadow-md transition-colors">입금 처리</button>`
-            : '';
-
         return `
             <tr class="hover:bg-blue-500/5 transition-colors cursor-pointer pc-table-row border-l-[3px] border-transparent" onclick="selectFinanceDetailRow(this, '${o.id}', event)">
                 <td class="px-4 py-3 text-slate-400">${o.dueDate || '-'}</td>
@@ -3025,7 +3019,7 @@ function updatePCFinanceInvoiceWaitList(metrics) {
                 </td>
                 <td class="px-4 py-3 text-right font-black text-blue-400">${formatKRW(amount)}</td>
                 <td class="px-4 py-3 text-center">${invoiceBadge}</td>
-                <td class="px-4 py-3 text-center"><div class="flex flex-col items-center gap-1.5">${actionButton}${paymentButton}</div></td>
+                <td class="px-4 py-3 text-center">${actionButton}</td>
             </tr>
         `;
     }).join('') || `
@@ -4308,7 +4302,7 @@ if(compList) compList.innerHTML = accountingItems.map(o => {
             }
             ${
                 canEditAR
-                    ? `<button onclick="confirmPayment('${o.id}')" class="py-3 bg-amber-500 text-white rounded-xl font-bold text-xs shadow-md active:scale-95 transition-all">💵 입금 처리</button>`
+                    ? `<button onclick="openPaymentModal('${o.id}')" class="py-3 bg-amber-500 text-white rounded-xl font-bold text-xs shadow-md active:scale-95 transition-all">💵 입금 처리</button>`
                     : `<button disabled class="py-3 bg-slate-100 text-slate-400 rounded-xl font-bold text-xs border border-slate-200 cursor-not-allowed">조회 전용</button>`
             }
         </div>
@@ -4519,7 +4513,7 @@ function renderReceivables() {
             </div>
             ${
                 canEditAR
-                    ? `<button onclick="confirmPayment('${o.id}')" class="w-full mt-3 py-4 bg-amber-500 text-white rounded-2xl font-black shadow-lg active:scale-95 transition-transform">💵 입금액 추가 등록 및 결제</button>`
+                    ? `<button onclick="openPaymentModal('${o.id}')" class="w-full mt-3 py-4 bg-amber-500 text-white rounded-2xl font-black shadow-lg active:scale-95 transition-transform">💵 입금액 추가 등록 및 결제</button>`
                     : `<button disabled class="w-full mt-3 py-4 bg-slate-200 text-slate-400 rounded-2xl font-black cursor-not-allowed">조회 전용</button>`
             }
         </div>`;
@@ -4654,10 +4648,14 @@ function paymentModalUpdatePreview(remaining) {
         : `입금 후 잔금: ₩ ${after.toLocaleString('ko-KR')} · 부분 입금`;
 }
 function closePaymentModal() { const c = document.getElementById('modalContainer'); if (c) c.innerHTML = ''; }
-function openPaymentModal(id) {
+async function openPaymentModal(id) {
     if (!requireWrite('ar', 'AR 수정 권한이 없습니다.')) return;
     const src = (Array.isArray(filteredOrders) && filteredOrders.length ? filteredOrders : (Array.isArray(orders) ? orders : []));
-    const o = src.find(x => x.id === id) || (Array.isArray(orders) ? orders.find(x => x.id === id) : null);
+    let o = src.find(x => x.id === id) || (Array.isArray(orders) ? orders.find(x => x.id === id) : null);
+    if (!o && typeof db !== 'undefined') {
+        // WORK51-b: 전역 orders 배열에 없는 수금 대기 주문도 열 수 있도록 Firestore에서 표시용 재조회
+        try { const snap = await db.collection('orders').doc(id).get(); if (snap.exists) o = { id: snap.id, ...snap.data() }; } catch (e) { /* 표시용 조회 실패는 아래 alert로 처리 */ }
+    }
     if (!o) return alert('주문 데이터를 찾을 수 없습니다.');
     const total = (Number(o.price) || 0) * (Number(o.qty) || 0);
     const paid = Math.max(0, Number(o.paidAmount) || 0);

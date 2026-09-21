@@ -182,7 +182,11 @@ console.log('📦 firebase-shared.js 로드 완료');
         if (!id) return;
         if (action === 'approve' && typeof window.updateStatus === 'function') window.updateStatus(id, 'approved');
         if (action === 'reject' && typeof window.rejectOrder === 'function') window.rejectOrder(id);
-        if (action === 'payment' && typeof window.confirmPayment === 'function') window.confirmPayment(id);
+        if (action === 'payment') {
+            // WORK51-b: 입금 처리를 인라인 모달(openPaymentModal)로 통일. 없으면 기존 confirmPayment로 폴백.
+            if (typeof window.openPaymentModal === 'function') window.openPaymentModal(id);
+            else if (typeof window.confirmPayment === 'function') window.confirmPayment(id);
+        }
     });
 })();
 
