@@ -1589,10 +1589,7 @@
                     </div>
                 </div>
 
-                <div class="border border-[#334155] rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-not-allowed opacity-50">
-                    <span class="text-xl mb-2">🔒</span>
-                    <p class="text-[10px] text-slate-400 font-bold">세금계산서 및 증빙 파일 첨부 기능은<br>다음 업데이트에 활성화됩니다.</p>
-                </div>
+                <button type="button" onclick="if(window.__yjDetailOrderId) openTradeStatement(window.__yjDetailOrderId)" class="yj-fin-only w-full border border-[#334155] rounded-xl p-4 flex items-center justify-center gap-2 bg-[#0f1522] hover:border-blue-400 text-slate-200 hover:text-white font-black text-sm transition-colors">📄 거래명세서 출력</button>
             </div>
         </div>
     </aside>
@@ -3019,7 +3016,7 @@ function updatePCFinanceInvoiceWaitList(metrics) {
                 </td>
                 <td class="px-4 py-3 text-right font-black text-blue-400">${formatKRW(amount)}</td>
                 <td class="px-4 py-3 text-center">${invoiceBadge}</td>
-                <td class="px-4 py-3 text-center">${actionButton}</td>
+                <td class="px-4 py-3 text-center"><div class="flex flex-col items-center gap-1.5">${actionButton}<button onclick="event.stopPropagation(); openTradeStatement('${o.id}')" class="px-3 py-2 rounded-lg bg-[#0f1522] border border-[#334155] hover:border-blue-400 text-slate-200 hover:text-white text-[10px] font-black transition-colors">📄 거래명세서</button></div></td>
             </tr>
         `;
     }).join('') || `
@@ -4740,6 +4737,107 @@ async function submitPaymentModal(id) {
     }
 }
 
+// ─── WORK51-c: 참고용 거래명세서 A4 출력 ───
+// ⬇⬇ 공급자(우리 회사) 사업자정보 — 나중에 실제 값으로 채워 넣으세요. 빈 값은 양식에서 자동 생략됩니다. ⬇⬇
+// (법적 세금계산서 아님 · 세금계산서는 국세청 홈택스에서 발급 · 본 출력물은 거래처 전달/증빙용 참고문서)
+const YJ_STATEMENT_SUPPLIER = {
+    name: '용진기업',   // 상호 (필수)
+    bizNo: '',          // 사업자등록번호 (예: 123-45-67890)
+    ceo: '',            // 대표자
+    address: '',        // 사업장 주소
+    bizType: '',        // 업태 (예: 제조)
+    bizItem: '',        // 종목 (예: 목재가공/가구)
+    contact: ''         // 전화/팩스 (선택)
+};
+function yjStatementEsc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+async function openTradeStatement(id) {
+    const src = (Array.isArray(filteredOrders) && filteredOrders.length ? filteredOrders : (Array.isArray(orders) ? orders : []));
+    let o = src.find(x => x.id === id) || (Array.isArray(orders) ? orders.find(x => x.id === id) : null);
+    if (!o && typeof db !== 'undefined') {
+        try { const snap = await db.collection('orders').doc(id).get(); if (snap.exists) o = { id: snap.id, ...snap.data() }; } catch (e) { /* 표시용 조회 실패는 아래 alert */ }
+    }
+    if (!o) return alert('주문 데이터를 찾을 수 없습니다.');
+    const qty = Number(o.qty) || 0;
+    const price = Number(o.price) || 0;
+    const supply = price * qty;            // 공급가액(주문 금액 = 부가세 별도 가정)
+    const tax = Math.round(supply * 0.1);  // 부가세 10%
+    const total = supply + tax;            // 합계
+    const won = n => (Number(n) || 0).toLocaleString('ko-KR');
+    const product = typeof getOrderProductName === 'function' ? getOrderProductName(o) : (o.productName || o.material || '-');
+    const spec = [o.material, o.thickness ? String(o.thickness) : '', o.materialColor].filter(Boolean).join(' / ') || '-';
+    const project = typeof getDetailProjectText === 'function' ? getDetailProjectText(o) : (o.projectName || o.site || '');
+    const s = YJ_STATEMENT_SUPPLIER;
+    const supRows = [
+        ['상호', s.name || ''], ['사업자등록번호', s.bizNo || ''], ['대표자', s.ceo || ''],
+        ['주소', s.address || ''], ['업태 / 종목', [s.bizType, s.bizItem].filter(Boolean).join(' / ')], ['연락처', s.contact || '']
+    ].filter(([, v]) => String(v).trim() !== '')
+        .map(([k, v]) => `<tr><td class="k">${yjStatementEsc(k)}</td><td class="v">${yjStatementEsc(v)}</td></tr>`).join('')
+        || `<tr><td class="k">상호</td><td class="v">${yjStatementEsc(s.name || '-')}</td></tr>`;
+    const issueDate = new Date().toISOString().slice(0, 10);
+    const docNo = 'TS-' + issueDate.replace(/-/g, '') + '-' + String(o.id || '').slice(-6);
+    document.getElementById('yjTradeStatementPrint')?.remove();
+    const host = document.createElement('div');
+    host.id = 'yjTradeStatementPrint';
+    host.innerHTML = `
+      <style>
+        @media screen { #yjTradeStatementPrint { display: none !important; } }
+        @media print {
+          body > *:not(#yjTradeStatementPrint) { display: none !important; }
+          #yjTradeStatementPrint { display: block !important; }
+          @page { size: A4; margin: 14mm; }
+        }
+        #yjTradeStatementPrint .ts-doc { font-family: 'Malgun Gothic','맑은 고딕',sans-serif; color:#111; font-size:12px; }
+        #yjTradeStatementPrint .ts-head { display:flex; justify-content:space-between; align-items:flex-end; border-bottom:3px solid #111; padding-bottom:8px; margin-bottom:14px; }
+        #yjTradeStatementPrint .ts-head h1 { font-size:26px; font-weight:800; letter-spacing:8px; margin:0; }
+        #yjTradeStatementPrint .ts-meta { text-align:right; font-size:11px; color:#333; line-height:1.6; }
+        #yjTradeStatementPrint .ts-parties { display:flex; gap:12px; margin-bottom:12px; }
+        #yjTradeStatementPrint .ts-box { flex:1; border:1px solid #333; }
+        #yjTradeStatementPrint .ts-box-title { background:#111; color:#fff; font-weight:800; padding:5px 8px; font-size:11px; }
+        #yjTradeStatementPrint .ts-kv { width:100%; border-collapse:collapse; }
+        #yjTradeStatementPrint .ts-kv td { border-top:1px solid #ddd; padding:5px 8px; vertical-align:top; }
+        #yjTradeStatementPrint .ts-kv td.k { width:34%; color:#555; background:#f6f6f6; font-weight:700; white-space:nowrap; }
+        #yjTradeStatementPrint .ts-items { width:100%; border-collapse:collapse; margin-bottom:12px; }
+        #yjTradeStatementPrint .ts-items th, #yjTradeStatementPrint .ts-items td { border:1px solid #333; padding:7px 8px; }
+        #yjTradeStatementPrint .ts-items th { background:#111; color:#fff; font-size:11px; }
+        #yjTradeStatementPrint .ts-items td.c, #yjTradeStatementPrint .ts-items th.c { text-align:center; }
+        #yjTradeStatementPrint .ts-items td.r, #yjTradeStatementPrint .ts-items th.r { text-align:right; }
+        #yjTradeStatementPrint .ts-total { width:44%; margin-left:auto; border-collapse:collapse; }
+        #yjTradeStatementPrint .ts-total td { border:1px solid #333; padding:6px 10px; }
+        #yjTradeStatementPrint .ts-total td.k { background:#f6f6f6; font-weight:700; color:#555; }
+        #yjTradeStatementPrint .ts-total td.v { text-align:right; font-weight:800; }
+        #yjTradeStatementPrint .ts-total tr.grand td { background:#111; color:#fff; font-size:14px; }
+        #yjTradeStatementPrint .ts-note { margin-top:16px; font-size:10px; color:#777; border-top:1px dashed #bbb; padding-top:8px; }
+      </style>
+      <div class="ts-doc">
+        <div class="ts-head">
+          <h1>거래명세서</h1>
+          <div class="ts-meta">발행일 ${issueDate}<br>문서번호 ${yjStatementEsc(docNo)}</div>
+        </div>
+        <div class="ts-parties">
+          <div class="ts-box"><div class="ts-box-title">공급자</div><table class="ts-kv">${supRows}</table></div>
+          <div class="ts-box"><div class="ts-box-title">공급받는자</div><table class="ts-kv">
+            <tr><td class="k">상호</td><td class="v">${yjStatementEsc(o.client || '-')}</td></tr>
+            <tr><td class="k">사업자등록번호</td><td class="v">&nbsp;</td></tr>
+            <tr><td class="k">현장 / 비고</td><td class="v">${yjStatementEsc(project)}</td></tr>
+          </table></div>
+        </div>
+        <table class="ts-items">
+          <thead><tr><th class="c">No</th><th>품목</th><th>규격</th><th class="r">수량</th><th class="r">단가</th><th class="r">공급가액</th></tr></thead>
+          <tbody><tr><td class="c">1</td><td>${yjStatementEsc(product)}</td><td>${yjStatementEsc(spec)}</td><td class="r">${won(qty)}</td><td class="r">${won(price)}</td><td class="r">${won(supply)}</td></tr></tbody>
+        </table>
+        <table class="ts-total">
+          <tr><td class="k">공급가액</td><td class="v">₩ ${won(supply)}</td></tr>
+          <tr><td class="k">부가세 (10%)</td><td class="v">₩ ${won(tax)}</td></tr>
+          <tr class="grand"><td class="k">합계</td><td class="v">₩ ${won(total)}</td></tr>
+        </table>
+        <p class="ts-note">본 문서는 참고용 거래명세서이며, 법적 효력이 있는 세금계산서가 아닙니다. (세금계산서는 국세청 홈택스에서 발급)</p>
+      </div>`;
+    document.body.appendChild(host);
+    const cleanup = () => { document.getElementById('yjTradeStatementPrint')?.remove(); window.removeEventListener('afterprint', cleanup); };
+    window.addEventListener('afterprint', cleanup);
+    window.print();
+}
+
 function openWoodModal() {
     const items = WOODS_DATA.map(([name, img, color]) => `<div class="wood-btn-wrapper" onclick="selectWood('${name}','${img}','${color}')">${renderWoodVisual(img, color)}<span class="text-[10px] font-black text-slate-700 mt-2 text-center break-keep">${name}</span></div>`).join('');
     document.getElementById('modalContainer').innerHTML = `<div class="fixed inset-0 z-[100] bg-black/70 backdrop-blur-md flex items-end justify-center"><div class="bg-white w-full max-w-md p-6 rounded-t-[3rem] h-[85vh] flex flex-col shadow-2xl transition-all"><div class="flex justify-between items-center mb-6 px-2"><b class="text-xl font-black italic">MATERIAL SELECT</b><button onclick="closeWoodModal()" class="w-10 h-10 bg-slate-100 rounded-full font-black">✕</button></div><div class="flex-1 overflow-y-auto grid grid-cols-2 gap-4 pb-10 px-2">${items}</div></div></div>`;
@@ -5824,6 +5922,7 @@ function selectRow(element, orderId) {
 
     const o = orders.find(x => x.id === orderId);
     if(!o) return;
+    window.__yjDetailOrderId = orderId; // WORK51-c: 상세 패널 거래명세서 출력용
 
     const detailPanel = document.getElementById('rightDetailPanel');
     if (detailPanel) detailPanel.classList.remove('hidden');
