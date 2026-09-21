@@ -172,7 +172,7 @@
     function sanitizeError(error) {
         const code = error?.code || '';
         if (code === 'permission-denied') return '문서 결재 권한이 없습니다. Rules 배포 상태와 관리자 계정을 확인하세요.';
-        if (code === 'failed-precondition' && String(error?.message || '').toLowerCase().includes('index')) return '문서 결재 조회용 Firestore 인덱스가 아직 준비되지 않았습니다.';
+        if (code === 'failed-precondition' && String(error?.message || '').toLowerCase().includes('index')) return '문서 결재 조회 준비가 완료되지 않았습니다. 관리자에게 문의하세요.';
         if (code === 'failed-precondition') return '요청 상태가 변경되었습니다. 새로고침 후 다시 확인하세요.';
         if (code === 'not-found') return '문서 결재 요청을 찾을 수 없습니다.';
         if (code === 'unavailable' || code === 'deadline-exceeded') return '네트워크 문제로 처리하지 못했습니다. 잠시 후 다시 시도하세요.';
@@ -505,7 +505,7 @@
             return;
         }
         if (!window.db?.collection) {
-            setMessage('Firestore 연결이 준비되지 않았습니다.', 'error');
+            setMessage('문서 데이터 연결이 준비되지 않았습니다.', 'error');
             return;
         }
         state.loading = true;
@@ -661,7 +661,7 @@
             return;
         }
         if (!window.db?.runTransaction || !window.firebase?.firestore?.FieldValue) {
-            setMessage('Firestore transaction 기능이 준비되지 않았습니다.', 'error');
+            setMessage('결재 처리 연결이 준비되지 않았습니다.', 'error');
             return;
         }
 

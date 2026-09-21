@@ -948,7 +948,7 @@
         const user = currentUser();
         const auth = authUser();
         if (!isActiveUser(user)) return { ok: false, message: '활성 사용자만 문서 결재 요청을 사용할 수 있습니다.' };
-        if (!window.db?.collection || !window.firebase?.firestore?.FieldValue) return { ok: false, message: 'Firestore 연결이 준비되지 않았습니다.' };
+        if (!window.db?.collection || !window.firebase?.firestore?.FieldValue) return { ok: false, message: '문서 데이터 연결이 준비되지 않았습니다.' };
         if (!hasMatchingAuth(user, auth)) return { ok: false, message: 'Firebase Auth 사용자와 현재 사용자 정보가 일치하지 않습니다.' };
         if (!user.name || !user.role) return { ok: false, message: '사용자 이름과 권한 정보가 필요합니다.' };
         return { ok: true, user, auth };

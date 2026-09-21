@@ -331,3 +331,5 @@
     overflow-wrap: anywhere;
   }
 }
+
+#yjBusinessDocuments [hidden] { display: none !important; }
