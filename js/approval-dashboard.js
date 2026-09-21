@@ -264,7 +264,7 @@
         var code = (e && e.code) || '';
         var msg = '조회 중 오류가 발생했습니다.';
         if (code === 'permission-denied') msg = '조회 권한이 없습니다. (관리자 전체 조회는 admin 계정만 가능합니다.)';
-        else if (code === 'failed-precondition') msg = '조회에 필요한 Firestore 인덱스가 아직 준비되지 않았습니다.';
+        else if (code === 'failed-precondition') msg = '결재 조회 준비가 완료되지 않았습니다. 관리자에게 문의하세요.';
         else if (code === 'unavailable' || code === 'deadline-exceeded') msg = '네트워크 문제로 조회하지 못했습니다. 새로고침 후 다시 시도하세요.';
         tableMessage(msg);
         console.warn('[approval-dashboard] query error:', e);

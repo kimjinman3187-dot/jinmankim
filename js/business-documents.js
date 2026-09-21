@@ -131,7 +131,7 @@
     return b;
   }
   root.innerHTML =
-    '<div class="yb-header"><div><p class="yb-eyebrow">YJ FLOW DOCUMENT WORKSPACE</p><h3>문서 작성·결재·지급을 한곳에서 처리합니다</h3><p>신규 업무는 표준 문서 5종으로 작성하고, 결재 상태와 실제 처리 결과를 함께 확인합니다.</p></div><button type="button" id="ybRefresh">새로고침</button></div>' +
+    '<div class="yb-header"><div><p class="yb-eyebrow">표준 문서 업무</p><h3>문서 작성·결재·지급을 한곳에서 처리합니다</h3><p>신규 업무는 표준 문서 5종으로 작성하고, 결재 상태와 실제 처리 결과를 함께 확인합니다.</p></div><button type="button" id="ybRefresh">새로고침</button></div>' +
     '<nav class="yb-tabs" aria-label="문서 업무 구분"><button type="button" data-yb-view="create">새 문서 작성</button><button type="button" data-yb-view="my">내 문서</button><button type="button" data-yb-view="inbox">결재함</button><button type="button" data-yb-view="payments">지급관리</button><button type="button" data-yb-view="all">전체 문서</button></nav>' +
     '<div class="yb-summary"><div><span>내 문서</span><strong id="ybMetricMine">0</strong></div><div><span>결재 대기</span><strong id="ybMetricPending">0</strong></div><div><span>반려</span><strong id="ybMetricRejected">0</strong></div><div><span>지급 대기</span><strong id="ybMetricPayment">0</strong></div></div>' +
     '<p id="ybMessage" role="status" aria-live="polite"></p><div class="yb-layout"><form id="ybForm"><fieldset id="ybFieldset"><h4>새 문서 작성</h4><div id="ybCommon"></div><div id="ybFields" class="yb-grid"></div><div id="ybRoute" class="yb-grid"></div><label>첨부파일 (최대 5개, 각 10MB·합계 30MB)<input id="ybFiles" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx,.csv"></label><p class="yb-help">지출은 증빙 필수 · 구매·수리는 견적 첨부 권장</p><button type="submit" class="yb-primary">저장하고 결재 요청</button><button type="button" id="ybNew">새 양식</button></fieldset></form><section id="ybRecords"><div class="yb-toolbar"><div><h4 id="ybListTitle">내 문서</h4><p id="ybListHelp" class="yb-help">작성한 표준 문서를 확인합니다.</p></div><label>문서 종류<select id="ybFilter"><option value="all">전체</option></select></label></div><div id="ybList"></div><div id="ybDetail"></div></section></div>';
@@ -273,7 +273,7 @@
       renderWorkspace();
       message(
         key
-          ? "표준 문서를 불러오려면 새로고침하세요."
+          ? "문서 화면에 들어오면 최신 자료를 자동으로 불러옵니다."
           : "승인된 개인 계정으로 로그인하세요.",
       );
     }
@@ -391,6 +391,17 @@
   function isFinance() {
     return ["admin", "accounting"].includes(state.user?.role);
   }
+  function applyRoleVisibility() {
+    const finance = isFinance();
+    const paymentTab = root.querySelector('[data-yb-view="payments"]');
+    if (paymentTab) {
+      paymentTab.hidden = !finance;
+      paymentTab.setAttribute("aria-hidden", finance ? "false" : "true");
+    }
+    const paymentMetric = $("ybMetricPayment")?.parentElement;
+    if (paymentMetric) paymentMetric.hidden = !finance;
+    if (!finance && state.view === "payments") state.view = "my";
+  }
   function visibleRows() {
     let rows = state.rows;
     if (["create", "my"].includes(state.view))
@@ -466,7 +477,7 @@
     const header = el("div", undefined, "yb-inbox-header");
     const copy = el("div");
     copy.append(
-      el("p", "STANDARD DOCUMENT APPROVAL", "yb-eyebrow"),
+      el("p", "표준 문서 결재", "yb-eyebrow"),
       el("h3", "통합 결재함"),
       el("p", "표준 문서 5종의 검토·승인 대상을 한곳에서 처리합니다."),
     );
@@ -495,6 +506,7 @@
     host.append(list);
   }
   function renderWorkspace() {
+    applyRoleVisibility();
     setView(state.view);
     renderMetrics();
   }
