@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>용진기업 통합 관리 시스템 v2.2</title>
+    <title>용진기업 통합 관리 시스템 v2.3</title>
     <meta name="theme-color" content="#1e3a8a">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -185,7 +185,7 @@
         </div>
     </div>
     <div class="system-footer" style="color: rgba(255,255,255,0.3);">
-        <p>Release: 26.09.21 / v2.2.0</p>
+        <p>Release: 26.09.21 / v2.3.0</p>
         <p>Designed by GENE KIM</p>    
         <p style="margin-top:10px; letter-spacing:2px; font-weight:700;">용진기업 업무 시스템</p>
     </div>
@@ -395,7 +395,9 @@
 
         <div id="section-factory" class="hidden space-y-6">
             <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-orange-100">
-                <h3 class="font-bold text-orange-800 mb-6 italic text-lg">생산 공정 제어판</h3>
+                <h3 class="font-bold text-orange-800 mb-1 text-lg">생산수량 입력</h3>
+                <p class="text-[11px] text-slate-500 font-bold mb-4">생산 중 주문 카드에서 이번 생산수량을 등록합니다. 품질·포장·출고 처리는 PC에서 진행합니다.</p>
+                <p id="productionMobileMessage" class="text-[11px] text-blue-700 font-black mb-3 min-h-[16px]" role="status" aria-live="polite"></p>
                 <div id="productionList" class="space-y-6"></div>
             </section>
         </div>
@@ -453,7 +455,7 @@
             </section>
         </div>
         <div class="system-footer pb-4" style="color: #94a3b8;">
-            <p>Release: 26.09.21 / v2.2.0</p>
+            <p>Release: 26.09.21 / v2.3.0</p>
             <p style="color: #64748b;">Designed by GENE KIM</p>
         </div>
     </main>
@@ -481,7 +483,7 @@
         </nav>
         <div class="mt-auto p-6 text-left border-t border-[#334155]/50 opacity-60 hover:opacity-100 transition-opacity">
             <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Release: 26.09.21</p>
-            <p class="text-[9px] font-black text-blue-400/80 uppercase tracking-widest mb-1">YJ Flow v2.2.0</p>
+            <p class="text-[9px] font-black text-blue-400/80 uppercase tracking-widest mb-1">YJ Flow v2.3.0</p>
             <p class="text-[9px] text-slate-500 font-bold">Designed by GENE KIM</p>
         </div>
     </aside>
@@ -1343,13 +1345,27 @@
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg"><p class="text-slate-400 text-xs font-medium mb-1">오늘 출고</p><p class="text-2xl font-bold text-green-400"><span id="pcProductionTodayDoneCount">0</span><span class="text-sm font-normal text-slate-500 ml-1">건</span></p></div>
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg"><p class="text-slate-400 text-xs font-medium mb-1">평균 생산기간</p><p class="text-2xl font-bold text-white"><span id="pcProductionLeadTime">0.0</span><span class="text-sm font-normal text-slate-500 ml-1">일</span></p></div>
                     </div>
+                    <div class="bg-gradient-to-br from-blue-500/10 to-cyan-500/5 border border-blue-500/30 rounded-2xl p-5 shadow-xl mb-6">
+                        <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+                            <div><h3 class="text-sm font-black text-white">빠른 생산수량 입력</h3><p id="pcProductionQuickHelp" class="text-[11px] text-slate-400 font-bold mt-1">생산 중인 주문을 선택하면 총수량·완료수량·잔여수량을 확인하고 바로 등록할 수 있습니다.</p></div>
+                            <span id="pcProductionQuickPermission" class="text-[10px] font-black text-blue-300 border border-blue-500/30 bg-blue-500/10 rounded-md px-2 py-1">입력 가능</span>
+                        </div>
+                        <div class="grid grid-cols-1 xl:grid-cols-[minmax(260px,1.4fr)_minmax(280px,1fr)_150px_auto] gap-3 items-end">
+                            <label class="text-[10px] text-slate-400 font-black">생산 주문 선택<select id="pcProductionQuickOrder" onchange="updatePCProductionQuickSummary()" class="mt-1 w-full px-3 py-3 bg-[#111827] border border-[#334155] rounded-lg text-xs text-white font-bold outline-none focus:border-blue-400"><option value="">생산 중인 주문을 선택하세요</option></select></label>
+                            <div id="pcProductionQuickSummary" class="min-h-[42px] px-3 py-2 bg-[#111827] border border-[#334155] rounded-lg text-xs text-slate-400 font-bold flex items-center">주문을 선택하면 수량이 표시됩니다.</div>
+                            <label class="text-[10px] text-slate-400 font-black">이번 생산수량<input id="pcProductionQuickQty" type="number" min="1" step="1" inputmode="numeric" onkeydown="if(event.key==='Enter'){event.preventDefault();submitPCQuickProduction();}" class="mt-1 w-full px-3 py-3 bg-[#111827] border border-[#334155] rounded-lg text-sm text-white font-black outline-none focus:border-blue-400" placeholder="0"></label>
+                            <button id="pcProductionQuickSubmit" type="button" onclick="submitPCQuickProduction()" class="px-5 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg text-xs font-black">생산수량 등록</button>
+                        </div>
+                        <p id="pcProductionQuickMessage" class="text-[11px] text-slate-400 font-bold mt-3 min-h-[16px]" role="status" aria-live="polite"></p>
+                    </div>
                     <div class="bg-[#1e293b] border border-[#334155] rounded-2xl p-6 shadow-xl mb-6">
                         <div class="flex flex-wrap items-end justify-between gap-3 mb-5">
                             <div><h3 class="text-sm font-bold text-slate-300">전체 생산 주문</h3><p id="pcProductionListMeta" class="text-[10px] text-slate-500 font-bold mt-1">표시할 주문을 확인하는 중입니다.</p></div>
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full lg:w-auto">
-                                <input id="pcProductionSearch" oninput="refreshPCProductionList()" class="px-3 py-2 bg-[#111827] border border-[#334155] rounded-lg text-xs text-white font-bold outline-none focus:border-blue-400" placeholder="거래처·품목·주문번호 검색">
-                                <select id="pcProductionDueFilter" onchange="refreshPCProductionList()" class="px-3 py-2 bg-[#111827] border border-[#334155] rounded-lg text-xs text-white font-bold"><option value="all">납기 전체</option><option value="overdue">지연</option><option value="today">오늘 납기</option><option value="soon">3일 이내</option><option value="normal">정상</option></select>
-                                <select id="pcProductionStageFilter" onchange="refreshPCProductionList()" class="px-3 py-2 bg-[#111827] border border-[#334155] rounded-lg text-xs text-white font-bold"><option value="active">진행 업무</option><option value="all">전체</option><option value="in_production">생산 중</option><option value="quantity_complete">품질 확인 대기</option><option value="quality_passed">포장 대기</option><option value="packed">출고 대기</option><option value="shipped">출고 완료</option></select>
+                            <div class="grid grid-cols-1 sm:grid-cols-[minmax(190px,1fr)_140px_150px_auto] gap-2 w-full lg:w-auto">
+                                <label class="text-[10px] text-slate-500 font-black">검색<input id="pcProductionSearch" oninput="refreshPCProductionList()" class="mt-1 w-full px-3 py-2 bg-[#111827] border border-[#334155] rounded-lg text-xs text-white font-bold outline-none focus:border-blue-400" placeholder="거래처·품목·주문번호"></label>
+                                <label class="text-[10px] text-slate-500 font-black">납기<select id="pcProductionDueFilter" onchange="refreshPCProductionList()" class="mt-1 w-full px-3 py-2 bg-[#111827] border border-[#334155] rounded-lg text-xs text-white font-bold"><option value="all">납기 전체</option><option value="overdue">지연</option><option value="today">오늘 납기</option><option value="soon">3일 이내</option><option value="normal">정상</option></select></label>
+                                <label class="text-[10px] text-slate-500 font-black">생산 단계<select id="pcProductionStageFilter" onchange="refreshPCProductionList()" class="mt-1 w-full px-3 py-2 bg-[#111827] border border-[#334155] rounded-lg text-xs text-white font-bold"><option value="active">진행 업무</option><option value="all">전체</option><option value="in_production">생산 중</option><option value="quantity_complete">품질 확인 대기</option><option value="quality_passed">포장 대기</option><option value="packed">출고 대기</option><option value="shipped">출고 완료</option></select></label>
+                                <button type="button" onclick="resetPCProductionFilters()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-black">필터 초기화</button>
                             </div>
                         </div>
                         <div id="pcProductionProgressList" class="space-y-4"><p class="text-center text-xs text-slate-500 font-bold py-8">생산 주문 데이터가 없습니다.</p></div>
@@ -2680,10 +2696,11 @@ function updateClientProductSalesCard(data = filteredOrders) {
 // --- [작업 21] Finance / AR / Production 카드 실데이터 렌더링 ---
 function updatePCSubDashboards() {
     const metrics = getPCDashboardMetrics(filteredOrders);
+    const productionMetrics = getPCDashboardMetrics(Array.isArray(orders) ? orders : filteredOrders);
 
     updatePCFinanceCards(metrics);
     updatePCARCards(metrics);
-    updatePCProductionCards(metrics);
+    updatePCProductionCards(productionMetrics);
 }
 
 function updatePCFinanceCards(metrics) {
@@ -2764,13 +2781,131 @@ function updatePCARCards(metrics) {
 }
 
 let lastPCProductionMetrics = null;
+let pcProductionFilterUserKey = '';
+
+function setProductionFeedback(message = '', error = false) {
+    ['pcProductionQuickMessage', 'productionMobileMessage'].forEach(id => {
+        const target = document.getElementById(id);
+        if (!target) return;
+        target.textContent = message;
+        target.classList.toggle('text-red-500', error);
+        target.classList.toggle('text-blue-700', !error && id === 'productionMobileMessage');
+        target.classList.toggle('text-green-400', !error && id === 'pcProductionQuickMessage' && Boolean(message));
+    });
+}
+
+function ensurePCProductionFilterDefaults() {
+    const userKey = currentUser?.auth_uid || currentUser?.id || currentUser?.name || 'anonymous';
+    if (pcProductionFilterUserKey === userKey) return;
+    pcProductionFilterUserKey = userKey;
+    const search = document.getElementById('pcProductionSearch');
+    const due = document.getElementById('pcProductionDueFilter');
+    const stage = document.getElementById('pcProductionStageFilter');
+    if (search) search.value = '';
+    if (due) due.value = 'all';
+    if (stage) stage.value = 'active';
+}
+
+function resetPCProductionFilters() {
+    const search = document.getElementById('pcProductionSearch');
+    const due = document.getElementById('pcProductionDueFilter');
+    const stage = document.getElementById('pcProductionStageFilter');
+    if (search) search.value = '';
+    if (due) due.value = 'all';
+    if (stage) stage.value = 'active';
+    refreshPCProductionList();
+}
 
 function refreshPCProductionList() {
     if (lastPCProductionMetrics) updatePCProductionCards(lastPCProductionMetrics);
 }
 
+function getPCQuickProductionOrder() {
+    const id = document.getElementById('pcProductionQuickOrder')?.value || '';
+    return lastPCProductionMetrics?.allProductionItems?.find(order => order.id === id) || null;
+}
+
+function updatePCProductionQuickSummary() {
+    const summary = document.getElementById('pcProductionQuickSummary');
+    const qtyInput = document.getElementById('pcProductionQuickQty');
+    const submit = document.getElementById('pcProductionQuickSubmit');
+    const order = getPCQuickProductionOrder();
+    const writable = canWrite('production');
+    if (!summary || !qtyInput || !submit) return;
+    if (!order) {
+        summary.textContent = '주문을 선택하면 수량이 표시됩니다.';
+        qtyInput.value = '';
+        qtyInput.disabled = true;
+        submit.disabled = true;
+        return;
+    }
+    const total = Number(order.qty) || 0;
+    const completed = Math.min(Number(order.completedQty) || 0, total);
+    const remain = Math.max(0, total - completed);
+    summary.innerHTML = `<div><span class="text-white">${escapeDashboardText(order.client || '-')} · ${escapeDashboardText(getOrderProductName(order))}</span><br><span class="text-slate-500">총 ${total.toLocaleString()} · 완료 ${completed.toLocaleString()} · </span><strong class="text-orange-400">잔여 ${remain.toLocaleString()}장</strong></div>`;
+    qtyInput.disabled = !writable;
+    qtyInput.max = String(remain);
+    submit.disabled = !writable || remain <= 0;
+}
+
+function updatePCProductionQuickEntry(metrics) {
+    const select = document.getElementById('pcProductionQuickOrder');
+    const permission = document.getElementById('pcProductionQuickPermission');
+    const help = document.getElementById('pcProductionQuickHelp');
+    if (!select) return;
+    const previous = select.value;
+    const active = metrics.allProductionItems
+        .filter(order => getProductionStage(order) === 'in_production')
+        .sort((a, b) => String(a.dueDate || '9999-12-31').localeCompare(String(b.dueDate || '9999-12-31')));
+    select.replaceChildren();
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = active.length ? '생산 중인 주문을 선택하세요' : '현재 생산 가능한 승인 주문이 없습니다';
+    select.append(placeholder);
+    active.forEach(order => {
+        const option = document.createElement('option');
+        option.value = order.id;
+        option.textContent = `${order.dueDate || '납기 없음'} · ${order.client || '-'} · ${getOrderProductName(order)} · 잔여 ${Math.max(0, (Number(order.qty) || 0) - (Number(order.completedQty) || 0)).toLocaleString()}장`;
+        select.append(option);
+    });
+    if (active.some(order => order.id === previous)) select.value = previous;
+    select.disabled = !active.length;
+    const writable = canWrite('production');
+    if (permission) {
+        permission.textContent = writable ? '입력 가능' : '조회 전용';
+        permission.className = writable ? 'text-[10px] font-black text-blue-300 border border-blue-500/30 bg-blue-500/10 rounded-md px-2 py-1' : 'text-[10px] font-black text-slate-400 border border-slate-600 bg-slate-700/30 rounded-md px-2 py-1';
+    }
+    if (help) help.textContent = active.length
+        ? (writable ? '생산 중인 주문을 선택하면 총수량·완료수량·잔여수량을 확인하고 바로 등록할 수 있습니다.' : '생산 현황 조회 권한입니다. 수량 등록은 관리자·생산담당자·생산책임자만 가능합니다.')
+        : '현재 생산 가능한 승인 주문이 없습니다. 영업 주문이 승인되면 이곳에 자동으로 표시됩니다.';
+    updatePCProductionQuickSummary();
+}
+
+async function submitPCQuickProduction() {
+    const order = getPCQuickProductionOrder();
+    if (!order) return setProductionFeedback('생산 주문을 먼저 선택하세요.', true);
+    const ok = await addProgress(order.id, 'pcProductionQuickQty');
+    if (ok) setProductionFeedback(`${order.client || '선택 주문'} 생산수량을 등록했습니다.`);
+}
+
+function renderProductionStageRail(order) {
+    const stages = [
+        ['in_production', '생산'],
+        ['quantity_complete', '수량 완료'],
+        ['quality_passed', '품질 확인'],
+        ['packed', '포장'],
+        ['shipped', '출고']
+    ];
+    const current = Math.max(0, stages.findIndex(([key]) => key === getProductionStage(order)));
+    return `<div class="grid grid-cols-5 gap-1 mt-3" aria-label="생산 진행 단계">${stages.map(([key, label], index) => {
+        const stateClass = index < current ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300' : index === current ? 'bg-blue-500/20 border-blue-500/40 text-blue-300' : 'bg-slate-800 border-slate-700 text-slate-600';
+        return `<div class="border rounded-md px-1 py-1.5 text-center text-[9px] font-black ${stateClass}">${index < current ? '✓ ' : ''}${label}</div>`;
+    }).join('')}</div>`;
+}
+
 function updatePCProductionCards(metrics) {
     lastPCProductionMetrics = metrics;
+    ensurePCProductionFilterDefaults();
     const canEditProduction = canWrite('production');
     const activeCount = metrics.allProductionItems.filter(o => getProductionStage(o) === 'in_production').length;
     setText('pcProductionActiveCount', activeCount);
@@ -2778,6 +2913,7 @@ function updatePCProductionCards(metrics) {
     setText('pcProductionPackingCount', metrics.packingWaitItems.length);
     setText('pcProductionTodayDoneCount', metrics.todayDoneItems.length);
     setText('pcProductionLeadTime', metrics.avgLeadTime);
+    updatePCProductionQuickEntry(metrics);
 
     const progressList = document.getElementById('pcProductionProgressList');
     if (!progressList) return;
@@ -2796,67 +2932,43 @@ function updatePCProductionCards(metrics) {
         .sort((a, b) => urgencyRank[getProductionDueBucket(a, metrics.todayStr)] - urgencyRank[getProductionDueBucket(b, metrics.todayStr)] || String(a.dueDate || '9999-12-31').localeCompare(String(b.dueDate || '9999-12-31')));
     setText('pcProductionListMeta', `전체 ${metrics.allProductionItems.length.toLocaleString()}건 중 ${items.length.toLocaleString()}건 표시 · 납기 빠른 순`);
 
+    if (!items.length) {
+        const hasAny = metrics.allProductionItems.length > 0;
+        progressList.innerHTML = `<div class="text-center py-10 border border-dashed border-[#334155] rounded-xl"><p class="text-sm text-slate-300 font-black">${hasAny ? '현재 필터 조건에 맞는 생산 주문이 없습니다.' : '현재 생산 주문이 없습니다.'}</p><p class="text-[11px] text-slate-500 font-bold mt-2">${hasAny ? '검색어·납기·생산 단계 조건을 초기화해 확인하세요.' : '영업 주문이 승인되면 생산 입력 대상으로 자동 표시됩니다.'}</p>${hasAny ? '<button type="button" onclick="resetPCProductionFilters()" class="mt-4 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-black">필터 초기화</button>' : ''}</div>`;
+        return;
+    }
+
     progressList.innerHTML = items.map(o => {
-            const pct = safePercent(o.completedQty, o.qty);
-            const qty = Number(o.qty) || 0;
-            const completedQty = Math.min(Number(o.completedQty) || 0, qty);
-            const remainQty = Math.max(0, qty - completedQty);
-            const inputId = `pc-in-${o.id}`;
-            const productName = getOrderProductName(o);
-
-            return `
-                <div class="border border-[#334155] rounded-xl p-4 bg-[#0f1522]/60">
-                    <div class="flex justify-between items-start gap-3 mb-3">
-                        <div class="min-w-0">
-                            <div class="text-[10px] text-slate-500 font-black uppercase tracking-wider">거래처</div>
-                            <div class="text-white text-sm font-black truncate">${o.client || '-'}</div>
-                            <div class="text-[10px] text-slate-500 font-black mt-2 uppercase tracking-wider">품목</div>
-                            <div class="text-slate-200 text-xs font-bold truncate">${productName}</div>
-                        </div>
-                        <span class="text-blue-400">${pct}%</span>
+        const pct = safePercent(o.completedQty, o.qty);
+        const qty = Number(o.qty) || 0;
+        const completedQty = Math.min(Number(o.completedQty) || 0, qty);
+        const remainQty = Math.max(0, qty - completedQty);
+        const inputId = `pc-in-${o.id}`;
+        const productName = getOrderProductName(o);
+        const stage = getProductionStage(o);
+        return `
+            <div class="border border-[#334155] rounded-xl p-4 bg-[#0f1522]/60">
+                <div class="flex justify-between items-start gap-3 mb-3"><div class="min-w-0"><div class="text-[10px] text-slate-500 font-black uppercase tracking-wider">거래처</div><div class="text-white text-sm font-black truncate">${escapeDashboardText(o.client || '-')}</div><div class="text-[10px] text-slate-500 font-black mt-2 uppercase tracking-wider">품목</div><div class="text-slate-200 text-xs font-bold truncate">${escapeDashboardText(productName)}</div></div><span class="text-blue-400 font-black">${pct}%</span></div>
+                <div class="grid grid-cols-2 gap-2 mb-3 text-[10px] font-bold"><div class="bg-[#111827] border border-[#334155] rounded-lg p-2"><div class="text-slate-500 mb-1">자재</div><div class="text-slate-200">${escapeDashboardText(o.material || '-')}</div></div><div class="bg-[#111827] border border-[#334155] rounded-lg p-2"><div class="text-slate-500 mb-1">규격</div><div class="text-slate-200">${escapeDashboardText(getDetailSpecText(o))}</div></div></div>
+                ${(o.materialColor || o.salesMemo) ? `<div class="space-y-1 mb-3 text-[10px] font-bold">${o.materialColor ? `<div class="bg-[#111827] border border-[#334155] rounded-lg p-2"><span class="text-slate-500">색상/마감</span> <span class="text-slate-200 break-words">${escapeDashboardText(o.materialColor)}</span></div>` : ''}${o.salesMemo ? `<div class="bg-[#111827] border border-[#334155] rounded-lg p-2"><span class="text-slate-500">특이사항</span> <span class="text-slate-200 break-words whitespace-pre-line">${escapeDashboardText(o.salesMemo)}</span></div>` : ''}</div>` : ''}
+                <div class="grid grid-cols-4 gap-2 mb-3 text-[10px] font-bold"><div><span class="text-slate-500">총</span><strong class="block text-white mt-1">${qty.toLocaleString()}장</strong></div><div><span class="text-slate-500">완료</span><strong class="block text-blue-400 mt-1">${completedQty.toLocaleString()}장</strong></div><div><span class="text-slate-500">잔여</span><strong class="block text-orange-400 mt-1">${remainQty.toLocaleString()}장</strong></div><div><span class="text-slate-500">납기</span><strong class="block text-white mt-1">${o.dueDate || '-'}</strong></div></div>
+                <div class="w-full bg-[#0f1522] h-2.5 rounded-full overflow-hidden border border-[#334155]"><div class="bg-blue-500 h-full rounded-full transition-all duration-1000 ease-out" style="width: ${pct}%"></div></div>
+                ${renderProductionStageRail(o)}
+                <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
+                    <div class="flex flex-wrap gap-2 items-center">${getProductionDueBadge(o)}<span class="text-[10px] font-black text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded-md px-2 py-1">${PRODUCTION_STAGE_LABELS[stage]}</span><span class="text-[10px] text-slate-500 font-bold">주문 ${escapeDashboardText(o.orderNo || o.id || '-')}</span></div>
+                    <div class="flex flex-wrap gap-2">
+                        ${canEditProduction && stage === 'in_production' ? `<input type="number" min="1" max="${remainQty}" step="1" inputmode="numeric" id="${inputId}" onkeydown="if(event.key==='Enter'){event.preventDefault();addProgress('${o.id}', '${inputId}');}" class="w-32 px-3 py-2 bg-[#111827] border border-[#334155] rounded-lg text-xs text-white font-bold outline-none focus:border-blue-400" placeholder="이번 생산수량"><button onclick="addProgress('${o.id}', '${inputId}')" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-black">생산수량 등록</button>` : ''}
+                        ${canEditProduction && stage === 'quantity_complete' ? `<button onclick="advanceProductionStage('${o.id}', 'quality_passed')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-black">품질 확인 완료</button>` : ''}
+                        ${canEditProduction && stage === 'quality_passed' ? `<button onclick="advanceProductionStage('${o.id}', 'packed')" class="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-xs font-black">포장 완료</button>` : ''}
+                        ${canEditProduction && stage === 'packed' ? `<button onclick="advanceProductionStage('${o.id}', 'shipped')" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-black">출고 완료</button>` : ''}
+                        ${canEditProduction && stage !== 'shipped' ? `<button onclick="correctProductionQty('${o.id}')" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-black">수량 정정</button>` : ''}
+                        ${!canEditProduction ? '<span class="px-3 py-2 bg-slate-800 text-slate-500 rounded-lg text-xs font-black">조회 전용</span>' : ''}
+                        <button onclick="openProductionQualityException('${o.id}')" class="px-3 py-2 border border-red-500/30 bg-red-500/10 text-red-300 rounded-lg text-xs font-black">품질 이상 보고</button>
                     </div>
-                    <div class="grid grid-cols-2 gap-2 mb-3 text-[10px] font-bold">
-                        <div class="bg-[#111827] border border-[#334155] rounded-lg p-2">
-                            <div class="text-slate-500 mb-1">자재</div>
-                            <div class="text-slate-200">${o.material || '-'}</div>
-                        </div>
-                        <div class="bg-[#111827] border border-[#334155] rounded-lg p-2">
-                            <div class="text-slate-500 mb-1">규격</div>
-                            <div class="text-slate-200">${getDetailSpecText(o)}</div>
-                        </div>
-                    </div>
-                    ${(o.materialColor || o.salesMemo) ? `<div class="space-y-1 mb-3 text-[10px] font-bold">${o.materialColor ? `<div class="bg-[#111827] border border-[#334155] rounded-lg p-2"><span class="text-slate-500">색상/마감</span> <span class="text-slate-200 break-words">${escapeDashboardText(o.materialColor)}</span></div>` : ''}${o.salesMemo ? `<div class="bg-[#111827] border border-[#334155] rounded-lg p-2"><span class="text-slate-500">특이사항</span> <span class="text-slate-200 break-words whitespace-pre-line">${escapeDashboardText(o.salesMemo)}</span></div>` : ''}</div>` : ''}
-                    <div class="grid grid-cols-4 gap-2 mb-3 text-[10px] font-bold">
-                        <div><span class="text-slate-500">총</span><strong class="block text-white mt-1">${qty.toLocaleString()}장</strong></div>
-                        <div><span class="text-slate-500">완료</span><strong class="block text-blue-400 mt-1">${completedQty.toLocaleString()}장</strong></div>
-                        <div><span class="text-slate-500">잔여</span><strong class="block text-orange-400 mt-1">${remainQty.toLocaleString()}장</strong></div>
-                        <div><span class="text-slate-500">납기</span><strong class="block text-white mt-1">${o.dueDate || '-'}</strong></div>
-                    </div>
-
-                    <div class="w-full bg-[#0f1522] h-2.5 rounded-full overflow-hidden border border-[#334155]">
-                        <div class="bg-blue-500 h-full rounded-full transition-all duration-1000 ease-out" style="width: ${pct}%"></div>
-                    </div>
-
-                    <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
-                        <div class="flex flex-wrap gap-2 items-center">${getProductionDueBadge(o)}<span class="text-[10px] font-black text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded-md px-2 py-1">${PRODUCTION_STAGE_LABELS[getProductionStage(o)]}</span><span class="text-[10px] text-slate-500 font-bold">주문 ${escapeDashboardText(o.orderNo || o.id || '-')}</span></div>
-                        <div class="flex flex-wrap gap-2">
-                            ${canEditProduction && getProductionStage(o) === 'in_production' ? `<input type="text" id="${inputId}" class="w-28 px-3 py-2 bg-[#111827] border border-[#334155] rounded-lg text-xs text-white font-bold outline-none focus:border-blue-400" placeholder="생산 수량"><button onclick="addProgress('${o.id}', '${inputId}')" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-black">수량 등록</button>` : ''}
-                            ${canEditProduction && getProductionStage(o) === 'quantity_complete' ? `<button onclick="advanceProductionStage('${o.id}', 'quality_passed')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-black">품질 확인 완료</button>` : ''}
-                            ${canEditProduction && getProductionStage(o) === 'quality_passed' ? `<button onclick="advanceProductionStage('${o.id}', 'packed')" class="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-xs font-black">포장 완료</button>` : ''}
-                            ${canEditProduction && getProductionStage(o) === 'packed' ? `<button onclick="advanceProductionStage('${o.id}', 'shipped')" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-black">출고 완료</button>` : ''}
-                            ${canEditProduction && getProductionStage(o) !== 'shipped' ? `<button onclick="correctProductionQty('${o.id}')" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-black">수량 정정</button>` : ''}
-                            <button onclick="openProductionQualityException('${o.id}')" class="px-3 py-2 border border-red-500/30 bg-red-500/10 text-red-300 rounded-lg text-xs font-black">품질 이상 보고</button>
-                        </div>
-                    </div>
-                    <details class="mt-3 border-t border-[#334155] pt-3"><summary class="cursor-pointer text-[10px] font-black text-slate-400">생산 이력 ${Array.isArray(o.productionHistory) ? o.productionHistory.length : 0}건</summary><div class="mt-2 space-y-2">${renderProductionHistory(o)}</div></details>
                 </div>
-            `;
-        })
-        .join('') || `
-            <p class="text-center text-xs text-slate-500 font-bold py-8">
-                진행 중인 공정 데이터가 없습니다.
-            </p>
-        `;
+                <details class="mt-3 border-t border-[#334155] pt-3"><summary class="cursor-pointer text-[10px] font-black text-slate-400">생산 이력 ${Array.isArray(o.productionHistory) ? o.productionHistory.length : 0}건</summary><div class="mt-2 space-y-2">${renderProductionHistory(o)}</div></details>
+            </div>`;
+    }).join('');
 }
 
 function updatePCFinanceInvoiceWaitList(metrics) {
@@ -4231,9 +4343,9 @@ function renderFactory() {
             </div>
             <div class="flex justify-between items-center text-[10px] font-bold text-slate-500 mb-2"><span>납기: ${o.dueDate || '-'}</span><span>${pct}% 진행</span></div>
             <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden mb-4 border"><div class="${isPostProduction ? 'bg-green-500' : 'bg-orange-500'} h-full rounded-full transition-all" style="width:${pct}%"></div></div>
-            ${isPostProduction ? `<p class="text-[11px] text-green-700 font-black bg-green-50 border border-green-100 rounded-xl p-3">${statusLabel} 단계입니다. 품질·포장·출고 처리는 PC 생산관리에서 진행하세요.</p>` : canEditProduction ? `<div class="flex gap-2"><input type="text" id="in-${o.id}" class="min-w-0 flex-1 p-3 bg-slate-50 rounded-xl border font-bold" placeholder="생산 수량"><button onclick="addProgress('${o.id}')" class="shrink-0 px-6 py-3 bg-orange-600 text-white rounded-xl font-bold shadow-md shadow-orange-200">보고</button></div>` : `<div class="flex gap-2"><input type="text" disabled class="min-w-0 flex-1 p-3 bg-slate-100 rounded-xl border font-bold text-slate-400" placeholder="조회 전용"><button disabled class="shrink-0 px-6 py-3 bg-slate-200 text-slate-400 rounded-xl font-bold cursor-not-allowed">조회</button></div>`}
+            ${isPostProduction ? `<p class="text-[11px] text-green-700 font-black bg-green-50 border border-green-100 rounded-xl p-3">${statusLabel} 단계입니다. 품질·포장·출고 처리는 PC 생산관리에서 진행하세요.</p>` : canEditProduction ? `<div><label class="block text-[10px] text-slate-500 font-black mb-1">이번 생산수량</label><div class="flex gap-2"><input type="number" min="1" max="${remainQty}" step="1" inputmode="numeric" id="in-${o.id}" class="min-w-0 flex-1 p-3 bg-slate-50 rounded-xl border font-black" placeholder="0"><button onclick="addProgress('${o.id}')" class="shrink-0 px-6 py-3 bg-orange-600 text-white rounded-xl font-black shadow-md shadow-orange-200">등록</button></div></div>` : `<div class="flex gap-2"><input type="text" disabled class="min-w-0 flex-1 p-3 bg-slate-100 rounded-xl border font-bold text-slate-400" placeholder="조회 전용"><button disabled class="shrink-0 px-6 py-3 bg-slate-200 text-slate-400 rounded-xl font-bold cursor-not-allowed">조회</button></div>`}
         </div>`;
-    }).join('') || '<p class="text-center py-20 text-slate-400 font-bold">진행 중인 공정 없음</p>';
+    }).join('') || '<div class="text-center py-12 px-4 bg-slate-50 border border-dashed border-slate-200 rounded-2xl"><p class="text-sm text-slate-700 font-black">현재 생산 가능한 승인 주문이 없습니다.</p><p class="text-[11px] text-slate-400 font-bold mt-2">영업 주문이 승인되면 생산수량 입력 카드가 자동으로 표시됩니다.</p></div>';
 }
 
 function renderProductionHistory(order = {}) {
@@ -4248,8 +4360,11 @@ async function addProgress(id, inputId = null) {
     const inputEl = document.getElementById(inputId || 'in-' + id);
     if (!inputEl) return;
     const inputVal = inputEl.value.trim();
-    if (!/^\d+$/.test(inputVal) || Number(inputVal) <= 0) return alert('0보다 큰 정수만 입력하세요.');
+    if (!/^\d+$/.test(inputVal) || Number(inputVal) <= 0) { setProductionFeedback('0보다 큰 정수만 입력하세요.', true); alert('0보다 큰 정수만 입력하세요.'); return false; }
     const added = Number(inputVal);
+    const actionButton = inputEl.id === 'pcProductionQuickQty' ? document.getElementById('pcProductionQuickSubmit') : inputEl.parentElement?.querySelector('button');
+    const originalButtonText = actionButton?.textContent || '';
+    if (actionButton) { actionButton.disabled = true; actionButton.textContent = '등록 중…'; }
     try {
         const ref = db.collection('orders').doc(id);
         const result = await db.runTransaction(async transaction => {
@@ -4271,7 +4386,15 @@ async function addProgress(id, inputId = null) {
         });
         inputEl.value = '';
         await logAction('FACTORY_PROGRESS', id, { added, total: result.afterQty, productionStage: result.stage, productionCompletedAt: result.productionCompletedAt });
-    } catch (e) { alert('생산수량 등록 실패: ' + e.message); }
+        setProductionFeedback(`생산수량 ${added.toLocaleString()}장을 등록했습니다.`);
+        return true;
+    } catch (e) {
+        setProductionFeedback('생산수량 등록 실패: ' + e.message, true);
+        alert('생산수량 등록 실패: ' + e.message);
+        return false;
+    } finally {
+        if (actionButton?.isConnected) { actionButton.disabled = false; actionButton.textContent = originalButtonText; }
+    }
 }
 
 async function correctProductionQty(id) {
