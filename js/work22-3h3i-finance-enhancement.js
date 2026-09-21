@@ -15,7 +15,7 @@
     if (window.__YJ_FLOW_PC_ENHANCEMENT_PATCHES__) return;
     window.__YJ_FLOW_PC_ENHANCEMENT_PATCHES__ = true;
 
-    const PATCH_VERSION = 'V2.0.3';
+    const PATCH_VERSION = 'V2.2.0';
     const LAST_UPDATED = '26.05.28';
 
     const MONEY_KPI_IDS = [
@@ -133,7 +133,7 @@
                 || firstText.includes('v2.0.1')
                 || firstText.trim().startsWith(':');
             if (looksLikeReleaseRow) {
-                rows[0].textContent = 'Release: 26.06.18 / v2.0.3';
+                rows[0].textContent = 'Release: 26.09.21 / v2.2.0';
             }
             // K5G-12: 기존 'YJ FLOW' 행 또는 Release/v2.0.3 행이 있으면 구버전 버전 라인을 추가 삽입하지 않는다
             const hasVersion = rows.some(p => {

@@ -983,9 +983,24 @@
   }, 500);
   watchAuth();
   sync();
+  function openQualityException(order) {
+    setView("create");
+    state.draft = null;
+    state.revise = null;
+    form.reset();
+    type.value = "quality";
+    renderFields();
+    $("yb-title").value = `생산·품질 예외 - ${order.client || order.orderNo || order.id}`;
+    $("yb-reason").value = `${order.product || "품목"} 생산 과정에서 확인된 예외사항을 기록합니다.`;
+    $("yb-orderReference").value = order.orderNo || order.id || "";
+    $("yb-quantity").value = Number(order.quantity) || 0;
+    root.scrollIntoView({ behavior: "smooth", block: "start" });
+    message("연결 주문 정보를 불러왔습니다. 예외 내용과 처리안을 작성하세요.");
+  }
   window.YJBusinessDocuments = {
     refresh: () => run(load),
     setView,
+    openQualityException,
     getRows: () => state.rows.slice(),
   };
 })();

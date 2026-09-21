@@ -185,7 +185,7 @@
         </div>
     </div>
     <div class="system-footer" style="color: rgba(255,255,255,0.3);">
-        <p>Release: 26.09.21 / v2.1.0</p>
+        <p>Release: 26.09.21 / v2.2.0</p>
         <p>Designed by GENE KIM</p>    
         <p style="margin-top:10px; letter-spacing:2px; font-weight:700;">용진기업 업무 시스템</p>
     </div>
@@ -453,7 +453,7 @@
             </section>
         </div>
         <div class="system-footer pb-4" style="color: #94a3b8;">
-            <p>Release: 26.09.21 / v2.1.0</p>
+            <p>Release: 26.09.21 / v2.2.0</p>
             <p style="color: #64748b;">Designed by GENE KIM</p>
         </div>
     </main>
@@ -481,7 +481,7 @@
         </nav>
         <div class="mt-auto p-6 text-left border-t border-[#334155]/50 opacity-60 hover:opacity-100 transition-opacity">
             <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Release: 26.09.21</p>
-            <p class="text-[9px] font-black text-blue-400/80 uppercase tracking-widest mb-1">YJ Flow v2.1.0</p>
+            <p class="text-[9px] font-black text-blue-400/80 uppercase tracking-widest mb-1">YJ Flow v2.2.0</p>
             <p class="text-[9px] text-slate-500 font-bold">Designed by GENE KIM</p>
         </div>
     </aside>
@@ -1329,44 +1329,31 @@
 
             <div id="pc-page-factory" class="pc-page hidden">
                 <div class="max-w-6xl mx-auto w-full p-6 pb-10">
-                    <h2 class="text-2xl font-black text-white mb-6">생산 공정 관제탑</h2>
-                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                        <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
-                            <p class="text-slate-400 text-xs font-medium mb-1">진행 중 공정</p>
-                          <p class="text-2xl font-bold text-blue-400">
-    <span id="pcProductionActiveCount">0</span><span class="text-sm font-normal text-slate-500 ml-1">건</span>
-</p>  
+                    <div class="flex flex-wrap items-end justify-between gap-3 mb-6">
+                        <div>
+                            <h2 class="text-2xl font-black text-white">생산 관리</h2>
+                            <p class="text-xs text-slate-500 font-bold mt-2">생산수량부터 품질 확인·포장·출고까지 주문별 이력을 관리합니다.</p>
                         </div>
-                        <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
-                            <p class="text-slate-400 text-xs font-medium mb-1">완료 대기 (포장)</p>
-<p class="text-2xl font-bold text-yellow-500">
-    <span id="pcProductionPackingCount">0</span><span class="text-sm font-normal text-slate-500 ml-1">건</span>
-</p>
-                        </div>
-                        <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
-                            <p class="text-slate-400 text-xs font-medium mb-1">당일 배송 완료</p>
-                            <p class="text-2xl font-bold text-green-400">
-    <span id="pcProductionTodayDoneCount">0</span><span class="text-sm font-normal text-slate-500 ml-1">건</span>
-</p>
-                        </div>
-                        <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
-                            <p class="text-slate-400 text-xs font-medium mb-1">평균 리드타임</p>
-                            <p class="text-2xl font-bold text-white">
-    <span id="pcProductionLeadTime">0.0</span><span class="text-sm font-normal text-slate-500 ml-1">일</span>
-</p>
-
-                        </div>
+                        <span class="text-[10px] font-black text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded-lg px-3 py-1.5">실제 기록 기준</span>
+                    </div>
+                    <div class="grid grid-cols-2 xl:grid-cols-5 gap-4 mb-6">
+                        <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg"><p class="text-slate-400 text-xs font-medium mb-1">생산 진행</p><p class="text-2xl font-bold text-blue-400"><span id="pcProductionActiveCount">0</span><span class="text-sm font-normal text-slate-500 ml-1">건</span></p></div>
+                        <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg"><p class="text-slate-400 text-xs font-medium mb-1">품질 확인 대기</p><p class="text-2xl font-bold text-yellow-400"><span id="pcProductionQualityCount">0</span><span class="text-sm font-normal text-slate-500 ml-1">건</span></p></div>
+                        <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg"><p class="text-slate-400 text-xs font-medium mb-1">포장·출고 대기</p><p class="text-2xl font-bold text-orange-400"><span id="pcProductionPackingCount">0</span><span class="text-sm font-normal text-slate-500 ml-1">건</span></p></div>
+                        <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg"><p class="text-slate-400 text-xs font-medium mb-1">오늘 출고</p><p class="text-2xl font-bold text-green-400"><span id="pcProductionTodayDoneCount">0</span><span class="text-sm font-normal text-slate-500 ml-1">건</span></p></div>
+                        <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg"><p class="text-slate-400 text-xs font-medium mb-1">평균 생산기간</p><p class="text-2xl font-bold text-white"><span id="pcProductionLeadTime">0.0</span><span class="text-sm font-normal text-slate-500 ml-1">일</span></p></div>
                     </div>
                     <div class="bg-[#1e293b] border border-[#334155] rounded-2xl p-6 shadow-xl mb-6">
-                        <h3 class="text-sm font-bold text-slate-400 mb-6 uppercase tracking-widest flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span> 실시간 핵심 공정 진행률
-                        </h3>
-                        <div id="pcProductionProgressList" class="space-y-6">
-    <p class="text-center text-xs text-slate-500 font-bold py-8">
-        진행 중인 공정 데이터가 없습니다.
-    </p>
-</div>
-</div>
+                        <div class="flex flex-wrap items-end justify-between gap-3 mb-5">
+                            <div><h3 class="text-sm font-bold text-slate-300">전체 생산 주문</h3><p id="pcProductionListMeta" class="text-[10px] text-slate-500 font-bold mt-1">표시할 주문을 확인하는 중입니다.</p></div>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full lg:w-auto">
+                                <input id="pcProductionSearch" oninput="refreshPCProductionList()" class="px-3 py-2 bg-[#111827] border border-[#334155] rounded-lg text-xs text-white font-bold outline-none focus:border-blue-400" placeholder="거래처·품목·주문번호 검색">
+                                <select id="pcProductionDueFilter" onchange="refreshPCProductionList()" class="px-3 py-2 bg-[#111827] border border-[#334155] rounded-lg text-xs text-white font-bold"><option value="all">납기 전체</option><option value="overdue">지연</option><option value="today">오늘 납기</option><option value="soon">3일 이내</option><option value="normal">정상</option></select>
+                                <select id="pcProductionStageFilter" onchange="refreshPCProductionList()" class="px-3 py-2 bg-[#111827] border border-[#334155] rounded-lg text-xs text-white font-bold"><option value="active">진행 업무</option><option value="all">전체</option><option value="in_production">생산 중</option><option value="quantity_complete">품질 확인 대기</option><option value="quality_passed">포장 대기</option><option value="packed">출고 대기</option><option value="shipped">출고 완료</option></select>
+                            </div>
+                        </div>
+                        <div id="pcProductionProgressList" class="space-y-4"><p class="text-center text-xs text-slate-500 font-bold py-8">생산 주문 데이터가 없습니다.</p></div>
+                    </div>
         <div id="pc-factory-chart-container" class="bg-[#1e293b] border border-[#334155] rounded-2xl p-6 shadow-xl hidden lg:block">
                         <h3 class="text-sm font-bold text-slate-400 mb-6 uppercase tracking-widest text-center">주문품목별 생산 Top10 (진행 vs 완료)</h3>
                         <div class="relative h-[280px] w-full">
@@ -2204,6 +2191,69 @@ function getMaterialBucket(material = '') {
     return '기타';
 }
 
+
+const PRODUCTION_STAGE_LABELS = {
+    in_production: '생산 중',
+    quantity_complete: '품질 확인 대기',
+    quality_passed: '포장 대기',
+    packed: '출고 대기',
+    shipped: '출고 완료'
+};
+
+function getTimestampMs(value) {
+    if (!value) return 0;
+    if (typeof value === 'number') return value;
+    if (value.toMillis) return value.toMillis();
+    if (value.seconds) return Number(value.seconds) * 1000;
+    const parsed = new Date(value).getTime();
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function getKSTDateStringFromValue(value) {
+    const ms = getTimestampMs(value);
+    return ms ? getKSTDateString(new Date(ms)) : '';
+}
+
+function getProductionStage(order = {}) {
+    if (PRODUCTION_STAGE_LABELS[order.productionStage]) return order.productionStage;
+    if (order.status === 'completed') return 'shipped';
+    const qty = Number(order.qty) || 0;
+    if (qty > 0 && Number(order.completedQty) >= qty) return 'quantity_complete';
+    return 'in_production';
+}
+
+function getProductionDueBucket(order = {}, todayStr = getKSTDateString()) {
+    if (!order.dueDate || getProductionStage(order) === 'shipped') return 'normal';
+    const diff = daysBetween(todayStr, order.dueDate);
+    if (diff < 0) return 'overdue';
+    if (diff === 0) return 'today';
+    if (diff <= 3) return 'soon';
+    return 'normal';
+}
+
+function getProductionDueBadge(order) {
+    const bucket = getProductionDueBucket(order);
+    const labels = { overdue: '지연', today: '오늘 납기', soon: '3일 이내', normal: '정상' };
+    const colors = { overdue: 'text-red-300 bg-red-500/10 border-red-500/30', today: 'text-yellow-300 bg-yellow-500/10 border-yellow-500/30', soon: 'text-orange-300 bg-orange-500/10 border-orange-500/30', normal: 'text-slate-300 bg-slate-700/30 border-slate-600' };
+    return `<span class="text-[10px] font-black border rounded-md px-2 py-1 ${colors[bucket]}">${labels[bucket]}</span>`;
+}
+
+function formatProductionHistoryTime(value) {
+    const ms = getTimestampMs(value);
+    return ms ? formatKstDateTime(new Date(ms)) : '-';
+}
+
+function makeProductionHistoryEntry(action, details = {}) {
+    return {
+        id: `PH-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        action,
+        actorUid: currentUser?.auth_uid || currentUser?.id || '',
+        actorName: currentUser?.name || '사용자',
+        at: Date.now(),
+        ...details
+    };
+}
+
 function getPCDashboardMetrics(data = filteredOrders) {
     const todayStr = getKSTDateString();
 
@@ -2232,14 +2282,19 @@ const debtAmount = debtItems.reduce((sum, o) => sum + getOutstandingAmount(o), 0
     const receivableBase = paidAmount + debtAmount;
     const recoveryRate = receivableBase > 0 ? Math.round((paidAmount / receivableBase) * 100) : 0;
 
-    const todayDoneItems = completedItems.filter(o => o.dueDate === todayStr);
-    const packingWaitItems = completedItems.filter(o => o.paymentStatus !== 'paid');
+    const allProductionItems = data.filter(o => ['approved', 'completed'].includes(o.status));
+    const qualityWaitItems = allProductionItems.filter(o => getProductionStage(o) === 'quantity_complete');
+    const packingWaitItems = allProductionItems.filter(o => ['quality_passed', 'packed'].includes(getProductionStage(o)));
+    const todayDoneItems = allProductionItems.filter(o => getProductionStage(o) === 'shipped' && getKSTDateStringFromValue(o.shippedAt) === todayStr);
 
-    const leadTimes = completedItems
+    const leadTimes = allProductionItems
         .map(o => {
-            if (!o.createdAt || !o.dueDate) return null;
-            const createdDate = getKSTDateString(new Date(Number(o.createdAt)));
-            const diff = daysBetween(createdDate, o.dueDate);
+            const finishedAt = o.productionCompletedAt || o.completedAt;
+            if (!o.createdAt || !finishedAt) return null;
+            const createdDate = getKSTDateStringFromValue(o.createdAt);
+            const finishedDate = getKSTDateStringFromValue(finishedAt);
+            if (!createdDate || !finishedDate) return null;
+            const diff = daysBetween(createdDate, finishedDate);
             return diff >= 0 ? diff : null;
         })
         .filter(v => v !== null);
@@ -2265,6 +2320,8 @@ const debtAmount = debtItems.reduce((sum, o) => sum + getOutstandingAmount(o), 0
     recoveryRate,
     todayDoneItems,
     packingWaitItems,
+    qualityWaitItems,
+    allProductionItems,
     avgLeadTime
     };
 }
@@ -2706,20 +2763,40 @@ function updatePCARCards(metrics) {
         `;
 }
 
+let lastPCProductionMetrics = null;
+
+function refreshPCProductionList() {
+    if (lastPCProductionMetrics) updatePCProductionCards(lastPCProductionMetrics);
+}
+
 function updatePCProductionCards(metrics) {
+    lastPCProductionMetrics = metrics;
     const canEditProduction = canWrite('production');
-    setText('pcProductionActiveCount', metrics.activeProductionItems.length);
+    const activeCount = metrics.allProductionItems.filter(o => getProductionStage(o) === 'in_production').length;
+    setText('pcProductionActiveCount', activeCount);
+    setText('pcProductionQualityCount', metrics.qualityWaitItems.length);
     setText('pcProductionPackingCount', metrics.packingWaitItems.length);
     setText('pcProductionTodayDoneCount', metrics.todayDoneItems.length);
     setText('pcProductionLeadTime', metrics.avgLeadTime);
 
     const progressList = document.getElementById('pcProductionProgressList');
     if (!progressList) return;
+    const search = String(document.getElementById('pcProductionSearch')?.value || '').trim().toLowerCase();
+    const dueFilter = document.getElementById('pcProductionDueFilter')?.value || 'all';
+    const stageFilter = document.getElementById('pcProductionStageFilter')?.value || 'active';
+    const urgencyRank = { overdue: 0, today: 1, soon: 2, normal: 3 };
+    const items = metrics.allProductionItems
+        .filter(o => {
+            const stage = getProductionStage(o);
+            const matchesStage = stageFilter === 'all' || (stageFilter === 'active' ? stage !== 'shipped' : stage === stageFilter);
+            const matchesDue = dueFilter === 'all' || getProductionDueBucket(o, metrics.todayStr) === dueFilter;
+            const haystack = [o.id, o.orderNo, o.client, getOrderProductName(o), o.material].join(' ').toLowerCase();
+            return matchesStage && matchesDue && (!search || haystack.includes(search));
+        })
+        .sort((a, b) => urgencyRank[getProductionDueBucket(a, metrics.todayStr)] - urgencyRank[getProductionDueBucket(b, metrics.todayStr)] || String(a.dueDate || '9999-12-31').localeCompare(String(b.dueDate || '9999-12-31')));
+    setText('pcProductionListMeta', `전체 ${metrics.allProductionItems.length.toLocaleString()}건 중 ${items.length.toLocaleString()}건 표시 · 납기 빠른 순`);
 
-    progressList.innerHTML = metrics.activeProductionItems
-        .sort((a, b) => String(a.dueDate || '').localeCompare(String(b.dueDate || '')))
-        .slice(0, 5)
-        .map(o => {
+    progressList.innerHTML = items.map(o => {
             const pct = safePercent(o.completedQty, o.qty);
             const qty = Number(o.qty) || 0;
             const completedQty = Math.min(Number(o.completedQty) || 0, qty);
@@ -2760,20 +2837,18 @@ function updatePCProductionCards(metrics) {
                         <div class="bg-blue-500 h-full rounded-full transition-all duration-1000 ease-out" style="width: ${pct}%"></div>
                     </div>
 
-                    <div class="mt-3 flex gap-2">
-                        <input 
-                            type="text" 
-                            id="${inputId}" 
-                            class="flex-1 px-3 py-2 bg-[#111827] border border-[#334155] rounded-lg text-xs text-white font-bold outline-none focus:border-blue-400" 
-                            placeholder="생산 수량"
-                            ${canEditProduction ? '' : 'disabled'}
-                        >
-                        ${
-                            canEditProduction
-                                ? `<button onclick="addProgress('${o.id}', '${inputId}')" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-black shadow-md transition-colors">보고</button>`
-                                : `<button disabled class="px-4 py-2 bg-slate-700 text-slate-500 rounded-lg text-xs font-black cursor-not-allowed">조회</button>`
-                        }
+                    <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
+                        <div class="flex flex-wrap gap-2 items-center">${getProductionDueBadge(o)}<span class="text-[10px] font-black text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded-md px-2 py-1">${PRODUCTION_STAGE_LABELS[getProductionStage(o)]}</span><span class="text-[10px] text-slate-500 font-bold">주문 ${escapeDashboardText(o.orderNo || o.id || '-')}</span></div>
+                        <div class="flex flex-wrap gap-2">
+                            ${canEditProduction && getProductionStage(o) === 'in_production' ? `<input type="text" id="${inputId}" class="w-28 px-3 py-2 bg-[#111827] border border-[#334155] rounded-lg text-xs text-white font-bold outline-none focus:border-blue-400" placeholder="생산 수량"><button onclick="addProgress('${o.id}', '${inputId}')" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-black">수량 등록</button>` : ''}
+                            ${canEditProduction && getProductionStage(o) === 'quantity_complete' ? `<button onclick="advanceProductionStage('${o.id}', 'quality_passed')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-black">품질 확인 완료</button>` : ''}
+                            ${canEditProduction && getProductionStage(o) === 'quality_passed' ? `<button onclick="advanceProductionStage('${o.id}', 'packed')" class="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-xs font-black">포장 완료</button>` : ''}
+                            ${canEditProduction && getProductionStage(o) === 'packed' ? `<button onclick="advanceProductionStage('${o.id}', 'shipped')" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-black">출고 완료</button>` : ''}
+                            ${canEditProduction && getProductionStage(o) !== 'shipped' ? `<button onclick="correctProductionQty('${o.id}')" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-black">수량 정정</button>` : ''}
+                            <button onclick="openProductionQualityException('${o.id}')" class="px-3 py-2 border border-red-500/30 bg-red-500/10 text-red-300 rounded-lg text-xs font-black">품질 이상 보고</button>
+                        </div>
                     </div>
+                    <details class="mt-3 border-t border-[#334155] pt-3"><summary class="cursor-pointer text-[10px] font-black text-slate-400">생산 이력 ${Array.isArray(o.productionHistory) ? o.productionHistory.length : 0}건</summary><div class="mt-2 space-y-2">${renderProductionHistory(o)}</div></details>
                 </div>
             `;
         })
@@ -4121,19 +4196,19 @@ function renderFactory() {
     const canEditProduction = canWrite('production');
     const list = document.getElementById('productionList');
     const productionItems = filteredOrders.filter(o =>
-        o.status === 'approved' ||
-        (o.status === 'completed' && o.paymentStatus !== 'paid')
+        ['approved', 'completed'].includes(o.status) && getProductionStage(o) !== 'shipped'
     );
     if(list) list.innerHTML = productionItems.map(o => {
         const pct = safePercent(o.completedQty, o.qty);
-        const isPackingWait = o.status === 'completed' && o.paymentStatus !== 'paid';
+        const stage = getProductionStage(o);
+        const isPostProduction = stage !== 'in_production';
         const qty = Number(o.qty) || 0;
         const completedQty = Math.min(Number(o.completedQty) || 0, qty);
         const remainQty = Math.max(0, qty - completedQty);
         const productName = getOrderProductName(o);
-        const statusLabel = isPackingWait ? '완료/포장 대기' : '생산 중';
+        const statusLabel = PRODUCTION_STAGE_LABELS[stage];
         return `
-        <div class="bg-white p-5 rounded-3xl border shadow-sm border-l-4 ${isPackingWait ? 'border-l-green-500' : 'border-l-orange-500'} mb-5">
+        <div class="bg-white p-5 rounded-3xl border shadow-sm border-l-4 ${isPostProduction ? 'border-l-green-500' : 'border-l-orange-500'} mb-5">
             <div class="flex justify-between items-start gap-3 mb-3">
                 <div class="min-w-0">
                     <p class="text-[10px] text-slate-400 font-black uppercase">거래처</p>
@@ -4141,7 +4216,7 @@ function renderFactory() {
                     <p class="text-[10px] text-slate-400 font-black uppercase mt-2">품목</p>
                     <p class="text-[13px] text-slate-800 font-black break-words">${productName}</p>
                 </div>
-                <span class="shrink-0 text-[10px] font-black px-2 py-1 rounded-lg ${isPackingWait ? 'text-green-700 bg-green-50' : 'text-orange-700 bg-orange-50'}">${statusLabel}</span>
+                <span class="shrink-0 text-[10px] font-black px-2 py-1 rounded-lg ${isPostProduction ? 'text-green-700 bg-green-50' : 'text-orange-700 bg-orange-50'}">${statusLabel}</span>
             </div>
             <div class="bg-slate-50 border border-slate-100 rounded-2xl p-3 mb-3 text-[11px] font-bold grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 items-baseline">
                 <span class="text-slate-400">자재</span><span class="text-slate-800 break-words">${o.material || '-'}</span>
@@ -4152,68 +4227,118 @@ function renderFactory() {
             <div class="grid grid-cols-3 gap-2 mb-3 text-center">
                 <div class="bg-slate-50 rounded-xl p-2"><span class="block text-[9px] text-slate-400 font-black">총 수량</span><strong class="text-xs text-slate-800">${qty.toLocaleString()}장</strong></div>
                 <div class="bg-blue-50 rounded-xl p-2"><span class="block text-[9px] text-blue-400 font-black">완료</span><strong class="text-xs text-blue-700">${completedQty.toLocaleString()}장</strong></div>
-                <div class="${isPackingWait ? 'bg-green-50' : 'bg-orange-50'} rounded-xl p-2"><span class="block text-[9px] ${isPackingWait ? 'text-green-500' : 'text-orange-500'} font-black">잔여</span><strong class="text-xs ${isPackingWait ? 'text-green-700' : 'text-orange-700'}">${remainQty.toLocaleString()}장</strong></div>
+                <div class="${isPostProduction ? 'bg-green-50' : 'bg-orange-50'} rounded-xl p-2"><span class="block text-[9px] ${isPostProduction ? 'text-green-500' : 'text-orange-500'} font-black">잔여</span><strong class="text-xs ${isPostProduction ? 'text-green-700' : 'text-orange-700'}">${remainQty.toLocaleString()}장</strong></div>
             </div>
             <div class="flex justify-between items-center text-[10px] font-bold text-slate-500 mb-2"><span>납기: ${o.dueDate || '-'}</span><span>${pct}% 진행</span></div>
-            <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden mb-4 border"><div class="${isPackingWait ? 'bg-green-500' : 'bg-orange-500'} h-full rounded-full transition-all" style="width:${pct}%"></div></div>
-            ${isPackingWait ? '<p class="text-[11px] text-green-700 font-black bg-green-50 border border-green-100 rounded-xl p-3">생산 완료 후 입금/포장 대기 중인 항목입니다.</p>' : canEditProduction ? `<div class="flex gap-2"><input type="text" id="in-${o.id}" class="min-w-0 flex-1 p-3 bg-slate-50 rounded-xl border font-bold" placeholder="생산 수량"><button onclick="addProgress('${o.id}')" class="shrink-0 px-6 py-3 bg-orange-600 text-white rounded-xl font-bold shadow-md shadow-orange-200">보고</button></div>` : `<div class="flex gap-2"><input type="text" disabled class="min-w-0 flex-1 p-3 bg-slate-100 rounded-xl border font-bold text-slate-400" placeholder="조회 전용"><button disabled class="shrink-0 px-6 py-3 bg-slate-200 text-slate-400 rounded-xl font-bold cursor-not-allowed">조회</button></div>`}
+            <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden mb-4 border"><div class="${isPostProduction ? 'bg-green-500' : 'bg-orange-500'} h-full rounded-full transition-all" style="width:${pct}%"></div></div>
+            ${isPostProduction ? `<p class="text-[11px] text-green-700 font-black bg-green-50 border border-green-100 rounded-xl p-3">${statusLabel} 단계입니다. 품질·포장·출고 처리는 PC 생산관리에서 진행하세요.</p>` : canEditProduction ? `<div class="flex gap-2"><input type="text" id="in-${o.id}" class="min-w-0 flex-1 p-3 bg-slate-50 rounded-xl border font-bold" placeholder="생산 수량"><button onclick="addProgress('${o.id}')" class="shrink-0 px-6 py-3 bg-orange-600 text-white rounded-xl font-bold shadow-md shadow-orange-200">보고</button></div>` : `<div class="flex gap-2"><input type="text" disabled class="min-w-0 flex-1 p-3 bg-slate-100 rounded-xl border font-bold text-slate-400" placeholder="조회 전용"><button disabled class="shrink-0 px-6 py-3 bg-slate-200 text-slate-400 rounded-xl font-bold cursor-not-allowed">조회</button></div>`}
         </div>`;
     }).join('') || '<p class="text-center py-20 text-slate-400 font-bold">진행 중인 공정 없음</p>';
 }
 
-async function addProgress(id, inputId = null) { 
+function renderProductionHistory(order = {}) {
+    const rows = Array.isArray(order.productionHistory) ? order.productionHistory.slice().reverse() : [];
+    if (!rows.length) return '<p class="text-[10px] text-slate-500 font-bold">아직 기록된 생산 이력이 없습니다.</p>';
+    const labels = { progress: '수량 등록', correction: '수량 정정', quality_passed: '품질 확인 완료', packed: '포장 완료', shipped: '출고 완료' };
+    return rows.slice(0, 20).map(row => `<div class="flex flex-wrap justify-between gap-2 bg-[#111827] border border-[#334155] rounded-lg p-2 text-[10px]"><span class="text-slate-200 font-bold">${labels[row.action] || row.action}${row.quantity ? ` · ${Number(row.quantity).toLocaleString()}장` : ''}${row.reason ? ` · ${escapeDashboardText(row.reason)}` : ''}</span><span class="text-slate-500">${escapeDashboardText(row.actorName || '사용자')} · ${formatProductionHistoryTime(row.at)}</span></div>`).join('');
+}
+
+async function addProgress(id, inputId = null) {
     if (!requireWrite('production', '생산 수정 권한이 없습니다.')) return;
-    const o = orders.find(x => x.id === id);
     const inputEl = document.getElementById(inputId || 'in-' + id);
-
-    if (!o) return alert('주문 데이터를 찾을 수 없습니다.');
     if (!inputEl) return;
-
     const inputVal = inputEl.value.trim();
-
-    if (!/^\d+$/.test(inputVal)) {
-        return alert('정수(숫자)만 입력 가능합니다.');
-    }
-
-    const val = parseInt(inputVal, 10);
-
-    if (val <= 0) {
-        return alert('0보다 큰 수를 입력하세요.');
-    }
-
-    if ((o.completedQty || 0) + val > o.qty) {
-        return alert(`초과! 남은 수량: ${o.qty - (o.completedQty || 0)}장`);
-    }
-
-    inputEl.value = '';
-
-    const newQty = (o.completedQty || 0) + val;
-    const newStatus = newQty >= o.qty ? 'completed' : 'approved';
-
-    const updatePayload = {
-        completedQty: newQty,
-        status: newStatus
-    };
-
-    // [작업 22-1] 생산 완료 시 실제 완료 시각 저장
-    if (newStatus === 'completed' && !o.completedAt) {
-        updatePayload.completedAt = Date.now();
-    }
-
+    if (!/^\d+$/.test(inputVal) || Number(inputVal) <= 0) return alert('0보다 큰 정수만 입력하세요.');
+    const added = Number(inputVal);
     try {
-        if (typeof db !== 'undefined') {
-            await db.collection('orders').doc(id).update(updatePayload);
-        }
-
-        await logAction('FACTORY_PROGRESS', id, {
-            added: val,
-            total: newQty,
-            status: newStatus,
-            completedAt: updatePayload.completedAt || o.completedAt || null
+        const ref = db.collection('orders').doc(id);
+        const result = await db.runTransaction(async transaction => {
+            const snap = await transaction.get(ref);
+            if (!snap.exists) throw new Error('주문 데이터를 찾을 수 없습니다.');
+            const fresh = snap.data();
+            if (getProductionStage(fresh) !== 'in_production') throw new Error('현재 단계에서는 생산수량을 추가할 수 없습니다.');
+            const qty = Number(fresh.qty) || 0;
+            const beforeQty = Number(fresh.completedQty) || 0;
+            const afterQty = beforeQty + added;
+            if (afterQty > qty) throw new Error(`남은 수량 ${Math.max(0, qty - beforeQty)}장을 초과했습니다.`);
+            const finished = qty > 0 && afterQty >= qty;
+            const at = Date.now();
+            const history = [...(Array.isArray(fresh.productionHistory) ? fresh.productionHistory : []), makeProductionHistoryEntry('progress', { quantity: added, beforeQty, afterQty })].slice(-50);
+            const payload = { completedQty: afterQty, status: 'approved', productionStage: finished ? 'quantity_complete' : 'in_production', productionHistory: history, productionUpdatedAt: at };
+            if (finished) { payload.productionCompletedAt = fresh.productionCompletedAt || at; payload.completedAt = fresh.completedAt || at; }
+            transaction.update(ref, payload);
+            return { afterQty, stage: payload.productionStage, productionCompletedAt: payload.productionCompletedAt || null };
         });
-    } catch (e) {
-        alert('서버 전송 실패: ' + e.message);
-    }
+        inputEl.value = '';
+        await logAction('FACTORY_PROGRESS', id, { added, total: result.afterQty, productionStage: result.stage, productionCompletedAt: result.productionCompletedAt });
+    } catch (e) { alert('생산수량 등록 실패: ' + e.message); }
+}
+
+async function correctProductionQty(id) {
+    if (!requireWrite('production', '생산 수정 권한이 없습니다.')) return;
+    const local = orders.find(o => o.id === id);
+    if (!local) return alert('주문 데이터를 찾을 수 없습니다.');
+    const rawQty = prompt(`정정할 누적 생산수량을 입력하세요. (총 ${Number(local.qty || 0).toLocaleString()}장)`, String(Number(local.completedQty) || 0));
+    if (rawQty === null) return;
+    if (!/^\d+$/.test(rawQty.trim())) return alert('0 이상의 정수만 입력하세요.');
+    const correctedQty = Number(rawQty);
+    const reason = prompt('정정 사유를 입력하세요.');
+    if (reason === null) return;
+    if (!reason.trim()) return alert('정정 사유는 필수입니다.');
+    try {
+        const ref = db.collection('orders').doc(id);
+        const result = await db.runTransaction(async transaction => {
+            const snap = await transaction.get(ref);
+            if (!snap.exists) throw new Error('주문 데이터를 찾을 수 없습니다.');
+            const fresh = snap.data();
+            const totalQty = Number(fresh.qty) || 0;
+            if (correctedQty > totalQty) throw new Error(`총수량 ${totalQty}장을 초과할 수 없습니다.`);
+            const beforeQty = Number(fresh.completedQty) || 0;
+            if (beforeQty === correctedQty) throw new Error('기존 수량과 같습니다.');
+            const at = Date.now();
+            const finished = totalQty > 0 && correctedQty >= totalQty;
+            const history = [...(Array.isArray(fresh.productionHistory) ? fresh.productionHistory : []), makeProductionHistoryEntry('correction', { beforeQty, afterQty: correctedQty, reason: reason.trim() })].slice(-50);
+            const payload = { completedQty: correctedQty, status: 'approved', productionStage: finished ? 'quantity_complete' : 'in_production', productionHistory: history, productionUpdatedAt: at, qualityCheckedAt: null, packedAt: null, shippedAt: null };
+            payload.productionCompletedAt = finished ? (fresh.productionCompletedAt || at) : null;
+            payload.completedAt = finished ? (fresh.completedAt || at) : null;
+            transaction.update(ref, payload);
+            return { beforeQty, correctedQty, stage: payload.productionStage };
+        });
+        await logAction('FACTORY_PROGRESS_CORRECTION', id, { ...result, reason: reason.trim() });
+    } catch (e) { alert('수량 정정 실패: ' + e.message); }
+}
+
+async function advanceProductionStage(id, nextStage) {
+    if (!requireWrite('production', '생산 수정 권한이 없습니다.')) return;
+    const transitions = { quantity_complete: 'quality_passed', quality_passed: 'packed', packed: 'shipped' };
+    const labels = { quality_passed: '품질 확인 완료', packed: '포장 완료', shipped: '출고 완료' };
+    if (!confirm(`${labels[nextStage] || '단계 변경'}로 처리하시겠습니까?`)) return;
+    try {
+        const ref = db.collection('orders').doc(id);
+        const result = await db.runTransaction(async transaction => {
+            const snap = await transaction.get(ref);
+            if (!snap.exists) throw new Error('주문 데이터를 찾을 수 없습니다.');
+            const fresh = snap.data();
+            const currentStage = getProductionStage(fresh);
+            if (transitions[currentStage] !== nextStage) throw new Error(`현재 단계(${PRODUCTION_STAGE_LABELS[currentStage]})에서 처리할 수 없습니다.`);
+            const at = Date.now();
+            const history = [...(Array.isArray(fresh.productionHistory) ? fresh.productionHistory : []), makeProductionHistoryEntry(nextStage)].slice(-50);
+            const payload = { productionStage: nextStage, productionHistory: history, productionUpdatedAt: at };
+            if (nextStage === 'quality_passed') payload.qualityCheckedAt = at;
+            if (nextStage === 'packed') payload.packedAt = at;
+            if (nextStage === 'shipped') { payload.shippedAt = at; payload.status = 'completed'; }
+            transaction.update(ref, payload);
+            return { from: currentStage, to: nextStage, at };
+        });
+        await logAction('FACTORY_STAGE_CHANGE', id, result);
+    } catch (e) { alert('생산 단계 처리 실패: ' + e.message); }
+}
+
+function openProductionQualityException(id) {
+    const order = orders.find(o => o.id === id);
+    if (!order) return alert('주문 데이터를 찾을 수 없습니다.');
+    switchPCTab('docbox');
+    window.YJBusinessDocuments?.openQualityException?.({ id: order.id, orderNo: order.orderNo || order.id, client: order.client || '', product: getOrderProductName(order), quantity: Math.max(0, (Number(order.qty) || 0) - (Number(order.completedQty) || 0)) });
 }
     
 function renderReceivables() {
