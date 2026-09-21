@@ -35,5 +35,6 @@ test('visible document UI avoids implementation vocabulary and uses one release'
   assert.doesNotMatch(html, /Firestore 생성은|Firestore 컬렉션/);
   assert.doesNotMatch(html, /v2.0.4/);
   assert.match(html, /v2.2.0/);
+  assert.doesNotMatch(html, /v2.1/);
   assert.match(docs, /표준 문서 업무/);
 });
