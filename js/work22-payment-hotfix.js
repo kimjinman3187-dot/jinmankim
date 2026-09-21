@@ -224,7 +224,7 @@
     if (window.__WORK25_MOBILE_LOGIN_UI03__) return;
     window.__WORK25_MOBILE_LOGIN_UI03__ = true;
 
-    const RELEASE_TEXT = 'Release: 26.09.21 / v2.2.0';
+    const RELEASE_TEXT = 'Release: 26.09.21 / v2.3.0';
 
     function installStyle() {
         if (document.getElementById('work25-mobile-login-ui03-style')) return;

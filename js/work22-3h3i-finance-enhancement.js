@@ -15,7 +15,7 @@
     if (window.__YJ_FLOW_PC_ENHANCEMENT_PATCHES__) return;
     window.__YJ_FLOW_PC_ENHANCEMENT_PATCHES__ = true;
 
-    const PATCH_VERSION = 'V2.2.0';
+    const PATCH_VERSION = 'V2.3.0';
     const LAST_UPDATED = '26.05.28';
 
     const MONEY_KPI_IDS = [
@@ -133,7 +133,7 @@
                 || firstText.includes('v2.0.1')
                 || firstText.trim().startsWith(':');
             if (looksLikeReleaseRow) {
-                rows[0].textContent = 'Release: 26.09.21 / v2.2.0';
+                rows[0].textContent = 'Release: 26.09.21 / v2.3.0';
             }
             // K5G-12: 기존 'YJ FLOW' 행 또는 Release/v2.0.3 행이 있으면 구버전 버전 라인을 추가 삽입하지 않는다
             const hasVersion = rows.some(p => {
@@ -578,195 +578,8 @@
         const timer = setInterval(() => { attempts += 1; applyCommonKpiLayout(); if (patchARCards() || attempts >= 80) clearInterval(timer); }, 250);
     })();
 
-    // ───────────────────────────────────────────────
-    // 작업23-1A-1/1A-2 — Production 진행 리스트 운영성 개선
-    // ───────────────────────────────────────────────
-    (function installProductionOperationsPatch() {
-        if (window.__WORK23_1A_PRODUCTION_OPERATIONS_PATCH__) return;
-        window.__WORK23_1A_PRODUCTION_OPERATIONS_PATCH__ = true;
-
-        function percent(done, total) {
-            if (typeof window.yjSafePercent === 'function') return window.yjSafePercent(done, total);
-            const totalNumber = Number(total) || 0;
-            if (totalNumber <= 0) return 0;
-            return Math.min(100, Math.round(((Number(done) || 0) / totalNumber) * 100));
-        }
-
-        function getDueState(order = {}, todayStr = getKSTDateStringSafe()) {
-            const dueDate = String(order.dueDate || '').slice(0, 10);
-            if (!dueDate || dueDate === '-') return { key: 'normal', label: '납기 미지정', sort: 40, days: null };
-            if (dueDate < todayStr) return { key: 'overdue', label: `지연 ${daysBetweenSafe(dueDate, todayStr)}일`, sort: 0, days: -daysBetweenSafe(dueDate, todayStr) };
-            if (dueDate === todayStr) return { key: 'today', label: '오늘 납기', sort: 10, days: 0 };
-            const left = daysBetweenSafe(todayStr, dueDate);
-            if (left <= 3) return { key: 'soon', label: `임박 D-${left}`, sort: 20, days: left };
-            return { key: 'normal', label: `D-${left}`, sort: 30, days: left };
-        }
-
-        function getPackingState(pct, remainQty) {
-            if (remainQty <= 0 || pct >= 100) return { key: 'ready', label: '완료 대기', sort: -20 };
-            if (pct >= 90) return { key: 'packing', label: '포장 대기', sort: -10 };
-            if (pct >= 70) return { key: 'progress', label: '마감 단계', sort: 10 };
-            if (pct >= 35) return { key: 'progress', label: '진행 중', sort: 20 };
-            if (pct > 0) return { key: 'progress', label: '초기 진행', sort: 30 };
-            return { key: 'progress', label: '착수 대기', sort: 40 };
-        }
-
-        const getProductionPrimaryLabel = order =>
-            String(order?.productName || order?.orderName || order?.title || order?.workName || order?.product || order?.material || '-').trim() || '-';
-
-        const getProductionSecondaryLabel = order =>
-            String(order?.material || '-').trim() || '-';
-
-        const getProductionSpecLabel = order => {
-            if (typeof window.getDetailSpecText === 'function') return window.getDetailSpecText(order);
-            const width = String(order?.width || '').trim();
-            const height = String(order?.height || '').trim();
-            const thickness = String(order?.thickness || '').trim().replace(/T$/i, '');
-            if (!width && !height && !thickness) return '규격 미입력';
-            return `W${width || '-'} × H${height || '-'} × T${thickness || '-'}`;
-        };
-
-        function renderEnhancedProductionList(metrics = {}) {
-            const list = document.getElementById('pcProductionProgressList');
-            if (!list) return;
-            const todayStr = metrics.todayStr || getKSTDateStringSafe();
-            const activeItems = Array.isArray(metrics.activeProductionItems) ? metrics.activeProductionItems : [];
-const packingFallbackItems = Array.isArray(metrics.packingWaitItems)
-    ? metrics.packingWaitItems
-    : Array.isArray(window.filteredOrders)
-        ? window.filteredOrders.filter(order =>
-            order &&
-            order.status === 'completed' &&
-            order.paymentStatus !== 'paid'
-        )
-        : [];
-
-const itemMap = new Map();
-[...activeItems, ...packingFallbackItems].forEach(order => {
-    if (order?.id && !itemMap.has(order.id)) {
-        itemMap.set(order.id, order);
-    }
-});
-
-const items = Array.from(itemMap.values());
-            const decorated = items.map(order => {
-                const qty = Number(order.qty) || 0;
-                const completedQty = Math.min(Number(order.completedQty) || 0, qty);
-                const pct = percent(completedQty, qty);
-                const due = getDueState(order, todayStr);
-                const remainQty = Math.max(0, qty - completedQty);
-                const packing = getPackingState(pct, remainQty);
-                return { order, qty, completedQty, pct, due, remainQty, packing };
-            }).sort((a, b) => {
-                const aActive = a.order.status === 'approved' ? 0 : 1;
-                const bActive = b.order.status === 'approved' ? 0 : 1;
-                return aActive - bActive || a.packing.sort - b.packing.sort || a.due.sort - b.due.sort || String(a.order.dueDate || '').localeCompare(String(b.order.dueDate || '')) || b.pct - a.pct;
-            });
-
-            const overdueCount = decorated.filter(item => item.due.key === 'overdue').length;
-            const readyCount = decorated.filter(item => item.packing.key === 'ready').length;
-            const packingCount = decorated.filter(item => item.packing.key === 'packing').length;
-            const totalRemain = decorated.reduce((sum, item) => sum + item.remainQty, 0);
-            const waitItems = decorated.filter(item => item.packing.key === 'ready' || item.packing.key === 'packing');
-
-            if (!decorated.length) {
-                list.innerHTML = `<p class='text-center text-xs text-slate-500 font-bold py-8'>진행 중인 공정 데이터가 없습니다.</p>`;
-                return;
-            }
-
-            const summary = `
-                <div class='yj-production-summary-grid'>
-                    <div class='yj-production-summary-card'><div class='yj-production-summary-label'>Overdue</div><div class='yj-production-summary-value text-red-400'>${overdueCount}건</div></div>
-                    <div class='yj-production-summary-card'><div class='yj-production-summary-label'>Ready</div><div class='yj-production-summary-value text-green-400'>${readyCount}건</div></div>
-                    <div class='yj-production-summary-card'><div class='yj-production-summary-label'>Packing</div><div class='yj-production-summary-value text-blue-400'>${packingCount}건</div></div>
-                    <div class='yj-production-summary-card'><div class='yj-production-summary-label'>Remain</div><div class='yj-production-summary-value text-blue-400'>${totalRemain.toLocaleString()}장</div></div>
-                </div>`;
-
-            const waitPanel = waitItems.length ? `
-                <div class='yj-production-wait-panel'>
-                    <div class='yj-production-wait-title'>완료/포장 대기 우선 처리</div>
-                    ${waitItems.slice(0, 4).map(item => `
-                        <div class='yj-production-wait-row'>
-                            <span class='text-white truncate'>${getProductionPrimaryLabel(item.order)}</span>
-                            <span class='${item.packing.key === 'ready' ? 'text-green-400' : 'text-blue-400'}'>${item.packing.label} · 잔여 ${item.remainQty.toLocaleString()}장</span>
-                        </div>`).join('')}
-                </div>` : '';
-
-            const rows = decorated.map(item => {
-                const o = item.order;
-                const inputId = `pc-in-${o.id}`;
-                const dueClass = item.due.key;
-                const cardClass = item.packing.key === 'ready' ? 'ready' : item.packing.key === 'packing' ? 'packing' : dueClass;
-                const remainClass = item.remainQty <= 0 ? 'text-green-400' : item.pct >= 90 ? 'text-blue-400' : 'text-slate-300';
-                const primaryLabel = getProductionPrimaryLabel(o);
-                const secondaryLabel = getProductionSecondaryLabel(o);
-                return `
-                    <div class='yj-production-card is-${cardClass} cursor-pointer pc-table-row border-l-[3px] border-transparent' onclick="selectFinanceDetailRow(this, '${o.id}', event)">
-                        <div class='yj-production-order-head'>
-                            <div class='min-w-0'>
-                                <div class='yj-production-order-label'>거래처</div>
-                                <div class='yj-production-order-value'>${o.client || '-'}</div>
-                                <div class='yj-production-order-label mt-2'>품목</div>
-                                <div class='yj-production-order-product'>${primaryLabel}</div>
-                            </div>
-                            <div class='flex flex-col items-end gap-1 shrink-0'>
-                                <span class='yj-production-badge ${dueClass}'>${item.due.label}</span>
-                                <span class='yj-production-badge ${item.packing.key}'>${item.packing.label}</span>
-                            </div>
-                        </div>
-                        <div class='yj-production-info-grid'>
-                            <div class='yj-production-info-cell'>
-                                <div class='yj-production-order-label'>자재</div>
-                                <div class='yj-production-info-value'>${secondaryLabel}</div>
-                            </div>
-                            <div class='yj-production-info-cell'>
-                                <div class='yj-production-order-label'>규격</div>
-                                <div class='yj-production-info-value'>${getProductionSpecLabel(o)}</div>
-                            </div>
-                        </div>
-                        <div class='yj-production-qty-grid'>
-                            <div class='yj-production-qty-cell'><span class='yj-production-order-label'>총 수량</span><strong class='yj-production-qty-value'>${item.qty.toLocaleString()}장</strong></div>
-                            <div class='yj-production-qty-cell'><span class='yj-production-order-label'>완료</span><strong class='yj-production-qty-value text-blue-400'>${item.completedQty.toLocaleString()}장</strong></div>
-                            <div class='yj-production-qty-cell'><span class='yj-production-order-label'>잔여</span><strong class='yj-production-qty-value ${remainClass}'>${item.remainQty.toLocaleString()}장</strong></div>
-                            <div class='yj-production-qty-cell'><span class='yj-production-order-label'>납기</span><strong class='yj-production-qty-value'>${o.dueDate || '-'}</strong></div>
-                        </div>
-                        <div class='flex justify-between text-[10px] font-bold mb-1'>
-                            <span class='text-slate-400'>${item.completedQty.toLocaleString()} / ${item.qty.toLocaleString()}장</span>
-                            <span class='${item.pct >= 90 ? 'text-green-400' : 'text-blue-400'}'>${item.pct}%</span>
-                        </div>
-                        <div class='w-full bg-[#0f1522] h-2.5 rounded-full overflow-hidden border border-[#334155]'>
-                            <div class='${item.pct >= 90 ? 'bg-green-500' : 'bg-blue-500'} h-full rounded-full transition-all duration-1000 ease-out' style='width: ${item.pct}%'></div>
-                        </div>
-                        <div class='mt-3 flex gap-2'>
-                            <input type='text' id='${inputId}' class='min-w-0 flex-1 px-3 py-2 bg-[#111827] border border-[#334155] rounded-lg text-xs text-white font-bold outline-none focus:border-blue-400' placeholder='생산 수량'>
-                            <button onclick="addProgress('${o.id}', '${inputId}')" class='shrink-0 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-black shadow-md transition-colors'>보고</button>
-                        </div>
-                    </div>`;
-            }).join('');
-            list.innerHTML = summary + waitPanel + rows;
-        }
-
-        function patchProductionCards() {
-            if (typeof window.updatePCProductionCards !== 'function') return false;
-            if (window.updatePCProductionCards.__WORK23_1A_PATCHED__) return true;
-            const originalUpdatePCProductionCards = window.updatePCProductionCards;
-            window.updatePCProductionCards = function patchedUpdatePCProductionCards(metrics = {}) {
-                originalUpdatePCProductionCards(metrics);
-                renderEnhancedProductionList(metrics);
-            };
-            window.updatePCProductionCards.__WORK23_1A_PATCHED__ = true;
-            console.log('✅ 작업23-1A-2 Production 완료/포장 대기 리스트 운영성 개선 패치 완료');
-            return true;
-        }
-
-        let attempts = 0;
-        const timer = setInterval(() => {
-            attempts += 1;
-            injectSharedStyle();
-            applyCommonKpiLayout();
-            if (patchProductionCards() || attempts >= 80) clearInterval(timer);
-        }, 250);
-    })();
+    // WORK50: 생산 화면은 index.html의 단일 렌더러를 사용한다.
+    // 과거 작업23 생산 패치는 신규 목록·필터·입력 UI를 다시 덮어써 제거했다.
 
     // ───────────────────────────────────────────────
     // 작업22-5A/5A-1/5A-2/5A-3 — Dashboard 통합 지표 + PC KPI 공통 레이아웃 보정
