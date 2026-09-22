@@ -152,6 +152,8 @@
         const fields = [order.client, order.clientName, order.company, order.title, order.material, order.productName, order.itemName, order.id];
         return fields.some(v => typeof v === 'string' && TEST_PATTERN.test(v));
     }
+    // WORK52-1: 전산 공통 테스트 판별을 전역으로 노출(화면마다 다른 기준 금지 — 이 함수만 재사용)
+    if (typeof window !== 'undefined' && typeof window.yjIsTestOrder !== 'function') window.yjIsTestOrder = isTestOrder;
     // 최근 업무 명시 정렬 — 미처리 우선, 완료는 뒤로(또는 제외), 테스트 데이터는 기본 제외. 자동 테스트 대상.
     function sortRecentOrders(orders, options) {
         const opts = options || {};

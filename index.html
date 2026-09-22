@@ -1183,6 +1183,7 @@
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="text-2xl font-black text-white">회계 자산 관제탑</h2>
                     <div class="flex items-center gap-2">
+                        <label class="flex cursor-pointer select-none items-center gap-1.5 text-[11px] font-bold text-slate-300 bg-[#1e293b] border border-[#334155] px-3 py-2 rounded-lg" title="테스트 주문을 지표·목록에 포함할지 선택합니다."><input type="checkbox" class="yj-test-toggle accent-blue-500" onchange="yjToggleTestData(this.checked)"> 테스트 포함</label>
                         <button onclick="exportAccountingDashboardExcel()" class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg transition-colors">회계자료 Excel 저장</button>
                         <div class="text-xs font-bold text-slate-500 bg-[#1e293b] px-4 py-2 rounded-lg border border-[#334155]">
                        기준일: <span id="pcFinanceBaseDate">-</span>
@@ -1238,7 +1239,7 @@
         <div>
             <h3 class="text-sm font-bold text-white uppercase tracking-widest">PC 청구 대기 리스트</h3>
             <p class="text-[10px] text-slate-500 font-bold mt-1">
-                생산 완료 후 계산서 발행 및 입금 처리가 필요한 주문
+                생산 완료 후 계산서 발행 확인 및 입금 처리가 필요한 주문
             </p>
         </div>
     <div class="flex items-center gap-2">
@@ -1342,7 +1343,10 @@
                             <h2 class="text-2xl font-black text-white">생산 관리</h2>
                             <p class="text-xs text-slate-500 font-bold mt-2">생산수량부터 품질 확인·포장·출고까지 주문별 이력을 관리합니다.</p>
                         </div>
-                        <span class="text-[10px] font-black text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded-lg px-3 py-1.5">실제 기록 기준</span>
+                        <div class="flex items-center gap-2">
+                            <label class="flex cursor-pointer select-none items-center gap-1.5 text-[11px] font-bold text-slate-300 bg-[#1e293b] border border-[#334155] px-3 py-1.5 rounded-lg" title="테스트 주문을 생산 지표·목록에 포함할지 선택합니다."><input type="checkbox" class="yj-test-toggle accent-blue-500" onchange="yjToggleTestData(this.checked)"> 테스트 포함</label>
+                            <span class="text-[10px] font-black text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded-lg px-3 py-1.5">실제 기록 기준</span>
+                        </div>
                     </div>
                     <div class="grid grid-cols-2 xl:grid-cols-5 gap-4 mb-6">
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg"><p class="text-slate-400 text-xs font-medium mb-1">생산 진행</p><p class="text-2xl font-bold text-blue-400"><span id="pcProductionActiveCount">0</span><span class="text-sm font-normal text-slate-500 ml-1">건</span></p></div>
@@ -1351,19 +1355,23 @@
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg"><p class="text-slate-400 text-xs font-medium mb-1">오늘 출고</p><p class="text-2xl font-bold text-green-400"><span id="pcProductionTodayDoneCount">0</span><span class="text-sm font-normal text-slate-500 ml-1">건</span></p></div>
                         <div class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg"><p class="text-slate-400 text-xs font-medium mb-1">평균 생산기간</p><p class="text-2xl font-bold text-white"><span id="pcProductionLeadTime">0.0</span><span class="text-sm font-normal text-slate-500 ml-1">일</span></p></div>
                     </div>
-                    <div class="bg-gradient-to-br from-blue-500/10 to-cyan-500/5 border border-blue-500/30 rounded-2xl p-5 shadow-xl mb-6">
-                        <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
-                            <div><h3 class="text-sm font-black text-white">빠른 생산수량 입력</h3><p id="pcProductionQuickHelp" class="text-[11px] text-slate-400 font-bold mt-1">생산 중인 주문을 선택하면 총수량·완료수량·잔여수량을 확인하고 바로 등록할 수 있습니다.</p></div>
+                    <!-- WORK52-1: 빠른 입력은 보조(접이식)로 축소. 기본 입력은 아래 '전체 생산 주문' 카드에서. -->
+                    <details class="bg-gradient-to-br from-blue-500/10 to-cyan-500/5 border border-blue-500/30 rounded-2xl shadow-xl mb-6">
+                        <summary class="cursor-pointer select-none list-none flex flex-wrap items-center justify-between gap-3 p-5">
+                            <div><h3 class="text-sm font-black text-white">⚡ 빠른 생산수량 입력 <span class="text-[11px] font-bold text-slate-400">· 보조</span></h3><p class="text-[11px] text-slate-400 font-bold mt-1">기본 입력은 아래 <b class="text-slate-200">전체 생산 주문</b> 목록의 주문 카드에서 하세요. 필요할 때만 펼쳐 씁니다.</p></div>
                             <span id="pcProductionQuickPermission" class="text-[10px] font-black text-blue-300 border border-blue-500/30 bg-blue-500/10 rounded-md px-2 py-1">입력 가능</span>
+                        </summary>
+                        <div class="px-5 pb-5">
+                            <p id="pcProductionQuickHelp" class="text-[11px] text-slate-400 font-bold mb-3">생산 중인 주문을 선택하면 총수량·완료수량·잔여수량을 확인하고 바로 등록할 수 있습니다.</p>
+                            <div class="grid grid-cols-1 xl:grid-cols-[minmax(260px,1.4fr)_minmax(280px,1fr)_150px_auto] gap-3 items-end">
+                                <label class="text-[10px] text-slate-400 font-black">생산 주문 선택<select id="pcProductionQuickOrder" onchange="updatePCProductionQuickSummary()" class="mt-1 w-full px-3 py-3 bg-[#111827] border border-[#334155] rounded-lg text-xs text-white font-bold outline-none focus:border-blue-400"><option value="">생산 중인 주문을 선택하세요</option></select></label>
+                                <div id="pcProductionQuickSummary" class="min-h-[42px] px-3 py-2 bg-[#111827] border border-[#334155] rounded-lg text-xs text-slate-400 font-bold flex items-center">주문을 선택하면 수량이 표시됩니다.</div>
+                                <label class="text-[10px] text-slate-400 font-black">이번 생산수량<input id="pcProductionQuickQty" type="number" min="1" step="1" inputmode="numeric" onkeydown="if(event.key==='Enter'){event.preventDefault();submitPCQuickProduction();}" class="mt-1 w-full px-3 py-3 bg-[#111827] border border-[#334155] rounded-lg text-sm text-white font-black outline-none focus:border-blue-400" placeholder="0"></label>
+                                <button id="pcProductionQuickSubmit" type="button" onclick="submitPCQuickProduction()" class="px-5 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg text-xs font-black">생산수량 등록</button>
+                            </div>
+                            <p id="pcProductionQuickMessage" class="text-[11px] text-slate-400 font-bold mt-3 min-h-[16px]" role="status" aria-live="polite"></p>
                         </div>
-                        <div class="grid grid-cols-1 xl:grid-cols-[minmax(260px,1.4fr)_minmax(280px,1fr)_150px_auto] gap-3 items-end">
-                            <label class="text-[10px] text-slate-400 font-black">생산 주문 선택<select id="pcProductionQuickOrder" onchange="updatePCProductionQuickSummary()" class="mt-1 w-full px-3 py-3 bg-[#111827] border border-[#334155] rounded-lg text-xs text-white font-bold outline-none focus:border-blue-400"><option value="">생산 중인 주문을 선택하세요</option></select></label>
-                            <div id="pcProductionQuickSummary" class="min-h-[42px] px-3 py-2 bg-[#111827] border border-[#334155] rounded-lg text-xs text-slate-400 font-bold flex items-center">주문을 선택하면 수량이 표시됩니다.</div>
-                            <label class="text-[10px] text-slate-400 font-black">이번 생산수량<input id="pcProductionQuickQty" type="number" min="1" step="1" inputmode="numeric" onkeydown="if(event.key==='Enter'){event.preventDefault();submitPCQuickProduction();}" class="mt-1 w-full px-3 py-3 bg-[#111827] border border-[#334155] rounded-lg text-sm text-white font-black outline-none focus:border-blue-400" placeholder="0"></label>
-                            <button id="pcProductionQuickSubmit" type="button" onclick="submitPCQuickProduction()" class="px-5 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg text-xs font-black">생산수량 등록</button>
-                        </div>
-                        <p id="pcProductionQuickMessage" class="text-[11px] text-slate-400 font-bold mt-3 min-h-[16px]" role="status" aria-live="polite"></p>
-                    </div>
+                    </details>
                     <div class="bg-[#1e293b] border border-[#334155] rounded-2xl p-6 shadow-xl mb-6">
                         <div class="flex flex-wrap items-end justify-between gap-3 mb-5">
                             <div><h3 class="text-sm font-bold text-slate-300">전체 생산 주문</h3><p id="pcProductionListMeta" class="text-[10px] text-slate-500 font-bold mt-1">표시할 주문을 확인하는 중입니다.</p></div>
@@ -2151,13 +2159,21 @@ function clearInventoryClientSearch() {
 // --- [작업 22-1] 기존 orders 데이터 호환용 lifecycle helper ---
 function getInvoiceStatus(order = {}) {
     if (order.invoiceStatus) return order.invoiceStatus;
-
-    // 기존 데이터 호환:
-    // 작업 21까지는 생산완료(completed)를 계산서 발행 기준으로 임시 사용했다.
-    if (order.status === 'completed') return 'issued';
-
+    // WORK52-1: 완료(completed)만으로 계산서 발행 완료로 자동 판단하던 레거시 처리 제거.
+    // 명시적 invoiceStatus가 없으면 발행 상태가 아니다(자동 발행하지 않음).
     return 'none';
 }
+
+// WORK52-1: 계산서 발행 상태 3구분 (자동 발행 없음)
+//  - confirmed(발행 확인 완료): invoiceStatus === 'issued'
+//  - need_confirm(발행 확인 필요): 생산 완료됐으나 발행 기록 없음(기존 완료 주문 포함)
+//  - waiting(발행 대기): 아직 생산 완료 전
+function getInvoiceDisplayState(order = {}) {
+    if (getInvoiceStatus(order) === 'issued') return 'confirmed';
+    if (order.status === 'completed') return 'need_confirm';
+    return 'waiting';
+}
+const INVOICE_STATE_LABEL = { confirmed: '발행 확인 완료', need_confirm: '발행 확인 필요', waiting: '발행 대기' };
 
 function isInvoiceIssued(order = {}) {
     return getInvoiceStatus(order) === 'issued';
@@ -2273,7 +2289,20 @@ function makeProductionHistoryEntry(action, details = {}) {
     };
 }
 
+// WORK52-1: 테스트 주문 기본 제외. 판별은 전산 공통 함수(window.yjIsTestOrder = live-operations-hub) 재사용.
+window.yjIncludeTestData = window.yjIncludeTestData || false;
+function yjIsTest(order) { return typeof window.yjIsTestOrder === 'function' ? window.yjIsTestOrder(order) : false; }
+function yjExcludeTest(list) { return (window.yjIncludeTestData || !Array.isArray(list)) ? list : list.filter(o => !yjIsTest(o)); }
+function yjTestBadge(order) { return (window.yjIncludeTestData && yjIsTest(order)) ? '<span class="ml-1 align-middle text-[9px] font-black text-slate-200 bg-slate-600/70 border border-slate-500 rounded px-1.5 py-0.5">테스트</span>' : ''; }
+function yjToggleTestData(checked) {
+    window.yjIncludeTestData = !!checked;
+    document.querySelectorAll('.yj-test-toggle').forEach(cb => { cb.checked = window.yjIncludeTestData; });
+    if (typeof updatePCSubDashboards === 'function') updatePCSubDashboards();
+    (window.__yjFinanceRefreshers || []).forEach(fn => { try { fn(); } catch (e) {} }); // firebase-shared 수금/완료/신규승인 리스트
+}
+
 function getPCDashboardMetrics(data = filteredOrders) {
+    data = yjExcludeTest(data); // WORK52-1: 테스트 주문 제외(기본), '테스트 포함' 시 전체
     const todayStr = getKSTDateString();
 
     const completedItems = data.filter(o => o.status === 'completed');
@@ -2951,7 +2980,7 @@ function updatePCProductionCards(metrics) {
         const stage = getProductionStage(o);
         return `
             <div class="border border-[#334155] rounded-xl p-4 bg-[#0f1522]/60">
-                <div class="flex justify-between items-start gap-3 mb-3"><div class="min-w-0"><div class="text-[10px] text-slate-500 font-black uppercase tracking-wider">거래처</div><div class="text-white text-sm font-black truncate">${escapeDashboardText(o.client || '-')}</div><div class="text-[10px] text-slate-500 font-black mt-2 uppercase tracking-wider">품목</div><div class="text-slate-200 text-xs font-bold truncate">${escapeDashboardText(productName)}</div></div><span class="text-blue-400 font-black">${pct}%</span></div>
+                <div class="flex justify-between items-start gap-3 mb-3"><div class="min-w-0"><div class="text-[10px] text-slate-500 font-black uppercase tracking-wider">거래처</div><div class="text-white text-sm font-black truncate">${escapeDashboardText(o.client || '-')}${yjTestBadge(o)}</div><div class="text-[10px] text-slate-500 font-black mt-2 uppercase tracking-wider">품목</div><div class="text-slate-200 text-xs font-bold truncate">${escapeDashboardText(productName)}</div></div><span class="text-blue-400 font-black">${pct}%</span></div>
                 <div class="grid grid-cols-2 gap-2 mb-3 text-[10px] font-bold"><div class="bg-[#111827] border border-[#334155] rounded-lg p-2"><div class="text-slate-500 mb-1">자재</div><div class="text-slate-200">${escapeDashboardText(o.material || '-')}</div></div><div class="bg-[#111827] border border-[#334155] rounded-lg p-2"><div class="text-slate-500 mb-1">규격</div><div class="text-slate-200">${escapeDashboardText(getDetailSpecText(o))}</div></div></div>
                 ${(o.materialColor || o.salesMemo) ? `<div class="space-y-1 mb-3 text-[10px] font-bold">${o.materialColor ? `<div class="bg-[#111827] border border-[#334155] rounded-lg p-2"><span class="text-slate-500">색상/마감</span> <span class="text-slate-200 break-words">${escapeDashboardText(o.materialColor)}</span></div>` : ''}${o.salesMemo ? `<div class="bg-[#111827] border border-[#334155] rounded-lg p-2"><span class="text-slate-500">특이사항</span> <span class="text-slate-200 break-words whitespace-pre-line">${escapeDashboardText(o.salesMemo)}</span></div>` : ''}</div>` : ''}
                 <div class="grid grid-cols-4 gap-2 mb-3 text-[10px] font-bold"><div><span class="text-slate-500">총</span><strong class="block text-white mt-1">${qty.toLocaleString()}장</strong></div><div><span class="text-slate-500">완료</span><strong class="block text-blue-400 mt-1">${completedQty.toLocaleString()}장</strong></div><div><span class="text-slate-500">잔여</span><strong class="block text-orange-400 mt-1">${remainQty.toLocaleString()}장</strong></div><div><span class="text-slate-500">납기</span><strong class="block text-white mt-1">${o.dueDate || '-'}</strong></div></div>
@@ -2981,7 +3010,7 @@ function updatePCFinanceInvoiceWaitList(metrics) {
 
     if (!tbody) return;
 
-    const items = filteredOrders
+    const items = yjExcludeTest(filteredOrders)
         .filter(o =>
             o.status === 'completed' &&
             o.paymentStatus !== 'paid'
@@ -2996,20 +3025,21 @@ function updatePCFinanceInvoiceWaitList(metrics) {
         const amount = getOrderAmount(o);
         const invoiceIssued = isInvoiceIssued(o);
 
+        // WORK52-1: 발행 완료(자동) → 발행 확인 완료/발행 확인 필요 구분
         const invoiceBadge = invoiceIssued
-            ? `<span class="bg-green-500/10 text-green-400 border border-green-500/30 px-2 py-1 rounded text-[10px] font-black">발행 완료</span>`
-            : `<span class="bg-slate-700 text-slate-300 border border-slate-600 px-2 py-1 rounded text-[10px] font-black">미발행</span>`;
+            ? `<span class="bg-green-500/10 text-green-400 border border-green-500/30 px-2 py-1 rounded text-[10px] font-black">발행 확인 완료</span>`
+            : `<span class="bg-amber-500/10 text-amber-300 border border-amber-500/30 px-2 py-1 rounded text-[10px] font-black">발행 확인 필요</span>`;
 
         const actionButton = invoiceIssued
-            ? `<button disabled class="px-3 py-2 rounded-lg bg-green-500/10 text-green-400 border border-green-500/30 text-[10px] font-black cursor-not-allowed">발행 완료</button>`
+            ? `<button disabled class="px-3 py-2 rounded-lg bg-green-500/10 text-green-400 border border-green-500/30 text-[10px] font-black cursor-not-allowed">발행 확인 완료</button>`
             : canEditFinance
-                ? `<button onclick="issueInvoice('${o.id}')" class="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black shadow-md transition-colors">계산서 발행</button>`
+                ? `<button onclick="event.stopPropagation(); openInvoiceConfirmModal('${o.id}')" class="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black shadow-md transition-colors">계산서 발행 확인</button>`
                 : `<button disabled class="px-3 py-2 rounded-lg bg-slate-700 text-slate-500 text-[10px] font-black cursor-not-allowed">조회 전용</button>`;
 
         return `
             <tr class="hover:bg-blue-500/5 transition-colors cursor-pointer pc-table-row border-l-[3px] border-transparent" onclick="selectFinanceDetailRow(this, '${o.id}', event)">
                 <td class="px-4 py-3 text-slate-400">${o.dueDate || '-'}</td>
-                <td class="px-4 py-3 font-bold text-white">${o.client || '-'}</td>
+                <td class="px-4 py-3 font-bold text-white">${o.client || '-'}${yjTestBadge(o)}</td>
                 <td class="px-4 py-3 text-slate-400">
                     ${o.material || '-'}<br>
                     <span class="text-white font-bold">${Number(o.qty || 0).toLocaleString()}장</span>
@@ -4252,7 +4282,7 @@ if(compList) compList.innerHTML = accountingItems.map(o => {
     const remaining = total - paid;
     const pct = total > 0 ? Math.min(100, Math.round((paid / total) * 100)) : 0;
     const invoiceIssued = isInvoiceIssued(o);
-    const invoiceLabel = invoiceIssued ? '발행 완료' : '미발행';
+    const invoiceLabel = invoiceIssued ? '발행 확인 완료' : (o.status === 'completed' ? '발행 확인 필요' : '발행 대기');
     const invoiceBadgeClass = invoiceIssued ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500';
 
     return `
@@ -4294,7 +4324,7 @@ if(compList) compList.innerHTML = accountingItems.map(o => {
                 invoiceIssued
                     ? `<button disabled class="py-3 bg-green-100 text-green-700 rounded-xl font-bold text-xs border border-green-200">🧾 발행 완료</button>`
                     : canEditFinance
-                        ? `<button onclick="issueInvoice('${o.id}')" class="py-3 bg-slate-800 text-white rounded-xl font-bold text-xs shadow-md active:scale-95 transition-all">🧾 계산서 발행</button>`
+                        ? `<button onclick="issueInvoice('${o.id}')" class="py-3 bg-slate-800 text-white rounded-xl font-bold text-xs shadow-md active:scale-95 transition-all">🧾 계산서 발행 확인</button>`
                         : `<button disabled class="py-3 bg-slate-100 text-slate-400 rounded-xl font-bold text-xs border border-slate-200 cursor-not-allowed">조회 전용</button>`
             }
             ${
@@ -4365,6 +4395,17 @@ async function addProgress(id, inputId = null) {
     const inputVal = inputEl.value.trim();
     if (!/^\d+$/.test(inputVal) || Number(inputVal) <= 0) { setProductionFeedback('0보다 큰 정수만 입력하세요.', true); alert('0보다 큰 정수만 입력하세요.'); return false; }
     const added = Number(inputVal);
+    // WORK52-1: 이번 입력으로 생산이 완료(잔여 전부 소진)되는 경우에만 확인창. 일상 소량 입력은 확인 없이 진행.
+    const localOrder = (Array.isArray(orders) ? orders.find(x => x.id === id) : null) || (lastPCProductionMetrics?.allProductionItems || []).find(x => x.id === id);
+    if (localOrder) {
+        const totalQty = Number(localOrder.qty) || 0;
+        const beforeQty = Math.min(Number(localOrder.completedQty) || 0, totalQty);
+        const afterQty = beforeQty + added;
+        if (totalQty > 0 && afterQty >= totalQty) {
+            const ok = confirm(`이번 입력으로 생산이 완료됩니다. 확인하세요.\n\n거래처: ${localOrder.client || '-'}\n품목: ${getOrderProductName(localOrder)}\n총수량: ${totalQty.toLocaleString()}장\n기존 완료: ${beforeQty.toLocaleString()}장\n이번 입력: ${added.toLocaleString()}장\n입력 후 완료: ${Math.min(afterQty, totalQty).toLocaleString()}장\n\n등록하시겠습니까?`);
+            if (!ok) return false;
+        }
+    }
     const actionButton = inputEl.id === 'pcProductionQuickQty' ? document.getElementById('pcProductionQuickSubmit') : inputEl.parentElement?.querySelector('button');
     const originalButtonText = actionButton?.textContent || '';
     if (actionButton) { actionButton.disabled = true; actionButton.textContent = '등록 중…'; }
@@ -4543,63 +4584,98 @@ async function rejectOrder(id) {
     if(typeof db !== 'undefined') await db.collection('orders').doc(id).update({ status: 'rejected', rejectReason: reason }); await logAction('ORDER_REJECTED', id, { reason: reason });
 }
 
-    async function issueInvoice(id) {
+// ─── WORK52-1: 계산서 "발행 확인" 기록 (실제 전자세금계산서 발행 아님) ───
+// 홈택스 등 외부에서 발행한 결과(발행일·번호·공급가액·부가세·합계)를 전산에 기록만 한다.
+// 기존 invoiceStatus 호환 유지(+ 세부 필드는 추가형). 파일 첨부는 이번 단계 미구현.
+function issueInvoice(id) { return openInvoiceConfirmModal(id); }
+function closeInvoiceModal() { const c = document.getElementById('modalContainer'); if (c) c.innerHTML = ''; }
+function invoiceModalRecalc() {
+    const num = id => Number(String(document.getElementById(id)?.value || '').replace(/[^0-9.-]/g, '')) || 0;
+    const supply = num('invoiceSupply'), tax = num('invoiceTax'), total = num('invoiceTotal');
+    const warn = document.getElementById('invoiceMismatchWarn');
+    if (!warn) return;
+    warn.textContent = (supply + tax) !== total
+        ? `⚠️ 공급가액+부가세(₩ ${(supply + tax).toLocaleString('ko-KR')})가 합계(₩ ${total.toLocaleString('ko-KR')})와 다릅니다.`
+        : '';
+}
+async function openInvoiceConfirmModal(id) {
     if (!requireWrite('finance', 'Finance 수정 권한이 없습니다.')) return;
-    const o = orders.find(x => x.id === id);
+    const src = (Array.isArray(filteredOrders) && filteredOrders.length ? filteredOrders : (Array.isArray(orders) ? orders : []));
+    let o = src.find(x => x.id === id) || (Array.isArray(orders) ? orders.find(x => x.id === id) : null);
+    if (!o && typeof db !== 'undefined') { try { const s = await db.collection('orders').doc(id).get(); if (s.exists) o = { id: s.id, ...s.data() }; } catch (e) {} }
     if (!o) return alert('주문 데이터를 찾을 수 없습니다.');
-
-    if (isInvoiceIssued(o)) {
-        return alert('이미 계산서 발행 완료 처리된 주문입니다.');
-    }
-
-    if (!confirm('계산서 발행 완료로 처리하시겠습니까?')) {
-        return;
-    }
-
-    const updatePayload = {
-        invoiceStatus: 'issued',
-        invoiceIssuedAt: Date.now()
-    };
-
+    if (isInvoiceIssued(o)) return alert('이미 계산서 발행 확인이 기록된 주문입니다.');
+    const supply = getOrderAmount(o);
+    const tax = Math.round(supply * 0.1);
+    const total = supply + tax;
+    const today = new Date().toISOString().slice(0, 10);
+    const container = document.getElementById('modalContainer');
+    if (!container) return;
+    container.innerHTML = `
+      <div class="fixed inset-0 z-[120] bg-black/70 backdrop-blur-md flex items-center justify-center p-4" onclick="if(event.target===this)closeInvoiceModal()">
+        <div class="bg-[#1e293b] border border-[#334155] w-full max-w-md rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
+          <div class="flex justify-between items-center p-5 border-b border-[#334155]">
+            <div><h3 class="text-base font-black text-white">계산서 발행 확인 기록</h3><p class="text-[11px] text-slate-400 font-bold mt-0.5">${(o.client || '-')}</p></div>
+            <button onclick="closeInvoiceModal()" class="w-9 h-9 bg-[#0f1522] border border-[#334155] rounded-full text-slate-300 font-black hover:border-blue-400">✕</button>
+          </div>
+          <div class="p-5 space-y-3 overflow-y-auto">
+            <p class="text-[11px] font-bold text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2.5">홈택스 등 외부에서 발행한 세금계산서 결과를 기록합니다. 이 화면은 실제 전자세금계산서를 발행하지 않습니다.</p>
+            <div class="grid grid-cols-2 gap-3">
+              <label class="text-[11px] font-bold text-slate-400">실제 발행일<input id="invoiceDate" type="date" value="${today}" class="mt-1 w-full p-2.5 bg-[#0f1522] border border-[#334155] rounded-lg text-white font-bold outline-none focus:border-blue-400"></label>
+              <label class="text-[11px] font-bold text-slate-400">계산서/승인번호<input id="invoiceNumber" type="text" autocomplete="off" placeholder="예: 20260922-0001" class="mt-1 w-full p-2.5 bg-[#0f1522] border border-[#334155] rounded-lg text-white font-bold outline-none focus:border-blue-400"></label>
+            </div>
+            <label class="block text-[11px] font-bold text-slate-400">공급가액 (원)<input id="invoiceSupply" type="text" inputmode="numeric" value="${supply.toLocaleString('ko-KR')}" oninput="invoiceModalRecalc()" class="mt-1 w-full p-2.5 bg-[#0f1522] border border-[#334155] rounded-lg text-white font-black outline-none focus:border-blue-400"></label>
+            <label class="block text-[11px] font-bold text-slate-400">부가세 (원)<input id="invoiceTax" type="text" inputmode="numeric" value="${tax.toLocaleString('ko-KR')}" oninput="invoiceModalRecalc()" class="mt-1 w-full p-2.5 bg-[#0f1522] border border-[#334155] rounded-lg text-white font-black outline-none focus:border-blue-400"></label>
+            <label class="block text-[11px] font-bold text-slate-400">합계액 (원)<input id="invoiceTotal" type="text" inputmode="numeric" value="${total.toLocaleString('ko-KR')}" oninput="invoiceModalRecalc()" class="mt-1 w-full p-2.5 bg-[#0f1522] border border-[#334155] rounded-lg text-white font-black outline-none focus:border-blue-400"></label>
+            <p id="invoiceMismatchWarn" class="min-h-[16px] text-[11px] font-black text-amber-300"></p>
+            <p id="invoiceModalError" class="min-h-[16px] text-[11px] font-black text-red-400"></p>
+          </div>
+          <div class="p-4 border-t border-[#334155] flex gap-2 justify-end">
+            <button onclick="closeInvoiceModal()" class="px-4 py-2 rounded-lg bg-[#0f1522] border border-[#334155] text-slate-300 text-xs font-black hover:text-white">취소</button>
+            <button id="invoiceModalSubmit" onclick="submitInvoiceConfirm('${id}')" class="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-black">발행 확인 기록</button>
+          </div>
+        </div>
+      </div>`;
+    invoiceModalRecalc();
+}
+async function submitInvoiceConfirm(id) {
+    if (!requireWrite('finance', 'Finance 수정 권한이 없습니다.')) return;
+    if (typeof db === 'undefined') return alert('데이터베이스 연결이 아직 준비되지 않았습니다. 잠시 후 다시 시도하세요.');
+    const errEl = document.getElementById('invoiceModalError');
+    const numOf = elId => Number(String(document.getElementById(elId)?.value || '').replace(/[^0-9.-]/g, '')) || 0;
+    const invoiceDate = String(document.getElementById('invoiceDate')?.value || '').slice(0, 10);
+    const invoiceNumber = String(document.getElementById('invoiceNumber')?.value || '').trim();
+    const supply = numOf('invoiceSupply'), tax = numOf('invoiceTax'), total = numOf('invoiceTotal');
+    if (!invoiceDate) { if (errEl) errEl.textContent = '실제 발행일을 입력하세요.'; return; }
+    if (!invoiceNumber) { if (errEl) errEl.textContent = '계산서 번호(또는 승인번호)를 입력하세요.'; return; }
+    if (supply + tax !== total && !confirm(`공급가액+부가세가 합계와 다릅니다.\n공급가액 ${supply.toLocaleString('ko-KR')} + 부가세 ${tax.toLocaleString('ko-KR')} = ${(supply + tax).toLocaleString('ko-KR')}\n합계 ${total.toLocaleString('ko-KR')}\n\n그대로 기록하시겠습니까?`)) return;
+    const btn = document.getElementById('invoiceModalSubmit');
+    if (btn) { btn.disabled = true; btn.textContent = '기록 중…'; }
     try {
-        if (typeof db !== 'undefined') {
-            await db.collection('orders').doc(id).update(updatePayload);
-        }
-
-        await logAction('INVOICE_ISSUED', id, {
-            client: o.client || '',
-            amount: getOrderAmount(o),
-            invoiceStatus: 'issued',
-            invoiceIssuedAt: updatePayload.invoiceIssuedAt
-        });
-
-        showToast('noti-accounting', '🧾', '계산서 발행 완료', `${o.client || '주문'} 계산서가 발행 처리되었습니다.`);
-        const detailInvoiceStatus = document.getElementById('detailInvoiceStatus');
-const detailInvoiceAction = document.getElementById('detailInvoiceAction');
-
-if (detailInvoiceStatus) {
-    detailInvoiceStatus.textContent = '발행 완료';
-    detailInvoiceStatus.className = 'text-[11px] font-black px-2 py-1 rounded bg-green-500/20 text-green-400 border border-green-500/30';
-}
-
-if (detailInvoiceAction) {
-    detailInvoiceAction.innerHTML = `
-        <button disabled class="w-full py-3 rounded-xl bg-green-500/10 text-green-400 border border-green-500/30 text-xs font-black cursor-not-allowed">
-            🧾 계산서 발행 완료
-        </button>
-    `;
-}
-   const targetOrder = orders.find(x => x.id === id);
-if (targetOrder) {
-    targetOrder.invoiceStatus = 'issued';
-    targetOrder.invoiceIssuedAt = updatePayload.invoiceIssuedAt;
-}
-
-executeSearch();    
+        const snap = await db.collection('orders').doc(id).get();
+        if (!snap.exists) { alert('주문 데이터를 찾을 수 없습니다.'); return; }
+        const o = { id: snap.id, ...snap.data() };
+        if (isInvoiceIssued(o)) { alert('이미 계산서 발행 확인이 기록된 주문입니다.'); closeInvoiceModal(); return; }
+        const now = Date.now();
+        const payload = {
+            invoiceStatus: 'issued', invoiceIssuedAt: now, // 기존 호환
+            invoiceNumber, invoiceDate, invoiceSupply: supply, invoiceTax: tax, invoiceTotal: total,
+            invoiceConfirmedAt: now, invoiceConfirmedBy: currentUser?.name || '', invoiceConfirmedByUid: currentUser?.auth_uid || currentUser?.id || ''
+        };
+        await db.collection('orders').doc(id).update(payload);
+        await logAction('INVOICE_ISSUED', id, { client: o.client || '', invoiceNumber, invoiceDate, supply, tax, total, source: 'invoice_confirm_modal' });
+        const local = orders.find(x => x.id === id); if (local) Object.assign(local, payload);
+        closeInvoiceModal();
+        showToast('noti-accounting', '🧾', '발행 확인 기록', `${o.client || '주문'} 계산서 발행 확인을 기록했습니다.`);
+        executeSearch();
     } catch (e) {
-        alert('계산서 발행 처리 실패: ' + e.message);
+        if (errEl) errEl.textContent = '발행 확인 기록 실패: ' + (e?.message || e);
+        else alert('발행 확인 기록 실패: ' + (e?.message || e));
+    } finally {
+        const b = document.getElementById('invoiceModalSubmit');
+        if (b) { b.disabled = false; b.textContent = '발행 확인 기록'; }
     }
-}  
+}
     
 async function confirmPayment(id) {
     if (!requireWrite('ar', 'AR 수정 권한이 없습니다.')) return;
@@ -4697,41 +4773,49 @@ async function openPaymentModal(id) {
 }
 async function submitPaymentModal(id) {
     if (!requireWrite('ar', 'AR 수정 권한이 없습니다.')) return;
-    if (typeof db === 'undefined') return alert('데이터베이스 연결이 아직 준비되지 않았습니다. 잠시 후 다시 시도하세요.');
+    if (typeof db === 'undefined' || typeof db.runTransaction !== 'function') return alert('데이터베이스 연결이 아직 준비되지 않았습니다. 잠시 후 다시 시도하세요.');
+    // WORK52-1: 빠른 중복 실행 방지(더블클릭). 트랜잭션과 함께 이중 안전장치.
+    if (window.__yjPaymentBusy) return;
     const amount = paymentModalParse(document.getElementById('paymentModalAmount')?.value);
     const errEl = document.getElementById('paymentModalError');
     if (amount === null) { if (errEl) errEl.textContent = '올바른 금액을 입력하세요(숫자·쉼표만).'; return; }
+    window.__yjPaymentBusy = true;
     const btn = document.getElementById('paymentModalSubmit');
     if (btn) { btn.disabled = true; btn.textContent = '저장 중…'; }
     try {
-        const doc = await db.collection('orders').doc(id).get();
-        if (!doc.exists) { alert('주문 데이터를 찾을 수 없습니다.'); return; }
-        const o = { id: doc.id, ...doc.data() };
-        const total = (Number(o.price) || 0) * (Number(o.qty) || 0);
-        const paidBefore = Math.max(0, Number(o.paidAmount) || 0);
-        const remaining = Math.max(0, total - paidBefore);
-        if (total <= 0) { alert('총 청구액을 확인할 수 없어 입금 처리할 수 없습니다.'); return; }
-        if (remaining <= 0 || o.paymentStatus === 'paid') { alert('이미 입금 완료 처리된 주문입니다.'); return; }
-        if (amount > remaining) {
-            if (errEl) errEl.textContent = `잔금 초과: 남은 잔금 ₩ ${remaining.toLocaleString('ko-KR')} · 저장하지 않았습니다.`;
-            return;
-        }
-        const newPaid = paidBefore + amount;
-        const isFullyPaid = amount === remaining;
-        const now = Date.now();
-        const payload = { paidAmount: newPaid, paymentStatus: isFullyPaid ? 'paid' : 'partial', lastPaymentAt: now, lastPaymentAmount: amount };
-        if (isFullyPaid && !o.paidAt) payload.paidAt = now;
-        await db.collection('orders').doc(id).update(payload);
+        // WORK52-1: get→update 대신 트랜잭션. 최신 paidAmount를 트랜잭션 안에서 다시 읽어 잔금 초과·중복 누적 방지.
+        const ref = db.collection('orders').doc(id);
+        const result = await db.runTransaction(async tx => {
+            const snap = await tx.get(ref);
+            if (!snap.exists) throw new Error('주문 데이터를 찾을 수 없습니다.');
+            const o = snap.data();
+            const total = (Number(o.price) || 0) * (Number(o.qty) || 0);
+            const paidBefore = Math.max(0, Number(o.paidAmount) || 0);
+            const remaining = Math.max(0, total - paidBefore);
+            if (total <= 0) throw new Error('총 청구액을 확인할 수 없어 입금 처리할 수 없습니다.');
+            if (remaining <= 0 || o.paymentStatus === 'paid') throw new Error('이미 입금 완료 처리된 주문입니다.');
+            if (amount > remaining) throw new Error(`잔금 초과: 남은 잔금 ₩ ${remaining.toLocaleString('ko-KR')} · 저장하지 않았습니다.`);
+            const newPaid = paidBefore + amount;
+            const isFullyPaid = newPaid >= total; // 실제 누적 입금액 기준
+            const now = Date.now();
+            const payload = { paidAmount: newPaid, paymentStatus: isFullyPaid ? 'paid' : 'partial', lastPaymentAt: now, lastPaymentAmount: amount };
+            if (isFullyPaid && !o.paidAt) payload.paidAt = now;
+            tx.update(ref, payload);
+            return { newPaid, isFullyPaid, client: o.client || '주문', status: payload.paymentStatus };
+        });
         if (typeof logAction === 'function') {
-            await logAction('PAYMENT_UPDATED', id, { added_amount: amount, total_paid: newPaid, paymentStatus: payload.paymentStatus, source: 'finance_invoice_wait_modal' });
+            await logAction('PAYMENT_UPDATED', id, { added_amount: amount, total_paid: result.newPaid, paymentStatus: result.status, source: 'finance_payment_modal' });
         }
+        const local = orders.find(x => x.id === id);
+        if (local) { local.paidAmount = result.newPaid; local.paymentStatus = result.status; }
         closePaymentModal();
-        if (typeof showToast === 'function') showToast('noti-accounting', '💵', isFullyPaid ? '입금 완료' : '부분입금 처리', `${o.client || '주문'} 입금이 반영되었습니다.`);
-        else alert(isFullyPaid ? '입금 완료 처리되었습니다.' : '부분입금 처리되었습니다.');
+        if (typeof showToast === 'function') showToast('noti-accounting', '💵', result.isFullyPaid ? '입금 완료' : '부분입금 처리', `${result.client} 입금이 반영되었습니다.`);
+        else alert(result.isFullyPaid ? '입금 완료 처리되었습니다.' : '부분입금 처리되었습니다.');
     } catch (e) {
-        if (errEl) errEl.textContent = '입금 처리 실패: ' + (e?.message || e);
+        if (errEl) errEl.textContent = (e?.message || String(e));
         else alert('입금 처리 실패: ' + (e?.message || e));
     } finally {
+        window.__yjPaymentBusy = false;
         const b = document.getElementById('paymentModalSubmit');
         if (b) { b.disabled = false; b.textContent = '입금 저장'; }
     }
@@ -4904,9 +4988,10 @@ function selectWood(name, imgUrl, color) {
 function exportExcel() { const rows = filteredOrders.map(o => [o.client, getOrderProductName(o), o.material, o.qty, o.price, ((o.price||0) * (o.qty||0)), o.status, o.dueDate, o.payDate]); const ws = XLSX.utils.aoa_to_sheet([['업체명', '상품명', '목재', '수량', '단가', '합계', '상태', '납기', '입금기한'], ...rows]); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "YONGJIN"); XLSX.writeFile(wb, `용진기업_현황_${new Date().toLocaleDateString()}.xlsx`); }
 function exportAccountingDashboardExcel() {
     // 회계자료 read-only Export. 현재 화면/필터 기준(filteredOrders) 우선, 비어 있으면 orders fallback.
-    const sourceOrders = Array.isArray(filteredOrders) && filteredOrders.length
+    // WORK52-1: 화면과 동일하게 테스트 주문 기본 제외('테스트 포함' 선택 시만 포함)
+    const sourceOrders = yjExcludeTest(Array.isArray(filteredOrders) && filteredOrders.length
         ? filteredOrders
-        : (Array.isArray(orders) ? orders : []);
+        : (Array.isArray(orders) ? orders : []));
     if (!sourceOrders.length) return alert('회계 대시보드 데이터가 없습니다.');
 
     const metrics = getPCDashboardMetrics(sourceOrders);
@@ -4931,7 +5016,7 @@ function exportAccountingDashboardExcel() {
         Number(o.price) || 0,
         getOrderAmount(o),
         getDisplayStatusLabel(o),
-        isInvoiceIssued(o) ? '발행 완료' : '미발행',
+        INVOICE_STATE_LABEL[getInvoiceDisplayState(o)] || '-',
         getPaymentStatusLabel(o),
         o.dueDate || '-',
         o.payDate || '-',
@@ -5968,24 +6053,27 @@ function selectRow(element, orderId) {
     const invoiceStatusEl = document.getElementById('detailInvoiceStatus');
     const invoiceActionEl = document.getElementById('detailInvoiceAction');
 
+    const invoiceState = getInvoiceDisplayState(o); // WORK52-1: 발행 대기/발행 확인 필요/발행 확인 완료
     if (invoiceStatusEl) {
-        invoiceStatusEl.textContent = invoiceIssued ? '발행 완료' : '미발행';
-        invoiceStatusEl.className = invoiceIssued
+        invoiceStatusEl.textContent = INVOICE_STATE_LABEL[invoiceState];
+        invoiceStatusEl.className = invoiceState === 'confirmed'
             ? 'text-[11px] font-black px-2 py-1 rounded bg-green-500/20 text-green-400 border border-green-500/30'
-            : 'text-[11px] font-black px-2 py-1 rounded bg-slate-700 text-slate-300 border border-slate-600';
+            : invoiceState === 'need_confirm'
+                ? 'text-[11px] font-black px-2 py-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                : 'text-[11px] font-black px-2 py-1 rounded bg-slate-700 text-slate-300 border border-slate-600';
     }
 
     if (invoiceActionEl) {
         if (invoiceIssued) {
             invoiceActionEl.innerHTML = `
                 <button disabled class="w-full py-3 rounded-xl bg-green-500/10 text-green-400 border border-green-500/30 text-xs font-black cursor-not-allowed">
-                    🧾 계산서 발행 완료
+                    🧾 계산서 발행 확인 완료
                 </button>
             `;
         } else if (o.status === 'completed' && canEditFinance) {
             invoiceActionEl.innerHTML = `
-                <button onclick="issueInvoice('${o.id}')" class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black shadow-lg transition-colors">
-                    🧾 계산서 발행 처리
+                <button onclick="openInvoiceConfirmModal('${o.id}')" class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black shadow-lg transition-colors">
+                    🧾 계산서 발행 확인
                 </button>
             `;
         } else if (o.status === 'completed') {
