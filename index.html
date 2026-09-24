@@ -4769,8 +4769,9 @@ async function runPaymentLedgerOp(orderId, op, opts = {}) {
     if (opts.button) { opts.button.disabled = true; opts.button.textContent = opts.busyText || '처리 중…'; }
     try {
         const result = await applyPaymentLedgerOp(orderId, op);
-        if (typeof logAction === 'function') {
-            await logAction('PAYMENT_LEDGER_' + op.kind.toUpperCase(), orderId, { operationId: op.operationId, paidAfter: result.paidAfter, status: result.status, idempotent: !!result.idempotent });
+        // WORK52-2: 실제 금액 변경이 있었을 때만 감사 로그. 멱등 재실행(중복 요청)은 로그 남기지 않음.
+        if (!result.idempotent && typeof logAction === 'function') {
+            await logAction('PAYMENT_LEDGER_' + op.kind.toUpperCase(), orderId, { operationId: op.operationId, paidAfter: result.paidAfter, status: result.status });
         }
         const local = orders.find(x => x.id === orderId);
         if (local) { local.paidAmount = result.paidAfter; local.paymentStatus = result.status; }

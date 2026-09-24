@@ -2,8 +2,12 @@
 // (계산식을 테스트에 복사하지 않는다. index.html applyPaymentLedgerOp도 동일 모듈을 사용한다.)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
 import ledger from '../js/payment-ledger.js';
 const { computeLedgerOp } = ledger;
+const HERE = dirname(fileURLToPath(import.meta.url));
 
 const ACC = { uid: 'acc1', name: '회계', role: 'accounting' };
 let clock = 1_000;
@@ -166,4 +170,23 @@ test('누적/상태가 (기초잔액 + 이벤트합)과 일치', () => {
 test('권한 없는 사용자(영업)는 처리 불가', () => {
   const s = makeStore({ price: 1000, qty: 10 });
   assert.throws(() => apply(s, { kind: 'payment', operationId: 'p1', amount: 100 }, { uid: 's1', role: 'sales' }), /관리자·회계만/);
+});
+
+test('모든 이벤트는 afterPaidAmount == beforePaidAmount + amount 산술 연속성', () => {
+  const s = makeStore({ price: 100000, qty: 1 });
+  apply(s, { kind: 'payment', operationId: 'p1', amount: 3000 });
+  apply(s, { kind: 'payment', operationId: 'p2', amount: 2000 });
+  apply(s, { kind: 'correction', operationId: 'c1', targetEventId: 'p1', correctedAmount: 5000, reason: 'x' });
+  for (const ev of s.events.values()) {
+    assert.equal(ev.afterPaidAmount, ev.beforePaidAmount + ev.amount, 'event ' + ev.eventId + ' 산술 불일치');
+  }
+});
+
+// item 8: 멱등 재실행 시 감사 로그 중복 생성 금지 — runPaymentLedgerOp(index.html)의 소스 계약 검증
+test('runPaymentLedgerOp은 idempotent 재실행 시 감사 로그를 남기지 않는다(소스 계약)', () => {
+  const html = readFileSync(resolve(HERE, '..', 'index.html'), 'utf8');
+  const m = /async function runPaymentLedgerOp[\s\S]*?\n}/.exec(html);
+  assert.ok(m, 'runPaymentLedgerOp 함수를 찾을 수 없음');
+  const body = m[0];
+  assert.ok(/!result\.idempotent\s*&&\s*typeof logAction/.test(body), 'idempotent가 아닐 때만 logAction 호출하도록 가드되어야 함');
 });
