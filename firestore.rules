@@ -31,6 +31,49 @@ service cloud.firestore {
       return arIsActiveUser() && arUserDoc().get("role", "") == "accounting";
     }
 
+    // WORK52-2: 입금 등록·취소·정정은 관리자·회계만 (영업/생산 불가)
+    function arIsFinanceStaff() {
+      return arIsAdmin() || arIsAccounting();
+    }
+
+    // WORK52-2: 주문 문서에서 입금 관련 요약 필드(회계·관리자만 변경 허용)
+    // lastOperationId 포함 — 요약 변경과 실제 입금 이벤트 생성을 묶기 위한 연결 키.
+    function orderPaymentGatedKeys() {
+      return [
+        "paidAmount", "paymentStatus", "paidAt", "lastPaymentAmount",
+        "paymentLedgerOpeningBalance", "paymentLedgerInitialized", "lastOperationId"
+      ];
+    }
+
+    // WORK52-2: 입금 이벤트 생성 시 유형별 필수 필드/형식/부호 검증.
+    // payment: 양수 / reversal: 음수 + 대상·사유 / corrected_payment: 양수 + 대상·사유
+    function paymentEventCreateValid() {
+      let d = request.resource.data;
+      return d.operationId is string && d.operationId.size() > 0
+        && d.actorUid == request.auth.uid
+        && d.actorRole in ["admin", "accounting"]
+        && d.createdAt is number
+        && d.amount is number
+        && d.type in ["payment", "reversal", "corrected_payment"]
+        && (
+          (d.type == "payment" && d.amount > 0)
+          || (d.type == "reversal" && d.amount < 0
+                && d.reason is string && d.reason.size() > 0
+                && d.targetEventId is string && d.targetEventId.size() > 0)
+          || (d.type == "corrected_payment" && d.amount > 0
+                && d.reason is string && d.reason.size() > 0
+                && d.targetEventId is string && d.targetEventId.size() > 0)
+        );
+    }
+
+    // WORK52-2(선택 통제): 주문 입금 요약이 바뀌면 같은 커밋에서 대표 operationId의
+    // 입금 이벤트가 실제로 생성돼야 한다. 요약 금액만 바꾸고 이벤트를 누락하는 경로 차단.
+    function orderPaymentEventBound(orderId) {
+      let opId = request.resource.data.lastOperationId;
+      return opId is string && opId.size() > 0
+        && getAfter(/databases/$(database)/documents/orders/$(orderId)/paymentEvents/$(opId)).data.operationId == opId;
+    }
+
     function validAssignableRole(role) {
       return role in ["admin", "sales", "accounting", "factory", "factory_manager"];
     }
@@ -625,8 +668,23 @@ service cloud.firestore {
 
     // 업무 데이터는 승인(active) 직원만. 삭제는 admin(Reset Data)만.
     match /orders/{orderId} {
-      allow read, create, update: if arIsActiveUser();
+      allow read: if arIsActiveUser();
+      allow create: if arIsActiveUser();
+      // WORK52-2: 입금 요약 필드(paidAmount 등) 변경은 회계·관리자만 + 이벤트 바인딩 필수.
+      // 그 외 필드(생산 단계·영업 등)는 기존대로 active 사용자 전체가 처리 가능(기존 기능 유지).
+      allow update: if arIsActiveUser()
+        && (
+          (arIsFinanceStaff() && orderPaymentEventBound(orderId))
+          || !request.resource.data.diff(resource.data).affectedKeys().hasAny(orderPaymentGatedKeys())
+        );
       allow delete: if arIsAdmin();
+
+      // WORK52-2: 불변 입금 이벤트 원장. 회계·관리자만 생성, 수정·삭제 불가.
+      match /paymentEvents/{eventId} {
+        allow read: if arIsActiveUser();
+        allow create: if arIsFinanceStaff() && paymentEventCreateValid();
+        allow update, delete: if false;
+      }
     }
 
     // 감사 로그: 기록은 Google 인증(승인 전 게이트 로그 포함) 또는 active 직원,

@@ -1598,6 +1598,8 @@
                 </div>
 
                 <button type="button" onclick="if(window.__yjDetailOrderId) openTradeStatement(window.__yjDetailOrderId)" class="yj-fin-only w-full border border-[#334155] rounded-xl p-4 flex items-center justify-center gap-2 bg-[#0f1522] hover:border-blue-400 text-slate-200 hover:text-white font-black text-sm transition-colors">📄 거래명세서 출력</button>
+                <!-- WORK52-2: 입금 회차별 이력 -->
+                <div id="detailPaymentHistory" class="yj-fin-only mt-2 border border-[#334155] rounded-xl p-4 bg-[#0f1522]/40"><p class="text-[11px] text-slate-500 font-bold">주문을 선택하면 입금 이력이 표시됩니다.</p></div>
             </div>
         </div>
     </aside>
@@ -4256,7 +4258,7 @@ function startOrdersListener(customQuery = null) {
 
 function renderAccounting() {
     const canEditFinance = canWrite('finance');
-    const canEditAR = canWrite('ar');
+    const canEditAR = canManagePayment(); // WORK52-2: 입금 등록·취소·정정은 회계·관리자만(영업 조회만)
     const list = document.getElementById('accountingList');
     if(list) list.innerHTML = filteredOrders.filter(o => o.status === 'pending').map(o => `
         <div class="bg-white p-5 rounded-3xl border border-blue-200 mb-4 shadow-sm relative overflow-hidden">
@@ -4509,7 +4511,7 @@ function openProductionQualityException(id) {
 }
     
 function renderReceivables() {
-    const canEditAR = canWrite('ar');
+    const canEditAR = canManagePayment(); // WORK52-2: 입금 등록·취소·정정은 회계·관리자만(영업 조회만)
     const debtItems = filteredOrders.filter(o => o.paymentStatus !== 'paid' && (o.status === 'completed' || o.status === 'approved'));
     const totalDebt = debtItems.reduce((acc, o) => { const total = (o.price || 0) * (o.qty || 0); const paid = o.paidAmount || 0; return acc + (total - paid); }, 0);
     const bannerWrap = document.getElementById('receivableBannerWrap');
@@ -4677,21 +4679,12 @@ async function submitInvoiceConfirm(id) {
     }
 }
     
+// WORK52-2: 구 prompt/confirm + 단순 .update() 비트랜잭션 경로 제거.
+// 모든 입금 진입점(모바일·미수금 상세·수금 대기·firebase-shared 폴백·work22 hotfix)을
+// 단일 안전 경로(openPaymentModal → runPaymentLedgerOp 트랜잭션)로 위임한다.
+// paidAmount를 단순 update로 바꾸는 우회 경로는 더 이상 존재하지 않는다.
 async function confirmPayment(id) {
-    if (!requireWrite('ar', 'AR 수정 권한이 없습니다.')) return;
-    const o = orders.find(x => x.id === id); if (!o) return;
-    const inputStr = prompt('입금된 금액을 입력하세요:\n(숫자만 입력)'); if (!inputStr) return; 
-    const amount = parseInt(inputStr.replace(/[^0-9]/g, '')); if (isNaN(amount) || amount <= 0) return alert('올바른 금액을 입력하세요.');
-    const newPaid = (o.paidAmount || 0) + amount; const totalAmount = (o.price || 0) * (o.qty || 0); const remaining = totalAmount - newPaid;
-    let isCompleted = false;
-    if (remaining <= 0) { isCompleted = confirm(`잔금이 모두 결제되었습니다.\n[입금 완료] 상태로 전환하시겠습니까?`); } 
-    else { isCompleted = confirm(`총 청구액: ${totalAmount.toLocaleString()}원\n현재까지 누적 입금액: ${newPaid.toLocaleString()}원\n남은 잔금: ${remaining.toLocaleString()}원\n\n이대로 부분 입금 처리하시겠습니까?`); if(!isCompleted) return; }
-    try { 
-        if(typeof db !== 'undefined') await db.collection('orders').doc(id).update({ paidAmount: newPaid, paymentStatus: remaining <= 0 ? 'paid' : 'partial' }); 
-        await logAction('PAYMENT_UPDATED', id, { added_amount: amount, total_paid: newPaid }); 
-    } catch (e) {
-        alert('입금 처리 실패: ' + e.message);
-    }
+    return openPaymentModal(id);
 }
 
 // ─── WORK51: 회계 청구 대기 입금 처리 인라인 폼 ───
@@ -4721,50 +4714,155 @@ function paymentModalUpdatePreview(remaining) {
         : `입금 후 잔금: ₩ ${after.toLocaleString('ko-KR')} · 부분 입금`;
 }
 function closePaymentModal() { const c = document.getElementById('modalContainer'); if (c) c.innerHTML = ''; }
+
+// ═══ WORK52-2: 입금 회차별 이력(paymentEvents 서브컬렉션) + 안전한 취소·정정 ═══
+// 권한: 입금 등록·취소·정정은 관리자·회계만(영업 조회, 생산 불가). Rules에서도 동일 강제.
+function canManagePayment() { return isUserActive(currentUser) && ['admin', 'accounting'].includes(currentUser?.role); }
+const PAYMENT_METHOD_LABEL = { bank_transfer: '계좌이체', cash: '현금', card: '카드', other: '기타' };
+const PAYMENT_EVENT_TYPE_LABEL = { payment: '입금', reversal: '입금 취소', corrected_payment: '정정 입금' };
+function paymentOpId() { try { return crypto.randomUUID(); } catch (e) { return 'op-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10); } }
+function paymentWon(n) { return '₩ ' + (Number(n) || 0).toLocaleString('ko-KR'); }
+function buildPaymentEvent(type, signedAmount, op, eventId, before, after, now) {
+    return {
+        eventId, operationId: op.operationId, type, amount: signedAmount,
+        paymentDate: op.paymentDate || '', paymentMethod: op.paymentMethod || '',
+        senderName: op.senderName || '', reference: op.reference || '', memo: op.memo || '',
+        targetEventId: op.targetEventId || '', reason: op.reason || '',
+        actorUid: currentUser?.auth_uid || currentUser?.id || '', actorName: currentUser?.name || '', actorRole: currentUser?.role || '',
+        createdAt: now, beforePaidAmount: before, afterPaidAmount: after
+    };
+}
+// 입금/취소/정정 공통 트랜잭션. operationId 멱등(같은 요청 두 번 반영 금지). 정정은 취소+정정입금 원자 처리.
+async function applyPaymentLedgerOp(orderId, op) {
+    if (!canManagePayment()) throw new Error('입금 등록·취소·정정은 관리자·회계만 가능합니다.');
+    if (typeof db === 'undefined' || typeof db.runTransaction !== 'function') throw new Error('데이터베이스 연결이 준비되지 않았습니다.');
+    const orderRef = db.collection('orders').doc(orderId);
+    const evCol = orderRef.collection('paymentEvents');
+    const primaryRef = evCol.doc(op.operationId);
+    const correctedRef = op.kind === 'correction' ? evCol.doc(op.operationId + '__c') : null;
+    return db.runTransaction(async tx => {
+        const orderSnap = await tx.get(orderRef);
+        if (!orderSnap.exists) throw new Error('주문 데이터를 찾을 수 없습니다.');
+        const o = orderSnap.data();
+        const dup = await tx.get(primaryRef); // 멱등 확인(모든 read는 write 이전)
+        if (dup.exists) return { idempotent: true, paidAfter: Math.max(0, Number(o.paidAmount) || 0), status: o.paymentStatus, client: o.client || '주문' };
+        const total = (Number(o.price) || 0) * (Number(o.qty) || 0);
+        if (total <= 0) throw new Error('총 청구액을 확인할 수 없습니다.');
+        const now = Date.now();
+        const summary = { updatedAt: now };
+        if (!o.paymentLedgerInitialized) { // 레거시 최초 이벤트: 기존 누적액을 기초잔액으로 보존(합성 이벤트 생성 안 함)
+            summary.paymentLedgerOpeningBalance = Math.max(0, Number(o.paidAmount) || 0);
+            summary.paymentLedgerInitialized = true;
+        }
+        const before = Math.max(0, Number(o.paidAmount) || 0);
+        let after = before;
+        const writes = [];
+        if (op.kind === 'payment') {
+            const amt = Number(op.amount);
+            if (!(amt > 0)) throw new Error('입금액은 0보다 커야 합니다.');
+            if (before + amt > total) throw new Error(`잔금 초과: 남은 잔금 ${paymentWon(total - before)}`);
+            after = before + amt;
+            writes.push([primaryRef, buildPaymentEvent('payment', amt, op, op.operationId, before, after, now)]);
+        } else if (op.kind === 'reversal') {
+            const amt = Number(op.amount);
+            if (!(amt > 0)) throw new Error('취소 금액이 올바르지 않습니다.');
+            if (!op.reason) throw new Error('취소 사유는 필수입니다.');
+            if (before - amt < 0) throw new Error('취소 후 누적 입금액이 음수가 될 수 없습니다.');
+            after = before - amt;
+            writes.push([primaryRef, buildPaymentEvent('reversal', -amt, op, op.operationId, before, after, now)]);
+        } else if (op.kind === 'correction') {
+            const origAmt = Number(op.amount), newAmt = Number(op.correctedAmount);
+            if (!(origAmt > 0) || !(newAmt > 0)) throw new Error('정정 금액이 올바르지 않습니다.');
+            if (!op.reason) throw new Error('정정 사유는 필수입니다.');
+            const afterRev = before - origAmt;
+            if (afterRev < 0) throw new Error('정정(취소) 후 누적 입금액이 음수가 됩니다.');
+            const afterPay = afterRev + newAmt;
+            if (afterPay > total) throw new Error(`정정 후 잔금 초과: 총 청구액 ${paymentWon(total)}`);
+            after = afterPay;
+            writes.push([primaryRef, buildPaymentEvent('reversal', -origAmt, op, op.operationId, before, afterRev, now)]);
+            writes.push([correctedRef, buildPaymentEvent('corrected_payment', newAmt, { ...op, amount: newAmt }, op.operationId + '__c', afterRev, afterPay, now)]);
+        } else throw new Error('알 수 없는 처리 유형입니다.');
+        const fully = after >= total && after > 0;
+        summary.paidAmount = after;
+        summary.paymentStatus = after <= 0 ? 'unpaid' : (fully ? 'paid' : 'partial');
+        summary.lastPaymentAmount = op.kind === 'payment' ? Number(op.amount) : (op.kind === 'correction' ? Number(op.correctedAmount) : -Number(op.amount));
+        summary.lastPaymentAt = now;
+        summary.paidAt = fully ? (o.paidAt || now) : null;
+        // WORK52-2: 요약 금액만 바꾸고 이벤트를 누락하는 경로를 Rules(getAfter)로 차단하기 위해
+        // 이번 처리의 대표 operationId(=primaryRef 문서 id)를 주문 요약에 함께 기록한다.
+        summary.lastOperationId = op.operationId;
+        for (const [ref, data] of writes) tx.set(ref, data);
+        tx.update(orderRef, summary);
+        return { idempotent: false, paidAfter: after, status: summary.paymentStatus, client: o.client || '주문', total };
+    });
+}
+async function runPaymentLedgerOp(orderId, op, opts = {}) {
+    if (window.__yjPaymentBusy) return null;
+    window.__yjPaymentBusy = true;
+    if (opts.button) { opts.button.disabled = true; opts.button.textContent = opts.busyText || '처리 중…'; }
+    try {
+        const result = await applyPaymentLedgerOp(orderId, op);
+        if (typeof logAction === 'function') {
+            await logAction('PAYMENT_LEDGER_' + op.kind.toUpperCase(), orderId, { operationId: op.operationId, paidAfter: result.paidAfter, status: result.status, idempotent: !!result.idempotent });
+        }
+        const local = orders.find(x => x.id === orderId);
+        if (local) { local.paidAmount = result.paidAfter; local.paymentStatus = result.status; }
+        return result;
+    } finally {
+        window.__yjPaymentBusy = false;
+        if (opts.button) { opts.button.disabled = false; opts.button.textContent = opts.idleText || '저장'; }
+    }
+}
+
 async function openPaymentModal(id) {
-    if (!requireWrite('ar', 'AR 수정 권한이 없습니다.')) return;
+    if (!canManagePayment()) return alert('입금 등록은 관리자·회계만 가능합니다. (영업은 조회만)');
     const src = (Array.isArray(filteredOrders) && filteredOrders.length ? filteredOrders : (Array.isArray(orders) ? orders : []));
     let o = src.find(x => x.id === id) || (Array.isArray(orders) ? orders.find(x => x.id === id) : null);
-    if (!o && typeof db !== 'undefined') {
-        // WORK51-b: 전역 orders 배열에 없는 수금 대기 주문도 열 수 있도록 Firestore에서 표시용 재조회
-        try { const snap = await db.collection('orders').doc(id).get(); if (snap.exists) o = { id: snap.id, ...snap.data() }; } catch (e) { /* 표시용 조회 실패는 아래 alert로 처리 */ }
-    }
+    if (!o && typeof db !== 'undefined') { try { const snap = await db.collection('orders').doc(id).get(); if (snap.exists) o = { id: snap.id, ...snap.data() }; } catch (e) {} }
     if (!o) return alert('주문 데이터를 찾을 수 없습니다.');
     const total = (Number(o.price) || 0) * (Number(o.qty) || 0);
     const paid = Math.max(0, Number(o.paidAmount) || 0);
     const remaining = Math.max(0, total - paid);
     if (total <= 0) return alert('총 청구액을 확인할 수 없어 입금 처리할 수 없습니다.');
     if (remaining <= 0 || o.paymentStatus === 'paid') return alert('이미 입금 완료 처리된 주문입니다.');
-    const won = n => '₩ ' + (Number(n) || 0).toLocaleString('ko-KR');
+    const today = new Date().toISOString().slice(0, 10);
+    const opId = paymentOpId();
     const container = document.getElementById('modalContainer');
     if (!container) return;
     container.innerHTML = `
       <div class="fixed inset-0 z-[120] bg-black/70 backdrop-blur-md flex items-center justify-center p-4" onclick="if(event.target===this)closePaymentModal()">
-        <div class="bg-[#1e293b] border border-[#334155] w-full max-w-md rounded-2xl shadow-2xl flex flex-col">
+        <div class="bg-[#1e293b] border border-[#334155] w-full max-w-md rounded-2xl shadow-2xl flex flex-col max-h-[92vh]">
           <div class="flex justify-between items-center p-5 border-b border-[#334155]">
-            <div><h3 class="text-base font-black text-white">입금 처리</h3><p class="text-[11px] text-slate-400 font-bold mt-0.5">${o.client || '-'}${o.material ? ' · ' + o.material : ''}</p></div>
-            <button onclick="closePaymentModal()" class="w-9 h-9 bg-[#0f1522] border border-[#334155] rounded-full text-slate-300 font-black hover:border-amber-400 transition-colors">✕</button>
+            <div><h3 class="text-base font-black text-white">입금 등록</h3><p class="text-[11px] text-slate-400 font-bold mt-0.5">${o.client || '-'}${o.material ? ' · ' + o.material : ''}</p></div>
+            <button onclick="closePaymentModal()" class="w-9 h-9 bg-[#0f1522] border border-[#334155] rounded-full text-slate-300 font-black hover:border-amber-400">✕</button>
           </div>
-          <div class="p-5 space-y-4">
+          <div class="p-5 space-y-3 overflow-y-auto">
             <div class="grid grid-cols-3 gap-2 text-center">
-              <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[10px] font-bold text-slate-500">총 청구액</p><p class="mt-1 text-sm font-black text-white">${won(total)}</p></div>
-              <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[10px] font-bold text-slate-500">기존 입금</p><p class="mt-1 text-sm font-black text-slate-200">${won(paid)}</p></div>
-              <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[10px] font-bold text-slate-500">남은 잔금</p><p class="mt-1 text-sm font-black text-amber-300">${won(remaining)}</p></div>
+              <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[10px] font-bold text-slate-500">총 청구액</p><p class="mt-1 text-sm font-black text-white">${paymentWon(total)}</p></div>
+              <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[10px] font-bold text-slate-500">기존 입금</p><p class="mt-1 text-sm font-black text-slate-200">${paymentWon(paid)}</p></div>
+              <div class="rounded-lg bg-[#0f1522] p-3"><p class="text-[10px] font-bold text-slate-500">남은 잔금</p><p class="mt-1 text-sm font-black text-amber-300">${paymentWon(remaining)}</p></div>
             </div>
+            <input type="hidden" id="paymentModalOpId" value="${opId}">
             <div>
               <label for="paymentModalAmount" class="block text-[11px] font-bold text-slate-400 mb-1">이번 입금액 (원)</label>
               <div class="flex gap-2">
                 <input id="paymentModalAmount" type="text" inputmode="numeric" autocomplete="off" placeholder="숫자만 입력" class="flex-1 p-3 bg-[#0f1522] border border-[#334155] rounded-xl text-white font-black outline-none focus:border-amber-400">
                 <button type="button" onclick="paymentModalFill(${remaining})" class="px-3 py-2 rounded-xl bg-[#0f1522] border border-[#334155] text-amber-300 text-xs font-black hover:border-amber-400 whitespace-nowrap">전액</button>
               </div>
-              <p id="paymentModalPreview" class="mt-2 text-[11px] font-bold text-slate-400">입금 후 잔금: ${won(remaining)}</p>
-              <p class="mt-1 text-[10px] font-bold text-slate-500">입금일은 저장 시각(오늘)으로 자동 기록됩니다. 실제 송금은 별도입니다.</p>
-              <p id="paymentModalError" class="mt-1 min-h-[16px] text-[11px] font-black text-red-400"></p>
+              <p id="paymentModalPreview" class="mt-2 text-[11px] font-bold text-slate-400">입금 후 잔금: ${paymentWon(remaining)}</p>
             </div>
+            <div class="grid grid-cols-2 gap-3">
+              <label class="text-[11px] font-bold text-slate-400">실제 입금일<input id="paymentModalDate" type="date" value="${today}" class="mt-1 w-full p-2.5 bg-[#0f1522] border border-[#334155] rounded-lg text-white font-bold outline-none focus:border-amber-400"></label>
+              <label class="text-[11px] font-bold text-slate-400">입금 수단<select id="paymentModalMethod" class="mt-1 w-full p-2.5 bg-[#0f1522] border border-[#334155] rounded-lg text-white font-bold outline-none focus:border-amber-400"><option value="bank_transfer">계좌이체</option><option value="cash">현금</option><option value="card">카드</option><option value="other">기타</option></select></label>
+            </div>
+            <label class="block text-[11px] font-bold text-slate-400">입금자<input id="paymentModalSender" type="text" autocomplete="off" value="${(o.client || '').replace(/"/g, '&quot;')}" class="mt-1 w-full p-2.5 bg-[#0f1522] border border-[#334155] rounded-lg text-white font-bold outline-none focus:border-amber-400"></label>
+            <label class="block text-[11px] font-bold text-slate-400">이체번호/참조 (선택)<input id="paymentModalReference" type="text" autocomplete="off" placeholder="이체 고유번호 등" class="mt-1 w-full p-2.5 bg-[#0f1522] border border-[#334155] rounded-lg text-white font-bold outline-none focus:border-amber-400"></label>
+            <label class="block text-[11px] font-bold text-slate-400">메모 (선택)<input id="paymentModalMemo" type="text" autocomplete="off" class="mt-1 w-full p-2.5 bg-[#0f1522] border border-[#334155] rounded-lg text-white font-bold outline-none focus:border-amber-400"></label>
+            <p id="paymentModalError" class="min-h-[16px] text-[11px] font-black text-red-400"></p>
           </div>
           <div class="p-4 border-t border-[#334155] flex gap-2 justify-end">
             <button onclick="closePaymentModal()" class="px-4 py-2 rounded-lg bg-[#0f1522] border border-[#334155] text-slate-300 text-xs font-black hover:text-white">취소</button>
-            <button id="paymentModalSubmit" onclick="submitPaymentModal('${id}')" class="px-5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-white text-xs font-black transition-colors">입금 저장</button>
+            <button id="paymentModalSubmit" onclick="submitPaymentModal('${id}')" class="px-5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-white text-xs font-black">입금 저장</button>
           </div>
         </div>
       </div>`;
@@ -4772,53 +4870,225 @@ async function openPaymentModal(id) {
     if (input) { input.addEventListener('input', () => paymentModalUpdatePreview(remaining)); input.focus(); }
 }
 async function submitPaymentModal(id) {
-    if (!requireWrite('ar', 'AR 수정 권한이 없습니다.')) return;
-    if (typeof db === 'undefined' || typeof db.runTransaction !== 'function') return alert('데이터베이스 연결이 아직 준비되지 않았습니다. 잠시 후 다시 시도하세요.');
-    // WORK52-1: 빠른 중복 실행 방지(더블클릭). 트랜잭션과 함께 이중 안전장치.
-    if (window.__yjPaymentBusy) return;
-    const amount = paymentModalParse(document.getElementById('paymentModalAmount')?.value);
+    if (!canManagePayment()) return alert('입금 등록은 관리자·회계만 가능합니다.');
     const errEl = document.getElementById('paymentModalError');
+    const amount = paymentModalParse(document.getElementById('paymentModalAmount')?.value);
     if (amount === null) { if (errEl) errEl.textContent = '올바른 금액을 입력하세요(숫자·쉼표만).'; return; }
-    window.__yjPaymentBusy = true;
-    const btn = document.getElementById('paymentModalSubmit');
-    if (btn) { btn.disabled = true; btn.textContent = '저장 중…'; }
+    const op = {
+        operationId: document.getElementById('paymentModalOpId')?.value || paymentOpId(),
+        kind: 'payment', amount,
+        paymentDate: String(document.getElementById('paymentModalDate')?.value || '').slice(0, 10),
+        paymentMethod: document.getElementById('paymentModalMethod')?.value || 'bank_transfer',
+        senderName: String(document.getElementById('paymentModalSender')?.value || '').trim(),
+        reference: String(document.getElementById('paymentModalReference')?.value || '').trim(),
+        memo: String(document.getElementById('paymentModalMemo')?.value || '').trim()
+    };
     try {
-        // WORK52-1: get→update 대신 트랜잭션. 최신 paidAmount를 트랜잭션 안에서 다시 읽어 잔금 초과·중복 누적 방지.
-        const ref = db.collection('orders').doc(id);
-        const result = await db.runTransaction(async tx => {
-            const snap = await tx.get(ref);
-            if (!snap.exists) throw new Error('주문 데이터를 찾을 수 없습니다.');
-            const o = snap.data();
-            const total = (Number(o.price) || 0) * (Number(o.qty) || 0);
-            const paidBefore = Math.max(0, Number(o.paidAmount) || 0);
-            const remaining = Math.max(0, total - paidBefore);
-            if (total <= 0) throw new Error('총 청구액을 확인할 수 없어 입금 처리할 수 없습니다.');
-            if (remaining <= 0 || o.paymentStatus === 'paid') throw new Error('이미 입금 완료 처리된 주문입니다.');
-            if (amount > remaining) throw new Error(`잔금 초과: 남은 잔금 ₩ ${remaining.toLocaleString('ko-KR')} · 저장하지 않았습니다.`);
-            const newPaid = paidBefore + amount;
-            const isFullyPaid = newPaid >= total; // 실제 누적 입금액 기준
-            const now = Date.now();
-            const payload = { paidAmount: newPaid, paymentStatus: isFullyPaid ? 'paid' : 'partial', lastPaymentAt: now, lastPaymentAmount: amount };
-            if (isFullyPaid && !o.paidAt) payload.paidAt = now;
-            tx.update(ref, payload);
-            return { newPaid, isFullyPaid, client: o.client || '주문', status: payload.paymentStatus };
-        });
-        if (typeof logAction === 'function') {
-            await logAction('PAYMENT_UPDATED', id, { added_amount: amount, total_paid: result.newPaid, paymentStatus: result.status, source: 'finance_payment_modal' });
-        }
-        const local = orders.find(x => x.id === id);
-        if (local) { local.paidAmount = result.newPaid; local.paymentStatus = result.status; }
+        const result = await runPaymentLedgerOp(id, op, { button: document.getElementById('paymentModalSubmit'), busyText: '저장 중…', idleText: '입금 저장' });
+        if (!result) return;
         closePaymentModal();
-        if (typeof showToast === 'function') showToast('noti-accounting', '💵', result.isFullyPaid ? '입금 완료' : '부분입금 처리', `${result.client} 입금이 반영되었습니다.`);
-        else alert(result.isFullyPaid ? '입금 완료 처리되었습니다.' : '부분입금 처리되었습니다.');
+        yjRefreshAfterPayment(id);
+        if (typeof showToast === 'function') showToast('noti-accounting', '💵', result.status === 'paid' ? '입금 완료' : '부분입금 처리', `${result.client} 입금이 반영되었습니다.`);
+    } catch (e) { if (errEl) errEl.textContent = (e?.message || String(e)); else alert('입금 처리 실패: ' + (e?.message || e)); }
+}
+// 입금 후 화면 갱신(요약·목록·이력)
+function yjRefreshAfterPayment(orderId) {
+    try { if (typeof updatePCSubDashboards === 'function') updatePCSubDashboards(); } catch (e) {}
+    (window.__yjFinanceRefreshers || []).forEach(fn => { try { fn(); } catch (e) {} });
+    if (window.__yjDetailOrderId === orderId && document.getElementById('detailPaymentHistory')) loadPaymentHistory(orderId, 'detailPaymentHistory');
+}
+
+// 입금 이력 조회·렌더 (상세 패널). 원본 이벤트 불변, 취소/정정은 새 이벤트로만 표시.
+async function loadPaymentHistory(orderId, containerId) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    el.innerHTML = '<p class="text-[11px] text-slate-500 font-bold">입금 이력을 불러오는 중…</p>';
+    if (typeof db === 'undefined') { el.innerHTML = '<p class="text-[11px] text-slate-500 font-bold">DB 연결 대기</p>'; return; }
+    try {
+        const [oSnap, evSnap] = await Promise.all([
+            db.collection('orders').doc(orderId).get(),
+            db.collection('orders').doc(orderId).collection('paymentEvents').orderBy('createdAt', 'asc').get()
+        ]);
+        const o = oSnap.exists ? { id: oSnap.id, ...oSnap.data() } : { id: orderId };
+        const events = evSnap.docs.map(d => ({ eventId: d.id, ...d.data() }));
+        renderPaymentHistory(el, o, events);
     } catch (e) {
-        if (errEl) errEl.textContent = (e?.message || String(e));
-        else alert('입금 처리 실패: ' + (e?.message || e));
-    } finally {
-        window.__yjPaymentBusy = false;
-        const b = document.getElementById('paymentModalSubmit');
-        if (b) { b.disabled = false; b.textContent = '입금 저장'; }
+        el.innerHTML = `<p class="text-[11px] text-rose-400 font-bold">입금 이력 조회 실패: ${escapeDashboardText(e?.message || String(e))}</p>`;
     }
+}
+function renderPaymentHistory(el, o, events) {
+    const manage = canManagePayment();
+    const total = (Number(o.price) || 0) * (Number(o.qty) || 0);
+    const paid = Math.max(0, Number(o.paidAmount) || 0);
+    const remaining = Math.max(0, total - paid);
+    const reversedTargets = new Set(events.filter(e => e.type === 'reversal' && e.targetEventId).map(e => e.targetEventId));
+    const openingLine = (o.paymentLedgerInitialized && Number(o.paymentLedgerOpeningBalance) > 0)
+        ? `<div class="rounded-lg bg-[#0f1522] border border-[#334155] p-3 mb-2"><p class="text-[11px] font-black text-slate-200">기존 누적 입금액: ${paymentWon(o.paymentLedgerOpeningBalance)}</p><p class="text-[10px] font-bold text-slate-500 mt-0.5">상세 입금 이력은 입금 이력 기능 도입 이전 자료로 제공되지 않습니다.</p></div>`
+        : '';
+    const rows = events.map(e => {
+        const isPos = ['payment', 'corrected_payment'].includes(e.type);
+        const canAct = manage && isPos && !reversedTargets.has(e.eventId);
+        const amtCls = e.amount < 0 ? 'text-rose-300' : 'text-emerald-300';
+        const when = e.createdAt ? new Date(Number(e.createdAt)).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+        const actBtns = canAct
+            ? `<div class="flex gap-1 mt-1"><button onclick="openPaymentCancelModal('${o.id}','${e.eventId}')" class="px-2 py-1 rounded bg-rose-500/10 border border-rose-500/30 text-rose-300 text-[10px] font-black hover:border-rose-400">취소</button><button onclick="openPaymentCorrectionModal('${o.id}','${e.eventId}')" class="px-2 py-1 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] font-black hover:border-amber-400">정정</button></div>`
+            : (reversedTargets.has(e.eventId) ? '<span class="text-[10px] font-black text-slate-500">취소됨</span>' : '');
+        return `<tr class="border-t border-[#334155]/60 align-top">
+            <td class="px-2 py-2 text-[11px] font-black text-slate-200 whitespace-nowrap">${PAYMENT_EVENT_TYPE_LABEL[e.type] || e.type}</td>
+            <td class="px-2 py-2 text-[11px] text-slate-400 whitespace-nowrap">${escapeDashboardText(e.paymentDate || '-')}</td>
+            <td class="px-2 py-2 text-right text-[11px] font-black ${amtCls} whitespace-nowrap">${e.amount < 0 ? '-' : '+'}${paymentWon(Math.abs(Number(e.amount) || 0)).replace('₩ ', '')}</td>
+            <td class="px-2 py-2 text-[11px] text-slate-400 whitespace-nowrap">${PAYMENT_METHOD_LABEL[e.paymentMethod] || '-'}</td>
+            <td class="px-2 py-2 text-[11px] text-slate-400">${escapeDashboardText(e.senderName || '-')}</td>
+            <td class="px-2 py-2 text-[11px] text-slate-400 whitespace-nowrap">${escapeDashboardText(e.actorName || '-')}<br><span class="text-[10px] text-slate-500">${when}</span></td>
+            <td class="px-2 py-2 text-[11px] text-slate-400">${escapeDashboardText(e.reason || e.memo || '')}${actBtns}</td>
+        </tr>`;
+    }).join('');
+    const registerBtn = manage
+        ? `<button onclick="openPaymentModal('${o.id}')" class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-white text-[11px] font-black">＋ 입금 등록</button>`
+        : '<span class="text-[10px] font-black text-slate-500">입금 등록·취소·정정은 회계·관리자만</span>';
+    el.innerHTML = `
+        <div class="flex items-center justify-between mb-2"><h4 class="text-xs font-black text-white">입금 이력</h4>${registerBtn}</div>
+        <div class="grid grid-cols-3 gap-2 text-center mb-2">
+          <div class="rounded bg-[#0f1522] p-2"><p class="text-[9px] font-bold text-slate-500">총 청구액</p><p class="text-[11px] font-black text-white">${paymentWon(total)}</p></div>
+          <div class="rounded bg-[#0f1522] p-2"><p class="text-[9px] font-bold text-slate-500">누적 입금</p><p class="text-[11px] font-black text-emerald-300">${paymentWon(paid)}</p></div>
+          <div class="rounded bg-[#0f1522] p-2"><p class="text-[9px] font-bold text-slate-500">잔액</p><p class="text-[11px] font-black text-amber-300">${paymentWon(remaining)}</p></div>
+        </div>
+        ${openingLine}
+        ${events.length ? `<div class="overflow-x-auto rounded-lg border border-[#334155]"><table class="w-full text-left"><thead class="bg-[#0f1522] text-slate-500"><tr><th class="px-2 py-2 text-[10px] font-black">구분</th><th class="px-2 py-2 text-[10px] font-black">실제 입금일</th><th class="px-2 py-2 text-[10px] font-black text-right">금액</th><th class="px-2 py-2 text-[10px] font-black">수단</th><th class="px-2 py-2 text-[10px] font-black">입금자</th><th class="px-2 py-2 text-[10px] font-black">처리자·시각</th><th class="px-2 py-2 text-[10px] font-black">사유/처리</th></tr></thead><tbody>${rows}</tbody></table></div>`
+          : '<p class="text-[11px] text-slate-500 font-bold py-3 text-center border border-dashed border-[#334155] rounded-lg">등록된 입금 이력이 없습니다.</p>'}`;
+}
+
+// 입금 취소/정정 대상 이벤트를 화면 표시용으로 조회
+async function fetchPaymentContext(orderId, eventId) {
+    const [oSnap, evSnap] = await Promise.all([
+        db.collection('orders').doc(orderId).get(),
+        db.collection('orders').doc(orderId).collection('paymentEvents').doc(eventId).get()
+    ]);
+    if (!oSnap.exists) throw new Error('주문 데이터를 찾을 수 없습니다.');
+    if (!evSnap.exists) throw new Error('대상 입금 기록을 찾을 수 없습니다.');
+    const o = { id: oSnap.id, ...oSnap.data() };
+    const ev = { eventId: evSnap.id, ...evSnap.data() };
+    const paidBefore = Math.max(0, Number(o.paidAmount) || 0);
+    const total = (Number(o.price) || 0) * (Number(o.qty) || 0);
+    return { o, ev, paidBefore, total, origAmount: Math.abs(Number(ev.amount) || 0) };
+}
+async function openPaymentCancelModal(orderId, eventId) {
+    if (!canManagePayment()) return alert('입금 취소는 관리자·회계만 가능합니다.');
+    let ctx; try { ctx = await fetchPaymentContext(orderId, eventId); } catch (e) { return alert(e?.message || e); }
+    const { o, origAmount, paidBefore, total } = ctx;
+    const paidAfter = paidBefore - origAmount;
+    const opId = paymentOpId();
+    const container = document.getElementById('modalContainer');
+    if (!container) return;
+    container.innerHTML = `
+      <div class="fixed inset-0 z-[120] bg-black/70 backdrop-blur-md flex items-center justify-center p-4" onclick="if(event.target===this)closePaymentModal()">
+        <div class="bg-[#1e293b] border border-[#334155] w-full max-w-md rounded-2xl shadow-2xl flex flex-col">
+          <div class="flex justify-between items-center p-5 border-b border-[#334155]"><h3 class="text-base font-black text-white">입금 취소</h3><button onclick="closePaymentModal()" class="w-9 h-9 bg-[#0f1522] border border-[#334155] rounded-full text-slate-300 font-black">✕</button></div>
+          <div class="p-5 space-y-2 text-[12px]">
+            <p class="text-[11px] font-bold text-slate-300 bg-rose-500/10 border border-rose-500/20 rounded-lg p-2.5">원본 입금 기록은 삭제하지 않고, 취소 기록을 추가합니다.</p>
+            <div class="flex justify-between"><span class="text-slate-500 font-bold">원래 입금액</span><b class="text-white">${paymentWon(origAmount)}</b></div>
+            <div class="flex justify-between"><span class="text-slate-500 font-bold">취소 금액</span><b class="text-rose-300">-${paymentWon(origAmount).replace('₩ ', '')}</b></div>
+            <div class="flex justify-between"><span class="text-slate-500 font-bold">처리 전 누적</span><b class="text-white">${paymentWon(paidBefore)}</b></div>
+            <div class="flex justify-between"><span class="text-slate-500 font-bold">처리 후 누적</span><b class="text-white">${paymentWon(paidAfter)}</b></div>
+            <div class="flex justify-between"><span class="text-slate-500 font-bold">처리 후 잔액</span><b class="text-amber-300">${paymentWon(Math.max(0, total - paidAfter))}</b></div>
+            <input type="hidden" id="paymentOpOpId" value="${opId}">
+            <input type="hidden" id="paymentOpOrig" value="${origAmount}">
+            <input type="hidden" id="paymentOpTarget" value="${eventId}">
+            <label class="block text-[11px] font-bold text-slate-400 pt-1">취소 사유 (필수)<textarea id="paymentOpReason" rows="2" class="mt-1 w-full p-2.5 bg-[#0f1522] border border-[#334155] rounded-lg text-white font-bold outline-none focus:border-rose-400 resize-none"></textarea></label>
+            <p id="paymentOpError" class="min-h-[16px] text-[11px] font-black text-red-400"></p>
+          </div>
+          <div class="p-4 border-t border-[#334155] flex gap-2 justify-end">
+            <button onclick="closePaymentModal()" class="px-4 py-2 rounded-lg bg-[#0f1522] border border-[#334155] text-slate-300 text-xs font-black">닫기</button>
+            <button id="paymentOpSubmit" onclick="submitPaymentCancel('${orderId}')" class="px-5 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-black">입금 취소 기록</button>
+          </div>
+        </div>
+      </div>`;
+}
+async function submitPaymentCancel(orderId) {
+    if (!canManagePayment()) return alert('입금 취소는 관리자·회계만 가능합니다.');
+    const errEl = document.getElementById('paymentOpError');
+    const reason = String(document.getElementById('paymentOpReason')?.value || '').trim();
+    if (!reason) { if (errEl) errEl.textContent = '취소 사유는 필수입니다.'; return; }
+    const op = { operationId: document.getElementById('paymentOpOpId')?.value || paymentOpId(), kind: 'reversal', amount: Number(document.getElementById('paymentOpOrig')?.value || 0), targetEventId: document.getElementById('paymentOpTarget')?.value || '', reason };
+    try {
+        const result = await runPaymentLedgerOp(orderId, op, { button: document.getElementById('paymentOpSubmit'), busyText: '처리 중…', idleText: '입금 취소 기록' });
+        if (!result) return;
+        closePaymentModal(); yjRefreshAfterPayment(orderId);
+        if (typeof showToast === 'function') showToast('noti-accounting', '↩️', '입금 취소', `${result.client} 입금 취소를 기록했습니다.`);
+    } catch (e) { if (errEl) errEl.textContent = (e?.message || String(e)); else alert(e?.message || e); }
+}
+async function openPaymentCorrectionModal(orderId, eventId) {
+    if (!canManagePayment()) return alert('입금 정정은 관리자·회계만 가능합니다.');
+    let ctx; try { ctx = await fetchPaymentContext(orderId, eventId); } catch (e) { return alert(e?.message || e); }
+    const { origAmount, paidBefore, total } = ctx;
+    const today = new Date().toISOString().slice(0, 10);
+    const opId = paymentOpId();
+    const container = document.getElementById('modalContainer');
+    if (!container) return;
+    container.innerHTML = `
+      <div class="fixed inset-0 z-[120] bg-black/70 backdrop-blur-md flex items-center justify-center p-4" onclick="if(event.target===this)closePaymentModal()">
+        <div class="bg-[#1e293b] border border-[#334155] w-full max-w-md rounded-2xl shadow-2xl flex flex-col max-h-[92vh]">
+          <div class="flex justify-between items-center p-5 border-b border-[#334155]"><h3 class="text-base font-black text-white">입금 정정</h3><button onclick="closePaymentModal()" class="w-9 h-9 bg-[#0f1522] border border-[#334155] rounded-full text-slate-300 font-black">✕</button></div>
+          <div class="p-5 space-y-2 text-[12px] overflow-y-auto">
+            <p class="text-[11px] font-bold text-slate-300 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2.5">원래 입금을 취소하고 올바른 금액을 정정 입금으로 추가합니다(원본 보존).</p>
+            <div class="flex justify-between"><span class="text-slate-500 font-bold">원래 입금액</span><b class="text-white">${paymentWon(origAmount)}</b></div>
+            <div class="flex justify-between"><span class="text-slate-500 font-bold">처리 전 누적</span><b class="text-white">${paymentWon(paidBefore)}</b></div>
+            <input type="hidden" id="paymentCorrOpId" value="${opId}">
+            <input type="hidden" id="paymentCorrOrig" value="${origAmount}">
+            <input type="hidden" id="paymentCorrTarget" value="${eventId}">
+            <input type="hidden" id="paymentCorrTotal" value="${total}">
+            <input type="hidden" id="paymentCorrBefore" value="${paidBefore}">
+            <label class="block text-[11px] font-bold text-slate-400 pt-1">정정 입금액 (원)<input id="paymentCorrAmount" type="text" inputmode="numeric" value="${origAmount.toLocaleString('ko-KR')}" oninput="paymentCorrPreview()" class="mt-1 w-full p-2.5 bg-[#0f1522] border border-[#334155] rounded-lg text-white font-black outline-none focus:border-amber-400"></label>
+            <div class="grid grid-cols-2 gap-3">
+              <label class="text-[11px] font-bold text-slate-400">실제 입금일<input id="paymentCorrDate" type="date" value="${today}" class="mt-1 w-full p-2.5 bg-[#0f1522] border border-[#334155] rounded-lg text-white font-bold outline-none focus:border-amber-400"></label>
+              <label class="text-[11px] font-bold text-slate-400">입금 수단<select id="paymentCorrMethod" class="mt-1 w-full p-2.5 bg-[#0f1522] border border-[#334155] rounded-lg text-white font-bold outline-none focus:border-amber-400"><option value="bank_transfer">계좌이체</option><option value="cash">현금</option><option value="card">카드</option><option value="other">기타</option></select></label>
+            </div>
+            <div class="flex justify-between"><span class="text-slate-500 font-bold">처리 후 누적</span><b id="paymentCorrAfter" class="text-white">-</b></div>
+            <div class="flex justify-between"><span class="text-slate-500 font-bold">처리 후 잔액</span><b id="paymentCorrRemain" class="text-amber-300">-</b></div>
+            <label class="block text-[11px] font-bold text-slate-400">정정 사유 (필수)<textarea id="paymentOpReason" rows="2" class="mt-1 w-full p-2.5 bg-[#0f1522] border border-[#334155] rounded-lg text-white font-bold outline-none focus:border-amber-400 resize-none"></textarea></label>
+            <p id="paymentOpError" class="min-h-[16px] text-[11px] font-black text-red-400"></p>
+          </div>
+          <div class="p-4 border-t border-[#334155] flex gap-2 justify-end">
+            <button onclick="closePaymentModal()" class="px-4 py-2 rounded-lg bg-[#0f1522] border border-[#334155] text-slate-300 text-xs font-black">닫기</button>
+            <button id="paymentOpSubmit" onclick="submitPaymentCorrection('${orderId}')" class="px-5 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-black">정정 기록</button>
+          </div>
+        </div>
+      </div>`;
+    paymentCorrPreview();
+}
+function paymentCorrPreview() {
+    const orig = Number(document.getElementById('paymentOpOrig')?.value || 0);
+    const before = Number(document.getElementById('paymentCorrBefore')?.value || 0);
+    const total = Number(document.getElementById('paymentCorrTotal')?.value || 0);
+    const newAmt = paymentModalParse(document.getElementById('paymentCorrAmount')?.value);
+    const after = before - orig + (newAmt || 0);
+    const afterEl = document.getElementById('paymentCorrAfter');
+    const remainEl = document.getElementById('paymentCorrRemain');
+    const err = document.getElementById('paymentOpError');
+    if (afterEl) afterEl.textContent = paymentWon(after);
+    if (remainEl) remainEl.textContent = paymentWon(Math.max(0, total - after));
+    if (err) err.textContent = (newAmt !== null && after > total) ? '정정 후 누적이 총 청구액을 초과합니다.' : '';
+}
+async function submitPaymentCorrection(orderId) {
+    if (!canManagePayment()) return alert('입금 정정은 관리자·회계만 가능합니다.');
+    const errEl = document.getElementById('paymentOpError');
+    const newAmt = paymentModalParse(document.getElementById('paymentCorrAmount')?.value);
+    const reason = String(document.getElementById('paymentOpReason')?.value || '').trim();
+    if (newAmt === null || newAmt <= 0) { if (errEl) errEl.textContent = '정정 입금액을 올바르게 입력하세요.'; return; }
+    if (!reason) { if (errEl) errEl.textContent = '정정 사유는 필수입니다.'; return; }
+    const op = {
+        operationId: document.getElementById('paymentOpOpId')?.value || paymentOpId(),
+        kind: 'correction', amount: Number(document.getElementById('paymentOpOrig')?.value || 0), correctedAmount: newAmt,
+        targetEventId: document.getElementById('paymentOpTarget')?.value || '', reason,
+        paymentDate: String(document.getElementById('paymentCorrDate')?.value || '').slice(0, 10),
+        paymentMethod: document.getElementById('paymentCorrMethod')?.value || 'bank_transfer'
+    };
+    try {
+        const result = await runPaymentLedgerOp(orderId, op, { button: document.getElementById('paymentOpSubmit'), busyText: '처리 중…', idleText: '정정 기록' });
+        if (!result) return;
+        closePaymentModal(); yjRefreshAfterPayment(orderId);
+        if (typeof showToast === 'function') showToast('noti-accounting', '✏️', '입금 정정', `${result.client} 입금 정정을 기록했습니다.`);
+    } catch (e) { if (errEl) errEl.textContent = (e?.message || String(e)); else alert(e?.message || e); }
 }
 
 // ─── WORK51-c: 참고용 거래명세서 A4 출력 ───
@@ -5991,7 +6261,7 @@ function selectFinanceDetailRow(element, orderId, event) {
 
 document.addEventListener('click', function handleFinanceDetailPanelClick(event) {
     if (event.target.closest('button, a, input, select, textarea, [data-yj-action]')) return;
-    const financeBody = event.target.closest('#pcFinanceApprovalWaitBody, #pcFinanceCollectionWaitBody');
+    const financeBody = event.target.closest('#pcFinanceApprovalWaitBody, #pcFinanceCollectionWaitBody, #pcFinanceCompletedBody, #pcFinanceInvoiceWaitBody');
     if (!financeBody) return;
     const row = event.target.closest('tr');
     if (!row || row.querySelector('[colspan]')) return;
@@ -6008,6 +6278,7 @@ function selectRow(element, orderId) {
     const o = orders.find(x => x.id === orderId);
     if(!o) return;
     window.__yjDetailOrderId = orderId; // WORK51-c: 상세 패널 거래명세서 출력용
+    if (document.getElementById('detailPaymentHistory')) loadPaymentHistory(orderId, 'detailPaymentHistory'); // WORK52-2: 입금 이력
 
     const detailPanel = document.getElementById('rightDetailPanel');
     if (detailPanel) detailPanel.classList.remove('hidden');
