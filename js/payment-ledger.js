@@ -23,7 +23,14 @@
     if (!actor.uid || !(actor.role === 'admin' || actor.role === 'accounting')) {
       throw new Error('입금 등록·취소·정정은 관리자·회계만 가능합니다.');
     }
-    if (ctx.primaryExists) return { idempotent: true }; // 같은 operationId 재실행: 재반영 금지
+    // 멱등: 대표 이벤트가 이미 존재하면 재반영 금지.
+    // 단, 주문 요약이 그 operation을 실제로 반영했을 때만 idempotent 성공으로 본다.
+    // 이벤트만 있고 주문이 반영되지 않은 "고아 이벤트" 상태는 성공이 아니라 오류로 처리한다.
+    if (ctx.primaryExists) {
+      const finalId = op.kind === 'correction' ? (op.operationId + '__c') : op.operationId;
+      if ((o.lastOperationId || '') === finalId) return { idempotent: true };
+      throw new Error('불완전한 이전 처리(고아 입금 이벤트)가 감지되었습니다. 요청 ID를 관리자에게 전달하세요.');
+    }
 
     const total = (Number(o.price) || 0) * (Number(o.qty) || 0);
     if (total <= 0) throw new Error('총 청구액을 확인할 수 없습니다.');

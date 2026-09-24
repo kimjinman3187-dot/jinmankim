@@ -4749,7 +4749,8 @@ async function applyPaymentLedgerOp(orderId, op) {
         const plan = window.YJPaymentLedger.computeLedgerOp(op, {
             order: o,
             actor: { uid: currentUser?.auth_uid || currentUser?.id || '', name: currentUser?.name || '', role: currentUser?.role || '' },
-            now: Date.now(),
+            // WORK52-2: 시각은 Firestore 서버 시각(sentinel). Rules가 request.time과 동치 검증.
+            now: firebase.firestore.FieldValue.serverTimestamp(),
             primaryExists: primarySnap.exists,
             targetEvent: (targetSnap && targetSnap.exists) ? { eventId: targetSnap.id, ...targetSnap.data() } : null,
             markerExists: !!(markerSnap && markerSnap.exists)
@@ -4884,6 +4885,19 @@ async function loadPaymentHistory(orderId, containerId) {
         el.innerHTML = `<p class="text-[11px] text-rose-400 font-bold">입금 이력 조회 실패: ${escapeDashboardText(e?.message || String(e))}</p>`;
     }
 }
+// WORK52-2: Firestore Timestamp(신규 서버시각) + 기존 숫자형 시각 모두 표시 지원(하위호환).
+function paymentTsToMillis(v) {
+    if (v == null) return null;
+    if (typeof v === 'number') return v;
+    if (typeof v.toMillis === 'function') return v.toMillis();
+    if (typeof v.toDate === 'function') { const d = v.toDate(); return d ? d.getTime() : null; }
+    if (typeof v.seconds === 'number') return v.seconds * 1000 + Math.floor((v.nanoseconds || 0) / 1e6);
+    const n = Number(v); return Number.isFinite(n) ? n : null;
+}
+function paymentWhen(v) {
+    const ms = paymentTsToMillis(v);
+    return ms == null ? '-' : new Date(ms).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' });
+}
 function renderPaymentHistory(el, o, events) {
     const manage = canManagePayment();
     const total = (Number(o.price) || 0) * (Number(o.qty) || 0);
@@ -4897,7 +4911,7 @@ function renderPaymentHistory(el, o, events) {
         const isPos = ['payment', 'corrected_payment'].includes(e.type);
         const canAct = manage && isPos && !reversedTargets.has(e.eventId);
         const amtCls = e.amount < 0 ? 'text-rose-300' : 'text-emerald-300';
-        const when = e.createdAt ? new Date(Number(e.createdAt)).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+        const when = paymentWhen(e.createdAt);
         const actBtns = canAct
             ? `<div class="flex gap-1 mt-1"><button onclick="openPaymentCancelModal('${o.id}','${e.eventId}')" class="px-2 py-1 rounded bg-rose-500/10 border border-rose-500/30 text-rose-300 text-[10px] font-black hover:border-rose-400">취소</button><button onclick="openPaymentCorrectionModal('${o.id}','${e.eventId}')" class="px-2 py-1 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] font-black hover:border-amber-400">정정</button></div>`
             : (reversedTargets.has(e.eventId) ? '<span class="text-[10px] font-black text-slate-500">취소됨</span>' : '');

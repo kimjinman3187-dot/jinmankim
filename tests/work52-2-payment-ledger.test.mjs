@@ -182,6 +182,33 @@ test('모든 이벤트는 afterPaidAmount == beforePaidAmount + amount 산술 �
   }
 });
 
+test('고아 이벤트(주문 미반영)면 idempotent 성공이 아니라 오류', () => {
+  const s = makeStore({ price: 1000, qty: 10 });
+  // 이벤트만 존재하고 주문 요약(lastOperationId)은 반영되지 않은 불완전 상태를 인위적으로 구성
+  s.events.set('p1', { eventId: 'p1', operationId: 'p1', type: 'payment', amount: 1000, beforePaidAmount: 0, afterPaidAmount: 1000 });
+  assert.throws(() => apply(s, { kind: 'payment', operationId: 'p1', amount: 1000 }), /고아/);
+});
+
+test('정상 반영된 operation의 재실행은 idempotent 성공', () => {
+  const s = makeStore({ price: 1000, qty: 10 });
+  apply(s, { kind: 'payment', operationId: 'p1', amount: 1000 }); // 주문 lastOperationId=p1 반영됨
+  const r = apply(s, { kind: 'payment', operationId: 'p1', amount: 1000 });
+  assert.equal(r.idempotent, true);
+});
+
+// 화면 렌더러: Firestore Timestamp와 기존 숫자형 시각 모두 표시(index.html paymentTsToMillis 소스 계약)
+test('renderPaymentHistory는 Timestamp/숫자 시각을 모두 처리한다(소스 계약)', () => {
+  const html = readFileSync(resolve(HERE, '..', 'index.html'), 'utf8');
+  const m = /function paymentTsToMillis[\s\S]*?\n}/.exec(html);
+  assert.ok(m, 'paymentTsToMillis 함수를 찾을 수 없음');
+  const body = m[0];
+  assert.ok(/toMillis/.test(body) && /toDate/.test(body) && /seconds/.test(body), 'Firestore Timestamp 처리 누락');
+  assert.ok(/typeof v === 'number'/.test(body), '숫자형 시각 처리 누락(하위호환)');
+  // 렌더러가 구형 new Date(Number(createdAt)) 대신 공용 변환을 쓰는지
+  const rp = /function renderPaymentHistory[\s\S]*?\n}/.exec(html);
+  assert.ok(rp && /paymentWhen\(/.test(rp[0]), '렌더러가 paymentWhen을 사용하지 않음');
+});
+
 // item 8: 멱등 재실행 시 감사 로그 중복 생성 금지 — runPaymentLedgerOp(index.html)의 소스 계약 검증
 test('runPaymentLedgerOp은 idempotent 재실행 시 감사 로그를 남기지 않는다(소스 계약)', () => {
   const html = readFileSync(resolve(HERE, '..', 'index.html'), 'utf8');

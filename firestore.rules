@@ -74,30 +74,44 @@ service cloud.firestore {
         && (d.type != "reversal" || d.amount == -(get(tp).data.amount));
     }
 
-    // WORK52-2: 입금 이벤트 생성 검증. eventId==문서id==operationId, 허용필드만, 실제 역할과 정확 일치,
-    // 금액 산술 연속성(after == before + amount), 유형별 부호·필수필드,
-    // reversal/corrected는 대상 이벤트 검증 + 대상 마커 동시 생성 강제.
+    // WORK52-2 역방향 바인딩: 이벤트/마커 단독 생성(고아) 차단.
+    // 같은 커밋에서 주문 문서가 이 이벤트를 first/last operationId로 가리키도록 갱신돼야 한다.
+    function orderReflectsEvent(orderId, eventId) {
+      let op = /databases/$(database)/documents/orders/$(orderId);
+      return existsAfter(op)
+        && (getAfter(op).data.firstOperationId == eventId || getAfter(op).data.lastOperationId == eventId);
+    }
+
+    // WORK52-2: 입금 이벤트 생성 검증. eventId==문서id==operationId, 허용필드만·형식, 실제 역할 일치,
+    // createdAt==request.time(서버시각), 금액 산술 연속성, 유형별 부호·필수필드,
+    // reversal/corrected는 대상 이벤트+마커 동시 생성, 그리고 주문 요약이 같은 커밋에 이 이벤트를 반영.
     function paymentEventCreateValid(orderId, eventId) {
       let d = request.resource.data;
       return d.keys().hasOnly(paymentEventFields())
         && d.eventId == eventId && d.operationId == eventId
         && d.actorUid == request.auth.uid
+        && d.actorName is string
         && d.actorRole == arUserDoc().get("role", "")
         && d.actorRole in ["admin", "accounting"]
-        && d.createdAt is int
+        && d.createdAt == request.time
+        && d.paymentDate is string && d.paymentDate.size() > 0
+        && d.paymentMethod in ["bank_transfer", "cash", "card", "other"]
+        && d.senderName is string && d.reference is string && d.memo is string && d.reason is string
         && d.amount is number
         && d.beforePaidAmount is number && d.beforePaidAmount >= 0
         && d.afterPaidAmount is number && d.afterPaidAmount >= 0
         && d.afterPaidAmount == d.beforePaidAmount + d.amount
         && d.type in ["payment", "reversal", "corrected_payment"]
+        && orderReflectsEvent(orderId, eventId)
         && (
-          (d.type == "payment" && d.amount > 0)
+          (d.type == "payment" && d.amount > 0
+                && d.targetEventId == "" && d.reason == "")
           || (d.type == "reversal" && d.amount < 0
-                && d.reason is string && d.reason.size() > 0
+                && d.reason.size() > 0
                 && paymentTargetValid(orderId, d)
                 && paymentActionBound(orderId, d.targetEventId))
           || (d.type == "corrected_payment" && d.amount > 0
-                && d.reason is string && d.reason.size() > 0
+                && d.reason.size() > 0
                 && paymentTargetValid(orderId, d)
                 && paymentActionBound(orderId, d.targetEventId))
         );
@@ -109,6 +123,7 @@ service cloud.firestore {
       let d = request.resource.data;
       let revPath = /databases/$(database)/documents/orders/$(orderId)/paymentEvents/$(d.operationId);
       let corrPath = /databases/$(database)/documents/orders/$(orderId)/paymentEvents/$(d.operationId + "__c");
+      let op = /databases/$(database)/documents/orders/$(orderId);
       return d.keys().hasOnly(["targetEventId", "operationId", "kind", "actorUid", "actorRole", "createdAt"])
         && d.targetEventId == targetEventId
         && d.operationId is string && d.operationId.size() > 0
@@ -116,15 +131,21 @@ service cloud.firestore {
         && d.actorRole == arUserDoc().get("role", "")
         && d.actorRole in ["admin", "accounting"]
         && d.kind in ["reversal", "correction"]
-        && d.createdAt is int
-        && existsAfter(revPath)
+        && d.createdAt == request.time
+        && !exists(revPath) && existsAfter(revPath)       // reversal 이벤트가 이번 커밋 신규
         && getAfter(revPath).data.type == "reversal"
         && getAfter(revPath).data.targetEventId == targetEventId
         && getAfter(revPath).data.operationId == d.operationId
         && getAfter(revPath).data.actorUid == d.actorUid
         && getAfter(revPath).data.actorRole == d.actorRole
         && (d.kind != "correction" || existsAfter(corrPath))
-        && (d.kind != "reversal" || !existsAfter(corrPath));
+        && (d.kind != "reversal" || !existsAfter(corrPath))
+        // 주문 요약이 같은 커밋에 이 처리를 반영(마커만 단독 생성 차단)
+        && existsAfter(op)
+        && getAfter(op).data.firstOperationId == d.operationId
+        && (d.kind == "correction"
+              ? getAfter(op).data.lastOperationId == d.operationId + "__c"
+              : getAfter(op).data.lastOperationId == d.operationId);
     }
 
     // WORK52-2: 주문 입금 요약 변경은 같은 커밋의 실제 이벤트와 연속적으로 묶여야 한다.
@@ -137,9 +158,11 @@ service cloud.firestore {
       let lastId = nd.lastOperationId;
       let fp = /databases/$(database)/documents/orders/$(orderId)/paymentEvents/$(firstId);
       let lp = /databases/$(database)/documents/orders/$(orderId)/paymentEvents/$(lastId);
-      let total = (nd.price is number ? nd.price : 0) * (nd.qty is number ? nd.qty : 0);
+      // 총액은 기존 확정 가격·수량 기준(입금 처리로 price·qty 동시 변경 금지 → 한도 우회 차단)
+      let total = (od.price is number ? od.price : 0) * (od.qty is number ? od.qty : 0);
       return firstId is string && firstId.size() > 0
         && lastId is string && lastId.size() > 0
+        && nd.price == od.price && nd.qty == od.qty
         && !exists(fp) && !exists(lp)
         && existsAfter(fp) && existsAfter(lp)
         && getAfter(fp).data.operationId == firstId
@@ -152,9 +175,15 @@ service cloud.firestore {
           || (nd.paidAmount > 0 && nd.paidAmount < total && nd.paymentStatus == "partial")
           || (nd.paidAmount >= total && nd.paymentStatus == "paid")
         )
-        && (nd.paymentStatus == "paid" ? nd.paidAt != null : nd.paidAt == null)
+        // 서버시각: 이번 처리 시각 == request.time. 완납 전이는 paidAt=request.time,
+        // 이미 완납 유지(정정 등)면 기존 paidAt 보존, 그 외에는 paidAt=null.
+        && nd.lastPaymentAt == request.time
+        && (
+          nd.paymentStatus == "paid"
+            ? (od.get("paymentStatus", "") == "paid" ? nd.paidAt == od.paidAt : nd.paidAt == request.time)
+            : nd.paidAt == null
+        )
         && nd.lastPaymentAmount == getAfter(lp).data.amount
-        && nd.lastPaymentAt == getAfter(lp).data.createdAt
         && (
           od.get("paymentLedgerInitialized", false)
             ? (nd.paymentLedgerInitialized == true
