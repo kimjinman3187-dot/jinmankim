@@ -111,100 +111,21 @@
         if (typeof window.confirmPayment !== 'function') return false;
         if (window.confirmPayment.__WORK22_PAYMENT_HOTFIX__) return true;
 
+        // WORK52-2: 이 hotfix의 자체 prompt/confirm + 비트랜잭션 .update() 결제 경로를 폐기한다.
+        // 입금 등록은 오직 단일 안전 경로(openPaymentModal → runPaymentLedgerOp 트랜잭션 +
+        // paymentEvents 원장 기록 + operationId 멱등)로만 처리한다. 여기서는 그 경로로 위임만 하고,
+        // 입금 후 배지 갱신(렌더 회귀 방지) 의도만 유지한다.
         window.confirmPayment = async function confirmPaymentHotfixed(id) {
-            if (typeof window.db === 'undefined') {
-                return alert('데이터베이스 연결이 아직 준비되지 않았습니다. 잠시 후 다시 시도하세요.');
-            }
-
-            let o = null;
-            try {
-                const orderDoc = await window.db.collection('orders').doc(id).get();
-                if (!orderDoc.exists) {
-                    return alert('주문 데이터를 찾을 수 없습니다.');
-                }
-                o = { id: orderDoc.id, ...orderDoc.data() };
-            } catch (e) {
-                return alert('주문 데이터 조회 실패: ' + e.message);
-            }
-
-            const inputStr = prompt('입금된 금액을 입력하세요:\n(숫자 또는 쉼표만 입력 예: 10000 / 10,000)');
-            if (inputStr === null) return;
-
-            const amount = parseStrictPaymentAmount(inputStr);
-            if (amount === null) {
-                return alert('올바른 금액을 입력하세요. 숫자와 쉼표만 사용할 수 있으며 0원, 음수, 소수점, 문자는 허용되지 않습니다.');
-            }
-
-            const totalAmount = getOrderTotal(o);
-            const paidBefore = getPaidAmount(o);
-            const remainingBeforePayment = Math.max(0, totalAmount - paidBefore);
-
-            if (totalAmount <= 0) {
-                return alert('총 청구액을 확인할 수 없어 입금 처리할 수 없습니다.');
-            }
-
-            if (remainingBeforePayment <= 0 || o.paymentStatus === 'paid') {
-                return alert('이미 입금 완료 처리된 주문입니다.');
-            }
-
-            if (amount > remainingBeforePayment) {
-                return alert(`입금액이 남은 잔금을 초과했습니다.\n남은 잔금: ${formatKRW(remainingBeforePayment)}\n입력 금액: ${formatKRW(amount)}\n\n저장하지 않았습니다.`);
-            }
-
-            const newPaid = paidBefore + amount;
-            const isFullyPaid = amount === remainingBeforePayment;
-            const newStatus = isFullyPaid ? 'paid' : 'partial';
-            const now = Date.now();
-
-            const confirmMessage = isFullyPaid
-                ? `총 청구액: ${formatKRW(totalAmount)}\n기존 입금액: ${formatKRW(paidBefore)}\n이번 입금액: ${formatKRW(amount)}\n\n입금완료 처리하시겠습니까?`
-                : `총 청구액: ${formatKRW(totalAmount)}\n기존 입금액: ${formatKRW(paidBefore)}\n이번 입금액: ${formatKRW(amount)}\n남은 잔금: ${formatKRW(totalAmount - newPaid)}\n\n부분입금 처리하시겠습니까?`;
-
-            if (!confirm(confirmMessage)) return;
-
-            const updatePayload = {
-                paidAmount: newPaid,
-                paymentStatus: newStatus,
-                lastPaymentAt: now,
-                lastPaymentAmount: amount
-            };
-
-            if (isFullyPaid && !o.paidAt) {
-                updatePayload.paidAt = now;
-            }
-
-            try {
-                await window.db.collection('orders').doc(id).update(updatePayload);
-
-                Object.assign(o, updatePayload);
-
-                if (typeof window.logAction === 'function') {
-                    await window.logAction('PAYMENT_UPDATED', id, {
-                        added_amount: amount,
-                        total_paid: newPaid,
-                        paymentStatus: newStatus,
-                        lastPaymentAt: now,
-                        paidAt: updatePayload.paidAt || o.paidAt || null
-                    });
-                }
-
-                if (typeof window.showToast === 'function') {
-                    window.showToast('noti-accounting', '💵', isFullyPaid ? '입금 완료' : '부분입금 처리', `${o.client || '주문'} 입금이 반영되었습니다.`);
-                } else {
-                    alert(isFullyPaid ? '입금 완료 처리되었습니다.' : '부분입금 처리되었습니다.');
-                }
-
-                // PAYMENT-HOTFIX-2B: 입금 처리 후 생산공정 리스트가 사라지는 회귀를 막기 위해
-                // 전체 검색/렌더링 체인(executeSearch/renderAccounting/renderReceivables)을 강제 호출하지 않는다.
-                // Firestore onSnapshot 리스너가 데이터 변경을 감지해 기존 화면 흐름대로 갱신한다.
+            if (typeof window.openPaymentModal === 'function') {
+                const r = await window.openPaymentModal(id);
                 setTimeout(renderPaymentDateBadges, 150);
-            } catch (e) {
-                alert('입금 처리 실패: ' + e.message);
+                return r;
             }
+            return alert('입금 처리 기능이 아직 준비되지 않았습니다. 잠시 후 다시 시도하세요.');
         };
 
         window.confirmPayment.__WORK22_PAYMENT_HOTFIX__ = true;
-        console.log('✅ 작업22-PAYMENT-HOTFIX-2B confirmPayment 렌더링 회귀 방지 완료');
+        console.log('✅ WORK52-2 confirmPayment → 안전 입금 원장 경로(openPaymentModal) 위임');
         return true;
     }
 

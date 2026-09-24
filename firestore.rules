@@ -31,6 +31,179 @@ service cloud.firestore {
       return arIsActiveUser() && arUserDoc().get("role", "") == "accounting";
     }
 
+    // WORK52-2: 입금 등록·취소·정정은 관리자·회계만 (영업/생산 불가)
+    function arIsFinanceStaff() {
+      return arIsAdmin() || arIsAccounting();
+    }
+
+    // WORK52-2: 주문 문서에서 입금 관련 요약 필드(회계·관리자만 변경 허용)
+    // first/lastOperationId·lastPaymentAt 포함 — 요약 변경과 실제 입금 이벤트 생성을 묶는 연결 키.
+    function orderPaymentGatedKeys() {
+      return [
+        "paidAmount", "paymentStatus", "paidAt", "lastPaymentAmount", "lastPaymentAt",
+        "paymentLedgerOpeningBalance", "paymentLedgerInitialized",
+        "firstOperationId", "lastOperationId"
+      ];
+    }
+
+    // WORK52-2: 입금 이벤트가 가질 수 있는 필드(허용 필드 화이트리스트)
+    function paymentEventFields() {
+      return [
+        "eventId", "operationId", "type", "amount",
+        "paymentDate", "paymentMethod", "senderName", "reference", "memo",
+        "targetEventId", "reason", "actorUid", "actorName", "actorRole",
+        "createdAt", "beforePaidAmount", "afterPaidAmount"
+      ];
+    }
+
+    // reversal/corrected_payment 이벤트 생성 시, 대상 이벤트의 처리 마커가 "이번 커밋에 새로" 생성돼야 한다.
+    // 마커는 update/delete 불가(아래 match)라 대상당 1회만 생성 → 원본 입금의 중복 취소·정정을 Rules에서 차단.
+    function paymentActionBound(orderId, targetEventId) {
+      return !exists(/databases/$(database)/documents/orders/$(orderId)/paymentEventActions/$(targetEventId))
+        && existsAfter(/databases/$(database)/documents/orders/$(orderId)/paymentEventActions/$(targetEventId));
+    }
+
+    // WORK52-2: 취소·정정 대상 이벤트 검증(같은 주문 paymentEvents에 실제 존재, 유형·양수 금액).
+    // reversal 은 대상 금액의 정확한 반대여야 한다(reversal.amount == -target.amount).
+    function paymentTargetValid(orderId, d) {
+      let tp = /databases/$(database)/documents/orders/$(orderId)/paymentEvents/$(d.targetEventId);
+      return d.targetEventId is string && d.targetEventId.size() > 0
+        && exists(tp)
+        && get(tp).data.type in ["payment", "corrected_payment"]
+        && get(tp).data.amount is number && get(tp).data.amount > 0
+        && (d.type != "reversal" || d.amount == -(get(tp).data.amount));
+    }
+
+    // WORK52-2 역방향 바인딩: 이벤트/마커 단독 생성(고아) 차단.
+    // 같은 커밋에서 주문 문서가 이 이벤트를 first/last operationId로 가리키도록 갱신돼야 한다.
+    function orderReflectsEvent(orderId, eventId) {
+      let op = /databases/$(database)/documents/orders/$(orderId);
+      return existsAfter(op)
+        && (getAfter(op).data.firstOperationId == eventId || getAfter(op).data.lastOperationId == eventId);
+    }
+
+    // WORK52-2: 입금 이벤트 생성 검증. eventId==문서id==operationId, 허용필드만·형식, 실제 역할 일치,
+    // createdAt==request.time(서버시각), 금액 산술 연속성, 유형별 부호·필수필드,
+    // reversal/corrected는 대상 이벤트+마커 동시 생성, 그리고 주문 요약이 같은 커밋에 이 이벤트를 반영.
+    function paymentEventCreateValid(orderId, eventId) {
+      let d = request.resource.data;
+      return d.keys().hasOnly(paymentEventFields())
+        && d.eventId == eventId && d.operationId == eventId
+        && d.actorUid == request.auth.uid
+        && d.actorName is string
+        && d.actorRole == arUserDoc().get("role", "")
+        && d.actorRole in ["admin", "accounting"]
+        && d.createdAt == request.time
+        && d.paymentDate is string && d.paymentDate.size() > 0
+        && d.paymentMethod in ["bank_transfer", "cash", "card", "other"]
+        && d.senderName is string && d.reference is string && d.memo is string && d.reason is string
+        && d.amount is number
+        && d.beforePaidAmount is number && d.beforePaidAmount >= 0
+        && d.afterPaidAmount is number && d.afterPaidAmount >= 0
+        && d.afterPaidAmount == d.beforePaidAmount + d.amount
+        && d.type in ["payment", "reversal", "corrected_payment"]
+        && orderReflectsEvent(orderId, eventId)
+        && (
+          (d.type == "payment" && d.amount > 0
+                && d.targetEventId == "" && d.reason == "")
+          || (d.type == "reversal" && d.amount < 0
+                && d.reason.size() > 0
+                && paymentTargetValid(orderId, d)
+                && paymentActionBound(orderId, d.targetEventId))
+          || (d.type == "corrected_payment" && d.amount > 0
+                && d.reason.size() > 0
+                && paymentTargetValid(orderId, d)
+                && paymentActionBound(orderId, d.targetEventId))
+        );
+    }
+
+    // WORK52-2: 처리 마커 검증. targetEventId==문서id, operationId가 이번 커밋에 생성된 reversal 이벤트와 일치,
+    // kind가 실제 처리와 일치(취소=reversal·corrected 없음 / 정정=correction·corrected 존재), actor 일치.
+    function paymentActionMarkerValid(orderId, targetEventId) {
+      let d = request.resource.data;
+      let revPath = /databases/$(database)/documents/orders/$(orderId)/paymentEvents/$(d.operationId);
+      let corrPath = /databases/$(database)/documents/orders/$(orderId)/paymentEvents/$(d.operationId + "__c");
+      let op = /databases/$(database)/documents/orders/$(orderId);
+      return d.keys().hasOnly(["targetEventId", "operationId", "kind", "actorUid", "actorRole", "createdAt"])
+        && d.targetEventId == targetEventId
+        && d.operationId is string && d.operationId.size() > 0
+        && d.actorUid == request.auth.uid
+        && d.actorRole == arUserDoc().get("role", "")
+        && d.actorRole in ["admin", "accounting"]
+        && d.kind in ["reversal", "correction"]
+        && d.createdAt == request.time
+        && !exists(revPath) && existsAfter(revPath)       // reversal 이벤트가 이번 커밋 신규
+        && getAfter(revPath).data.type == "reversal"
+        && getAfter(revPath).data.targetEventId == targetEventId
+        && getAfter(revPath).data.operationId == d.operationId
+        && getAfter(revPath).data.actorUid == d.actorUid
+        && getAfter(revPath).data.actorRole == d.actorRole
+        && (d.kind != "correction" || existsAfter(corrPath))
+        && (d.kind != "reversal" || !existsAfter(corrPath))
+        // 주문 요약이 같은 커밋에 이 처리를 반영(마커만 단독 생성 차단)
+        && existsAfter(op)
+        && getAfter(op).data.firstOperationId == d.operationId
+        && (d.kind == "correction"
+              ? getAfter(op).data.lastOperationId == d.operationId + "__c"
+              : getAfter(op).data.lastOperationId == d.operationId);
+    }
+
+    // WORK52-2: 주문 입금 요약 변경은 같은 커밋의 실제 이벤트와 연속적으로 묶여야 한다.
+    // 첫·최종 이벤트 모두 이번 커밋 신규 생성, before/after 연속, 요약 금액·상태·시각·opening 정합,
+    // 정정(첫≠최종)은 reversal→corrected_payment 쌍 연결까지 검증.
+    function orderPaymentEventBound(orderId) {
+      let nd = request.resource.data;
+      let od = resource.data;
+      let firstId = nd.firstOperationId;
+      let lastId = nd.lastOperationId;
+      let fp = /databases/$(database)/documents/orders/$(orderId)/paymentEvents/$(firstId);
+      let lp = /databases/$(database)/documents/orders/$(orderId)/paymentEvents/$(lastId);
+      // 총액은 기존 확정 가격·수량 기준(입금 처리로 price·qty 동시 변경 금지 → 한도 우회 차단)
+      let total = (od.price is number ? od.price : 0) * (od.qty is number ? od.qty : 0);
+      return firstId is string && firstId.size() > 0
+        && lastId is string && lastId.size() > 0
+        && nd.price == od.price && nd.qty == od.qty
+        && !exists(fp) && !exists(lp)
+        && existsAfter(fp) && existsAfter(lp)
+        && getAfter(fp).data.operationId == firstId
+        && getAfter(lp).data.operationId == lastId
+        && getAfter(fp).data.beforePaidAmount == od.get("paidAmount", 0)
+        && getAfter(lp).data.afterPaidAmount == nd.paidAmount
+        && nd.paidAmount is number && nd.paidAmount >= 0 && nd.paidAmount <= total
+        && (
+          (nd.paidAmount == 0 && nd.paymentStatus == "unpaid")
+          || (nd.paidAmount > 0 && nd.paidAmount < total && nd.paymentStatus == "partial")
+          || (nd.paidAmount >= total && nd.paymentStatus == "paid")
+        )
+        // 서버시각: 이번 처리 시각 == request.time. 완납 전이는 paidAt=request.time,
+        // 이미 완납 유지(정정 등)면 기존 paidAt 보존, 그 외에는 paidAt=null.
+        && nd.lastPaymentAt == request.time
+        && (
+          nd.paymentStatus == "paid"
+            ? (od.get("paymentStatus", "") == "paid" ? nd.paidAt == od.paidAt : nd.paidAt == request.time)
+            : nd.paidAt == null
+        )
+        && nd.lastPaymentAmount == getAfter(lp).data.amount
+        && (
+          od.get("paymentLedgerInitialized", false)
+            ? (nd.paymentLedgerInitialized == true
+               && nd.paymentLedgerOpeningBalance == od.paymentLedgerOpeningBalance)
+            : (nd.paymentLedgerInitialized == true
+               && nd.paymentLedgerOpeningBalance == od.get("paidAmount", 0))
+        )
+        && (
+          firstId == lastId
+          || (
+            getAfter(fp).data.type == "reversal"
+            && getAfter(lp).data.type == "corrected_payment"
+            && getAfter(fp).data.targetEventId == getAfter(lp).data.targetEventId
+            && getAfter(fp).data.reason == getAfter(lp).data.reason
+            && getAfter(fp).data.afterPaidAmount == getAfter(lp).data.beforePaidAmount
+            && lastId == firstId + "__c"
+          )
+        );
+    }
+
     function validAssignableRole(role) {
       return role in ["admin", "sales", "accounting", "factory", "factory_manager"];
     }
@@ -625,8 +798,41 @@ service cloud.firestore {
 
     // 업무 데이터는 승인(active) 직원만. 삭제는 admin(Reset Data)만.
     match /orders/{orderId} {
-      allow read, create, update: if arIsActiveUser();
+      allow read: if arIsActiveUser();
+      // WORK52-2: 모든 역할의 신규 주문은 미수 상태로만 시작한다(회계·관리자 예외 없음).
+      // 입금은 반드시 이벤트 원장 경로(입금 등록)로만 발생 → 생성 시 입금 완료 주문 직접 생성 차단.
+      allow create: if arIsActiveUser()
+        && !("paidAmount" in request.resource.data)
+        && !("paidAt" in request.resource.data)
+        && !("lastPaymentAmount" in request.resource.data)
+        && !("lastPaymentAt" in request.resource.data)
+        && !("paymentLedgerOpeningBalance" in request.resource.data)
+        && !("firstOperationId" in request.resource.data)
+        && !("lastOperationId" in request.resource.data)
+        && (!("paymentLedgerInitialized" in request.resource.data) || request.resource.data.paymentLedgerInitialized == false)
+        && (!("paymentStatus" in request.resource.data) || request.resource.data.paymentStatus == "unpaid");
+      // WORK52-2: 입금 요약 필드(paidAmount 등) 변경은 회계·관리자만 + 이벤트 바인딩 필수.
+      // 그 외 필드(생산 단계·영업 등)는 기존대로 active 사용자 전체가 처리 가능(기존 기능 유지).
+      allow update: if arIsActiveUser()
+        && (
+          (arIsFinanceStaff() && orderPaymentEventBound(orderId))
+          || !request.resource.data.diff(resource.data).affectedKeys().hasAny(orderPaymentGatedKeys())
+        );
       allow delete: if arIsAdmin();
+
+      // WORK52-2: 불변 입금 이벤트 원장. 회계·관리자만 생성, 수정·삭제 불가.
+      match /paymentEvents/{eventId} {
+        allow read: if arIsActiveUser();
+        allow create: if arIsFinanceStaff() && paymentEventCreateValid(orderId, eventId);
+        allow update, delete: if false;
+      }
+
+      // WORK52-2: 대상 이벤트별 결정적 처리 마커. 대상당 1회만 생성(중복 취소·정정 차단), 불변.
+      match /paymentEventActions/{targetEventId} {
+        allow read: if arIsActiveUser();
+        allow create: if arIsFinanceStaff() && paymentActionMarkerValid(orderId, targetEventId);
+        allow update, delete: if false;
+      }
     }
 
     // 감사 로그: 기록은 Google 인증(승인 전 게이트 로그 포함) 또는 active 직원,
