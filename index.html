@@ -20,6 +20,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-functions-compat.js"></script>
     <script src="js/firebase-shared.js"></script>
+    <script src="js/payment-ledger.js?v=20260924"></script>
     <script src="js/work22-payment-hotfix.js?v=20260529"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
@@ -4722,78 +4723,44 @@ const PAYMENT_METHOD_LABEL = { bank_transfer: '계좌이체', cash: '현금', ca
 const PAYMENT_EVENT_TYPE_LABEL = { payment: '입금', reversal: '입금 취소', corrected_payment: '정정 입금' };
 function paymentOpId() { try { return crypto.randomUUID(); } catch (e) { return 'op-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10); } }
 function paymentWon(n) { return '₩ ' + (Number(n) || 0).toLocaleString('ko-KR'); }
-function buildPaymentEvent(type, signedAmount, op, eventId, before, after, now) {
-    return {
-        eventId, operationId: op.operationId, type, amount: signedAmount,
-        paymentDate: op.paymentDate || '', paymentMethod: op.paymentMethod || '',
-        senderName: op.senderName || '', reference: op.reference || '', memo: op.memo || '',
-        targetEventId: op.targetEventId || '', reason: op.reason || '',
-        actorUid: currentUser?.auth_uid || currentUser?.id || '', actorName: currentUser?.name || '', actorRole: currentUser?.role || '',
-        createdAt: now, beforePaidAmount: before, afterPaidAmount: after
-    };
-}
-// 입금/취소/정정 공통 트랜잭션. operationId 멱등(같은 요청 두 번 반영 금지). 정정은 취소+정정입금 원자 처리.
+// 입금/취소/정정 공통 트랜잭션. 순수 계산은 js/payment-ledger.js(YJPaymentLedger)로 위임(단일 진실원).
+// 트랜잭션 안에서 주문·대상 이벤트·처리 마커·대표 이벤트를 모두 재조회한 뒤 계획을 계산·기록한다.
+// - 멱등: 같은 operationId 재실행 시 재반영 금지
+// - 취소·정정 금액은 화면 입력이 아니라 재조회한 대상 이벤트 amount에서 산출
+// - 대상 이벤트별 결정적 마커(paymentEventActions/{targetEventId})로 중복 취소·정정 차단
 async function applyPaymentLedgerOp(orderId, op) {
     if (!canManagePayment()) throw new Error('입금 등록·취소·정정은 관리자·회계만 가능합니다.');
     if (typeof db === 'undefined' || typeof db.runTransaction !== 'function') throw new Error('데이터베이스 연결이 준비되지 않았습니다.');
+    if (!window.YJPaymentLedger || typeof window.YJPaymentLedger.computeLedgerOp !== 'function') throw new Error('입금 원장 모듈이 로드되지 않았습니다.');
     const orderRef = db.collection('orders').doc(orderId);
     const evCol = orderRef.collection('paymentEvents');
+    const actionsCol = orderRef.collection('paymentEventActions');
     const primaryRef = evCol.doc(op.operationId);
-    const correctedRef = op.kind === 'correction' ? evCol.doc(op.operationId + '__c') : null;
+    const targetRef = op.targetEventId ? evCol.doc(op.targetEventId) : null;
+    const markerRef = op.targetEventId ? actionsCol.doc(op.targetEventId) : null;
     return db.runTransaction(async tx => {
+        // 모든 read는 write 이전
         const orderSnap = await tx.get(orderRef);
         if (!orderSnap.exists) throw new Error('주문 데이터를 찾을 수 없습니다.');
+        const primarySnap = await tx.get(primaryRef);
+        const targetSnap = targetRef ? await tx.get(targetRef) : null;
+        const markerSnap = markerRef ? await tx.get(markerRef) : null;
         const o = orderSnap.data();
-        const dup = await tx.get(primaryRef); // 멱등 확인(모든 read는 write 이전)
-        if (dup.exists) return { idempotent: true, paidAfter: Math.max(0, Number(o.paidAmount) || 0), status: o.paymentStatus, client: o.client || '주문' };
-        const total = (Number(o.price) || 0) * (Number(o.qty) || 0);
-        if (total <= 0) throw new Error('총 청구액을 확인할 수 없습니다.');
-        const now = Date.now();
-        const summary = { updatedAt: now };
-        if (!o.paymentLedgerInitialized) { // 레거시 최초 이벤트: 기존 누적액을 기초잔액으로 보존(합성 이벤트 생성 안 함)
-            summary.paymentLedgerOpeningBalance = Math.max(0, Number(o.paidAmount) || 0);
-            summary.paymentLedgerInitialized = true;
+        const plan = window.YJPaymentLedger.computeLedgerOp(op, {
+            order: o,
+            actor: { uid: currentUser?.auth_uid || currentUser?.id || '', name: currentUser?.name || '', role: currentUser?.role || '' },
+            now: Date.now(),
+            primaryExists: primarySnap.exists,
+            targetEvent: (targetSnap && targetSnap.exists) ? { eventId: targetSnap.id, ...targetSnap.data() } : null,
+            markerExists: !!(markerSnap && markerSnap.exists)
+        });
+        if (plan.idempotent) {
+            return { idempotent: true, paidAfter: Math.max(0, Number(o.paidAmount) || 0), status: o.paymentStatus, client: o.client || '주문' };
         }
-        const before = Math.max(0, Number(o.paidAmount) || 0);
-        let after = before;
-        const writes = [];
-        if (op.kind === 'payment') {
-            const amt = Number(op.amount);
-            if (!(amt > 0)) throw new Error('입금액은 0보다 커야 합니다.');
-            if (before + amt > total) throw new Error(`잔금 초과: 남은 잔금 ${paymentWon(total - before)}`);
-            after = before + amt;
-            writes.push([primaryRef, buildPaymentEvent('payment', amt, op, op.operationId, before, after, now)]);
-        } else if (op.kind === 'reversal') {
-            const amt = Number(op.amount);
-            if (!(amt > 0)) throw new Error('취소 금액이 올바르지 않습니다.');
-            if (!op.reason) throw new Error('취소 사유는 필수입니다.');
-            if (before - amt < 0) throw new Error('취소 후 누적 입금액이 음수가 될 수 없습니다.');
-            after = before - amt;
-            writes.push([primaryRef, buildPaymentEvent('reversal', -amt, op, op.operationId, before, after, now)]);
-        } else if (op.kind === 'correction') {
-            const origAmt = Number(op.amount), newAmt = Number(op.correctedAmount);
-            if (!(origAmt > 0) || !(newAmt > 0)) throw new Error('정정 금액이 올바르지 않습니다.');
-            if (!op.reason) throw new Error('정정 사유는 필수입니다.');
-            const afterRev = before - origAmt;
-            if (afterRev < 0) throw new Error('정정(취소) 후 누적 입금액이 음수가 됩니다.');
-            const afterPay = afterRev + newAmt;
-            if (afterPay > total) throw new Error(`정정 후 잔금 초과: 총 청구액 ${paymentWon(total)}`);
-            after = afterPay;
-            writes.push([primaryRef, buildPaymentEvent('reversal', -origAmt, op, op.operationId, before, afterRev, now)]);
-            writes.push([correctedRef, buildPaymentEvent('corrected_payment', newAmt, { ...op, amount: newAmt }, op.operationId + '__c', afterRev, afterPay, now)]);
-        } else throw new Error('알 수 없는 처리 유형입니다.');
-        const fully = after >= total && after > 0;
-        summary.paidAmount = after;
-        summary.paymentStatus = after <= 0 ? 'unpaid' : (fully ? 'paid' : 'partial');
-        summary.lastPaymentAmount = op.kind === 'payment' ? Number(op.amount) : (op.kind === 'correction' ? Number(op.correctedAmount) : -Number(op.amount));
-        summary.lastPaymentAt = now;
-        summary.paidAt = fully ? (o.paidAt || now) : null;
-        // WORK52-2: 요약 금액만 바꾸고 이벤트를 누락하는 경로를 Rules(getAfter)로 차단하기 위해
-        // 이번 처리의 대표 operationId(=primaryRef 문서 id)를 주문 요약에 함께 기록한다.
-        summary.lastOperationId = op.operationId;
-        for (const [ref, data] of writes) tx.set(ref, data);
-        tx.update(orderRef, summary);
-        return { idempotent: false, paidAfter: after, status: summary.paymentStatus, client: o.client || '주문', total };
+        for (const ev of plan.events) tx.set(evCol.doc(ev.docId), ev.data);
+        if (plan.marker) tx.set(actionsCol.doc(plan.marker.docId), plan.marker.data);
+        tx.update(orderRef, plan.summary);
+        return { idempotent: false, paidAfter: plan.after, status: plan.summary.paymentStatus, client: o.client || '주문', total: plan.total };
     });
 }
 async function runPaymentLedgerOp(orderId, op, opts = {}) {
@@ -5057,7 +5024,7 @@ async function openPaymentCorrectionModal(orderId, eventId) {
     paymentCorrPreview();
 }
 function paymentCorrPreview() {
-    const orig = Number(document.getElementById('paymentOpOrig')?.value || 0);
+    const orig = Number(document.getElementById('paymentCorrOrig')?.value || 0);
     const before = Number(document.getElementById('paymentCorrBefore')?.value || 0);
     const total = Number(document.getElementById('paymentCorrTotal')?.value || 0);
     const newAmt = paymentModalParse(document.getElementById('paymentCorrAmount')?.value);
@@ -5076,10 +5043,12 @@ async function submitPaymentCorrection(orderId) {
     const reason = String(document.getElementById('paymentOpReason')?.value || '').trim();
     if (newAmt === null || newAmt <= 0) { if (errEl) errEl.textContent = '정정 입금액을 올바르게 입력하세요.'; return; }
     if (!reason) { if (errEl) errEl.textContent = '정정 사유는 필수입니다.'; return; }
+    // 정정 모달의 실제 ID(paymentCorr*)를 읽는다. 취소·정정 금액은 서버 트랜잭션에서
+    // 대상 이벤트 amount로 재계산하므로 여기 amount는 표시/호환용일 뿐 계산에 쓰이지 않는다.
     const op = {
-        operationId: document.getElementById('paymentOpOpId')?.value || paymentOpId(),
-        kind: 'correction', amount: Number(document.getElementById('paymentOpOrig')?.value || 0), correctedAmount: newAmt,
-        targetEventId: document.getElementById('paymentOpTarget')?.value || '', reason,
+        operationId: document.getElementById('paymentCorrOpId')?.value || paymentOpId(),
+        kind: 'correction', correctedAmount: newAmt,
+        targetEventId: document.getElementById('paymentCorrTarget')?.value || '', reason,
         paymentDate: String(document.getElementById('paymentCorrDate')?.value || '').slice(0, 10),
         paymentMethod: document.getElementById('paymentCorrMethod')?.value || 'bank_transfer'
     };
