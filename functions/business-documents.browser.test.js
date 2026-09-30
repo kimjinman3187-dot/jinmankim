@@ -43,18 +43,16 @@ async function mount() {
     window.YJBusinessDocumentClient = {
       request: (data) => window.backend(data),
       millis: (value) => Number(value) || Date.now(),
-    };
-    window.firebase = {
-      storage: () => ({
-        ref: () => ({
-          getMetadata: async () => {
-            throw Object.assign(new Error("missing"), {
-              code: "storage/object-not-found",
-            });
-          },
-          put: async () => {},
-        }),
+      describeFile: async (file) => ({
+        name: file.name,
+        size: file.size,
+        contentType: file.type,
+        chunkCount: 1,
+        sha256: "a".repeat(64),
       }),
+      uploadAttachment: async () => ({ ok: true }),
+      downloadAttachment: async () => new Blob(["test"]),
+      limits: { maxTotalSize: 10 * 1024 * 1024 },
     };
   });
   await page.addScriptTag({
@@ -182,6 +180,19 @@ test("legacy document areas are marked as collapsed read-only archives", () => {
   assert.match(html, /이전 결재 기록/);
   assert.equal((html.match(/data-yj-legacy-readonly="true"/g) || []).length, 2);
 });
+test("Spark-only attachment UI has explicit limits and no Cloud Storage calls", () => {
+  const ui = fs.readFileSync(
+    path.join(__dirname, "../js/business-documents.js"),
+    "utf8",
+  );
+  const client = fs.readFileSync(
+    path.join(__dirname, "../js/business-document-client.js"),
+    "utf8",
+  );
+  assert.match(ui, /각 3MB·합계 10MB/);
+  assert.match(client, /attachment_chunks/);
+  assert.doesNotMatch(ui + client, /firebase\.storage\s*\(/);
+});
 test("missing approver setup is explained and prevents unsafe document submission", async () => {
   listDocuments = [];
   await mount();
@@ -289,4 +300,32 @@ test("no horizontal overflow at 360,390,430,1440; labels and focus exist", async
     path: path.join(os.tmpdir(), "yj-work46-documents-mobile.png"),
     fullPage: true,
   });
+});
+test("actual Spark client hashes files and enforces the 3MiB chunk limit", async () => {
+  await page.addScriptTag({
+    content: fs.readFileSync(
+      path.join(__dirname, "../js/business-document-client.js"),
+      "utf8",
+    ),
+  });
+  const result = await page.evaluate(async () => {
+    const file = new File([new Uint8Array(600000)], "proof.pdf", {
+      type: "application/pdf",
+    });
+    const metadata = await window.YJBusinessDocumentClient.describeFile(file);
+    let oversizedMessage = "";
+    try {
+      await window.YJBusinessDocumentClient.describeFile(
+        new File([new Uint8Array(3 * 1024 * 1024 + 1)], "large.pdf", {
+          type: "application/pdf",
+        }),
+      );
+    } catch (error) {
+      oversizedMessage = error.message;
+    }
+    return { metadata, oversizedMessage };
+  });
+  assert.equal(result.metadata.chunkCount, 2);
+  assert.equal(result.metadata.sha256.length, 64);
+  assert.match(result.oversizedMessage, /3MB 이하/);
 });

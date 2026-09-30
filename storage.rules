@@ -106,19 +106,10 @@ service firebase.storage {
         && allowedAttachmentContentType(request.resource.contentType);
     }
     match /business-document-files/{documentId}/{slot} {
-      allow read: if businessReader(firestore.get(/databases/(default)/documents/business_documents/$(documentId)).data);
-      allow write: if businessActive() && validSlot(slot)
-        && firestore.get(/databases/(default)/documents/business_documents/$(documentId)).data.schemaVersion == 5
-        && firestore.get(/databases/(default)/documents/business_documents/$(documentId)).data.clientMode == "spark"
-        && firestore.get(/databases/(default)/documents/business_documents/$(documentId)).data.requesterUid == request.auth.uid
-        && firestore.get(/databases/(default)/documents/business_documents/$(documentId)).data.status == "draft"
-        && businessFileMatches(firestore.get(/databases/(default)/documents/business_documents/$(documentId)).data.attachments.get(slot, {
-          "name": "", "size": 0, "contentType": "", "storagePath": ""
-        }));
+      allow read, write: if false;
     }
     match /business-payment-files/{documentId}/{paymentId}/proof {
-      allow read: if businessReader(firestore.get(/databases/(default)/documents/business_documents/$(documentId)).data);
-      allow write: if false;
+      allow read, write: if false;
     }
 
     // 그 외 모든 경로 차단

@@ -136,7 +136,7 @@
     '<div class="yb-header"><div><p class="yb-eyebrow">표준 문서 업무</p><h3>문서 작성·결재·지급을 한곳에서 처리합니다</h3><p>신규 업무는 표준 문서 5종으로 작성하고, 결재 상태와 실제 처리 결과를 함께 확인합니다.</p></div><button type="button" id="ybRefresh">새로고침</button></div>' +
     '<nav class="yb-tabs" aria-label="문서 업무 구분"><button type="button" data-yb-view="create">새 문서 작성</button><button type="button" data-yb-view="my">내 문서</button><button type="button" data-yb-view="inbox">결재함</button><button type="button" data-yb-view="payments">지급관리</button><button type="button" data-yb-view="all">전체 문서</button></nav>' +
     '<div class="yb-summary"><div><span>내 문서</span><strong id="ybMetricMine">0</strong></div><div><span>결재 대기</span><strong id="ybMetricPending">0</strong></div><div><span>반려</span><strong id="ybMetricRejected">0</strong></div><div><span>지급 대기</span><strong id="ybMetricPayment">0</strong></div></div>' +
-    '<p id="ybMessage" role="status" aria-live="polite"></p><div class="yb-layout"><form id="ybForm"><fieldset id="ybFieldset"><h4>새 문서 작성</h4><div id="ybCommon"></div><div id="ybFields" class="yb-grid"></div><div id="ybRoute" class="yb-grid"></div><label>첨부파일 (최대 5개, 각 10MB·합계 30MB)<input id="ybFiles" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx,.csv"></label><p class="yb-help">지출은 증빙 필수 · 구매·수리는 견적 첨부 권장</p><button type="submit" class="yb-primary">저장하고 결재 요청</button><button type="button" id="ybNew">새 양식</button></fieldset></form><section id="ybRecords"><div class="yb-toolbar"><div><h4 id="ybListTitle">내 문서</h4><p id="ybListHelp" class="yb-help">작성한 표준 문서를 확인합니다.</p></div><label>문서 종류<select id="ybFilter"><option value="all">전체</option></select></label></div><div id="ybList"></div><div id="ybDetail"></div></section></div>';
+    '<p id="ybMessage" role="status" aria-live="polite"></p><div class="yb-layout"><form id="ybForm"><fieldset id="ybFieldset"><h4>새 문서 작성</h4><div id="ybCommon"></div><div id="ybFields" class="yb-grid"></div><div id="ybRoute" class="yb-grid"></div><label>첨부파일 (최대 5개, 각 3MB·합계 10MB)<input id="ybFiles" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx,.csv"></label><p class="yb-help">무료 요금제 전용 보안 저장 · 지출은 증빙 필수 · 구매·수리는 견적 첨부 권장</p><button type="submit" class="yb-primary">저장하고 결재 요청</button><button type="button" id="ybNew">새 양식</button></fieldset></form><section id="ybRecords"><div class="yb-toolbar"><div><h4 id="ybListTitle">내 문서</h4><p id="ybListHelp" class="yb-help">작성한 표준 문서를 확인합니다.</p></div><label>문서 종류<select id="ybFilter"><option value="all">전체</option></select></label></div><div id="ybList"></div><div id="ybDetail"></div></section></div>';
   const $ = (id) => document.getElementById(id);
   const form = $("ybForm");
   const views = ["create", "my", "inbox", "payments", "all"];
@@ -553,35 +553,39 @@
     row.append(el("dt", label), el("dd", String(value ?? "-")));
     parent.append(row);
   }
-  async function download(file, epoch) {
+  async function download(documentId, slot, file, epoch) {
     guard(epoch);
-    const result = await window.yjDownloadAttachment(
-      file.storagePath,
-      file.name,
+    const blob = await window.YJBusinessDocumentClient.downloadAttachment(
+      documentId,
+      slot,
+      file,
     );
     guard(epoch);
-    if (!result.ok)
-      throw new Error(window.yjAttachmentDownloadMessage(result.code));
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = file.name;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   function fileInfo(f) {
     const ext = f.name.split(".").pop().toLowerCase();
     if (!mime[ext]) throw new Error("PDF·이미지·XLSX·CSV 파일을 선택하세요.");
     return { name: f.name, size: f.size, contentType: mime[ext] };
   }
-  async function upload(file, meta, epoch) {
+  async function unavailablePaymentAttachment() {
+    throw new Error("무료 요금제 1단계에서는 지급 증빙 기능을 지원하지 않습니다.");
+  }
+  async function uploadDocumentAttachment(documentId, slot, file, meta, epoch) {
     guard(epoch);
-    const r = window.firebase.storage().ref(meta.storagePath);
-    try {
-      const m = await r.getMetadata();
-      guard(epoch);
-      if (Number(m.size) === meta.size && m.contentType === meta.contentType)
-        return;
-      throw new Error("이미 등록된 첨부 정보가 다릅니다.");
-    } catch (e) {
-      if (e.code !== "storage/object-not-found") throw e;
-    }
-    guard(epoch);
-    await r.put(file, { contentType: meta.contentType });
+    await window.YJBusinessDocumentClient.uploadAttachment(
+      documentId,
+      slot,
+      file,
+      meta,
+    );
     guard(epoch);
   }
   async function detail(id, epoch) {
@@ -629,8 +633,10 @@
     }
     if (d.completedAt) pair(dl, "처리 결과", d.completionNote);
     box.append(dl);
-    for (const a of Object.values(d.attachments)) {
-      const attachmentButton = button("첨부: " + a.name, () => run((e) => download(a, e)));
+    for (const [slot, a] of Object.entries(d.attachments)) {
+      const attachmentButton = button("첨부: " + a.name, () =>
+        run((e) => download(d.id, slot, a, e)),
+      );
       attachmentButton.className = "yb-attachment";
       box.append(attachmentButton);
     }
@@ -643,10 +649,10 @@
       message("처리를 완료했습니다.");
     }
     if (d.status === "draft" && d.requesterUid === state.uid) {
-      for (const a of Object.values(d.attachments)) {
+      for (const [slot, a] of Object.entries(d.attachments)) {
         const input = field(
           actions,
-          "retry-" + a.storagePath.split("/").pop(),
+          "retry-" + slot,
           "미완료 첨부 재업로드: " + a.name,
           "file",
         );
@@ -654,16 +660,7 @@
           run(async (e) => {
             const f = input.files[0];
             if (!f) return;
-            const m = fileInfo(f);
-            if (
-              m.name !== a.name ||
-              m.size !== a.size ||
-              m.contentType !== a.contentType
-            )
-              throw new Error(
-                "등록한 파일과 이름·크기·형식이 일치해야 합니다.",
-              );
-            await upload(f, a, e);
+            await uploadDocumentAttachment(d.id, slot, f, a, e);
             message("첨부 업로드 완료");
           });
       }
@@ -798,7 +795,7 @@
                 }),
                 e,
               );
-              await upload(pending.file, prep.proof, e);
+              await unavailablePaymentAttachment();
               await api(
                 operation({ action: "pay", id, paymentId: pending.id }),
                 e,
@@ -844,7 +841,7 @@
       box.append(line);
       if (p.proof)
         box.append(
-          button("지급 증빙 보기", () => run((e) => download(p.proof, e))),
+          button("지급 증빙 보기", () => run(() => unavailablePaymentAttachment())),
         );
       if (p.status === "draft" && p.actorUid === state.uid) {
         const input = field(
@@ -864,7 +861,7 @@
                   m.contentType !== p.proof.contentType
                 )
                   throw new Error("등록한 증빙과 다른 파일입니다.");
-                await upload(input.files[0], p.proof, e);
+                await unavailablePaymentAttachment();
               }
               await api(operation({ action: "pay", id, paymentId: p.id }), e);
               await load(e);
@@ -946,6 +943,14 @@
         for (const [k, , t] of fields[type.value])
           details[k] = t === "number" ? Number(input[k]) : input[k] || "";
         const files = [...$("ybFiles").files];
+        const fileDescriptions = await Promise.all(
+          files.map((file) => window.YJBusinessDocumentClient.describeFile(file)),
+        );
+        if (
+          fileDescriptions.reduce((sum, file) => sum + file.size, 0) >
+          window.YJBusinessDocumentClient.limits.maxTotalSize
+        )
+          throw new Error("첨부 합계는 10MB 이하만 가능합니다.");
         state.draft = {
           id: uuid(),
           kind: type.value,
@@ -953,6 +958,7 @@
           reviewerUid: input.reviewerUid || "",
           approverUid: input.approverUid || "",
           files,
+          fileDescriptions,
           revisedFrom: state.revise,
         };
       }
@@ -966,14 +972,20 @@
           details: d.details,
           reviewerUid: d.reviewerUid,
           approverUid: d.approverUid,
-          files: d.files.map(fileInfo),
+          files: d.fileDescriptions,
           revisedFrom: d.revisedFrom,
         }),
         epoch,
       );
       d.persisted = true;
       for (let i = 0; i < d.files.length; i++)
-        await upload(d.files[i], r.document.attachments["a" + i], epoch);
+        await uploadDocumentAttachment(
+          d.id,
+          "a" + i,
+          d.files[i],
+          r.document.attachments["a" + i],
+          epoch,
+        );
       await api(operation({ action: "submit", id: d.id }), epoch);
       state.draft = null;
       state.revise = null;

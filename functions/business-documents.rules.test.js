@@ -5,13 +5,13 @@ const path = require("node:path");
 const { createRequire } = require("node:module");
 const req = createRequire(path.join(__dirname, "../tests/rules/package.json"));
 const { initializeTestEnvironment, assertFails, assertSucceeds } = req("@firebase/rules-unit-testing");
-const { doc, setDoc, getDoc, writeBatch, serverTimestamp } = req("firebase/firestore");
+const { Bytes, doc, setDoc, getDoc, writeBatch, serverTimestamp } = req("firebase/firestore");
 let env;
 const token = { firebase: { sign_in_provider: "google.com" } };
 
 function documentData(operationId) {
   return {
-    schemaVersion: 5, clientMode: "spark", kind: "general", number: "YJ-GENERAL-20260930-ABC123",
+    schemaVersion: 6, clientMode: "spark-firestore", kind: "general", number: "YJ-GENERAL-20260930-ABC123",
     details: { title: "무료 요금제 문서", reason: "복구 검증", effectiveDate: "2026-10-01", amount: 0 },
     requesterUid: "rules-employee", requesterName: "직원", requesterRole: "sales",
     approverUids: ["rules-admin"], approverNames: ["대표"], status: "draft", step: 0,
@@ -72,6 +72,84 @@ test("작성자 제출과 지정 관리자 승인을 원자적 이력으로 처�
   approve.update(doc(admin, "business_documents/" + id), { status: "approved", step: 0, approvedAt: serverTimestamp(), updatedAt: serverTimestamp(), lastOperationId: approveId });
   approve.set(doc(admin, "business_documents/" + id + "/history/" + approveId), history(approveId, "approve", "rules-admin", "대표", "admin", "pending", "approved"));
   await assertSucceeds(approve.commit());
+});
+test("첨부 문서는 청크와 완료 매니페스트 없이는 제출할 수 없다", async () => {
+  const id = "rules-document-attachment";
+  const employee = env.authenticatedContext("rules-employee", token).firestore();
+  const createId = "create-attachment-0001";
+  const sha256 = "c".repeat(64);
+  const data = documentData(createId);
+  data.attachments = {
+    a0: {
+      name: "proof.pdf",
+      size: 10,
+      contentType: "application/pdf",
+      chunkCount: 1,
+      sha256,
+      firestorePath:
+        "business_documents/" + id + "/attachment_uploads/a0",
+    },
+  };
+  data.attachmentCount = 1;
+  data.attachmentsTotalSize = 10;
+  const create = writeBatch(employee);
+  create.set(doc(employee, "business_documents/" + id), data);
+  create.set(
+    doc(employee, "business_documents/" + id + "/history/" + createId),
+    history(createId, "create", "rules-employee", "직원", "sales", "none", "draft"),
+  );
+  await assertSucceeds(create.commit());
+
+  const submitId = "submit-attachment-0001";
+  const submitWithoutFile = writeBatch(employee);
+  submitWithoutFile.update(doc(employee, "business_documents/" + id), {
+    status: "pending",
+    submittedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    lastOperationId: submitId,
+  });
+  submitWithoutFile.set(
+    doc(employee, "business_documents/" + id + "/history/" + submitId),
+    history(submitId, "submit", "rules-employee", "직원", "sales", "draft", "pending"),
+  );
+  await assertFails(submitWithoutFile.commit());
+
+  await assertSucceeds(
+    setDoc(
+      doc(employee, "business_documents/" + id + "/attachment_chunks/a0-0"),
+      {
+        slot: "a0",
+        index: 0,
+        size: 10,
+        sha256,
+        data: Bytes.fromUint8Array(new Uint8Array(10)),
+        uploaderUid: "rules-employee",
+        uploadedAt: serverTimestamp(),
+      },
+    ),
+  );
+  await assertSucceeds(
+    setDoc(
+      doc(employee, "business_documents/" + id + "/attachment_uploads/a0"),
+      {
+        ...data.attachments.a0,
+        uploaderUid: "rules-employee",
+        completedAt: serverTimestamp(),
+      },
+    ),
+  );
+  const submitComplete = writeBatch(employee);
+  submitComplete.update(doc(employee, "business_documents/" + id), {
+    status: "pending",
+    submittedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    lastOperationId: submitId,
+  });
+  submitComplete.set(
+    doc(employee, "business_documents/" + id + "/history/" + submitId),
+    history(submitId, "submit", "rules-employee", "직원", "sales", "draft", "pending"),
+  );
+  await assertSucceeds(submitComplete.commit());
 });
 test("상태 위조·자기 승인·지급 하위컬렉션 쓰기를 거부한다", async () => {
   const id = "rules-document-forge"; await createDocument(id);

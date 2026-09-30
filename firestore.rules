@@ -992,20 +992,58 @@ service cloud.firestore {
     function businessHistoryPath(documentId, operationId) {
       return /databases/$(database)/documents/business_documents/$(documentId)/history/$(operationId);
     }
+    function businessAttachmentEntryValid(entry, expectedSlot, documentId) {
+      return entry.keys().hasOnly(["name", "size", "contentType", "chunkCount", "sha256", "firestorePath"])
+        && businessText(entry.name, 1, 255)
+        && entry.size is int && entry.size >= 1 && entry.size <= 3145728
+        && entry.contentType in ["application/pdf", "image/png", "image/jpeg", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "text/csv"]
+        && entry.chunkCount is int && entry.chunkCount >= 1 && entry.chunkCount <= 6
+        && entry.size > (entry.chunkCount - 1) * 524288
+        && entry.size <= entry.chunkCount * 524288
+        && entry.sha256 is string && entry.sha256.matches("^[0-9a-f]{64}$")
+        && entry.firestorePath == "business_documents/" + documentId + "/attachment_uploads/" + expectedSlot;
+    }
+    function businessAttachmentsMapValid(attachments, documentId) {
+      let empty = {"name": "", "size": 0, "contentType": "", "chunkCount": 0, "sha256": "", "firestorePath": ""};
+      return attachments.keys().hasOnly(["a0", "a1", "a2", "a3", "a4"])
+        && (!("a0" in attachments) || businessAttachmentEntryValid(attachments.get("a0", empty), "a0", documentId))
+        && (!("a1" in attachments) || businessAttachmentEntryValid(attachments.get("a1", empty), "a1", documentId))
+        && (!("a2" in attachments) || businessAttachmentEntryValid(attachments.get("a2", empty), "a2", documentId))
+        && (!("a3" in attachments) || businessAttachmentEntryValid(attachments.get("a3", empty), "a3", documentId))
+        && (!("a4" in attachments) || businessAttachmentEntryValid(attachments.get("a4", empty), "a4", documentId));
+    }
+    function businessManifestPath(documentId, slot) {
+      return /databases/$(database)/documents/business_documents/$(documentId)/attachment_uploads/$(slot);
+    }
+    function businessManifestReady(documentId, slot, attachment) {
+      let manifest = getAfter(businessManifestPath(documentId, slot)).data;
+      return existsAfter(businessManifestPath(documentId, slot))
+        && manifest.name == attachment.name && manifest.size == attachment.size
+        && manifest.contentType == attachment.contentType && manifest.chunkCount == attachment.chunkCount
+        && manifest.sha256 == attachment.sha256 && manifest.firestorePath == attachment.firestorePath;
+    }
+    function businessAttachmentsReady(documentId, attachments) {
+      let empty = {"name": "", "size": 0, "contentType": "", "chunkCount": 0, "sha256": "", "firestorePath": ""};
+      return (!("a0" in attachments) || businessManifestReady(documentId, "a0", attachments.get("a0", empty)))
+        && (!("a1" in attachments) || businessManifestReady(documentId, "a1", attachments.get("a1", empty)))
+        && (!("a2" in attachments) || businessManifestReady(documentId, "a2", attachments.get("a2", empty)))
+        && (!("a3" in attachments) || businessManifestReady(documentId, "a3", attachments.get("a3", empty)))
+        && (!("a4" in attachments) || businessManifestReady(documentId, "a4", attachments.get("a4", empty)));
+    }
     function businessAttachmentsValid(documentId, d) {
       return d.attachments is map && d.attachmentCount is int
         && d.attachmentCount >= 0 && d.attachmentCount <= 5
         && d.attachments.keys().size() == d.attachmentCount
-        && d.attachmentsTotalSize is int && d.attachmentsTotalSize >= 0 && d.attachmentsTotalSize <= 31457280
+        && d.attachmentsTotalSize is int && d.attachmentsTotalSize >= 0 && d.attachmentsTotalSize <= 10485760
         && (d.kind != "expense" || d.attachmentCount >= 1)
-        && attachmentsMapValid(d.attachments, "business-document-files/" + documentId + "/")
+        && businessAttachmentsMapValid(d.attachments, documentId)
         && d.attachmentsTotalSize == attachmentsSizeSum(d.attachments);
     }
     function businessDocumentCreateValid(documentId) {
       let d = request.resource.data;
       return businessActive()
         && d.keys().hasOnly(["schemaVersion", "clientMode", "kind", "number", "details", "requesterUid", "requesterName", "requesterRole", "approverUids", "approverNames", "status", "step", "attachments", "attachmentCount", "attachmentsTotalSize", "createdAt", "updatedAt", "submittedAt", "approvedAt", "rejectionReason", "paidAmount", "paymentStatus", "settledAt", "completedAt", "allocatedAmount", "purchaseReserved", "revisedFrom", "lastOperationId"])
-        && d.schemaVersion == 5 && d.clientMode == "spark" && d.kind in ["expense", "purchase", "leave", "general", "quality"]
+        && d.schemaVersion == 6 && d.clientMode == "spark-firestore" && d.kind in ["expense", "purchase", "leave", "general", "quality"]
         && businessText(d.number, 12, 80) && businessDetailsValid(d.kind, d.details)
         && d.requesterUid == request.auth.uid && d.requesterName == arUserDoc().get("name", "") && d.requesterRole == arUserDoc().get("role", "")
         && businessRouteValid(d) && d.status == "draft" && d.step == 0
@@ -1029,12 +1067,13 @@ service cloud.firestore {
       let nd = request.resource.data;
       let hp = businessHistoryPath(documentId, nd.lastOperationId);
       let h = getAfter(hp).data;
-      return businessActive() && od.schemaVersion == 5
+      return businessActive() && od.schemaVersion == 6 && od.clientMode == "spark-firestore"
         && nd.diff(od).affectedKeys().hasOnly(["status", "step", "submittedAt", "approvedAt", "rejectionReason", "updatedAt", "lastOperationId"])
         && nd.updatedAt == request.time && nd.lastOperationId is string && nd.lastOperationId != od.lastOperationId
         && !exists(hp) && existsAfter(hp)
         && (
           (h.action == "submit" && od.status == "draft" && nd.status == "pending" && od.requesterUid == request.auth.uid
+            && businessAttachmentsReady(documentId, od.attachments)
             && nd.step == od.step && nd.submittedAt == request.time && nd.approvedAt == null)
           || (h.action == "withdraw" && od.status == "pending" && nd.status == "withdrawn" && od.requesterUid == request.auth.uid
             && nd.step == od.step && nd.submittedAt == od.submittedAt && nd.approvedAt == od.approvedAt)
@@ -1058,6 +1097,60 @@ service cloud.firestore {
         && ((h.action == "create" && !exists(dp) && h.previousStatus == "none" && h.nextStatus == "draft")
           || (h.action != "create" && exists(dp) && h.previousStatus == get(dp).data.status));
     }
+    function businessChunkIdValid(chunkId, slot, index) {
+      return (index == 0 && chunkId == slot + "-0")
+        || (index == 1 && chunkId == slot + "-1")
+        || (index == 2 && chunkId == slot + "-2")
+        || (index == 3 && chunkId == slot + "-3")
+        || (index == 4 && chunkId == slot + "-4")
+        || (index == 5 && chunkId == slot + "-5");
+    }
+    function businessChunkCreateValid(documentId, chunkId) {
+      let parent = get(/databases/$(database)/documents/business_documents/$(documentId)).data;
+      let chunk = request.resource.data;
+      let empty = {"name": "", "size": 0, "contentType": "", "chunkCount": 0, "sha256": "", "firestorePath": ""};
+      let attachment = parent.attachments.get(chunk.slot, empty);
+      return businessActive() && parent.schemaVersion == 6 && parent.clientMode == "spark-firestore"
+        && parent.status == "draft" && parent.requesterUid == request.auth.uid
+        && chunk.keys().hasOnly(["slot", "index", "size", "sha256", "data", "uploaderUid", "uploadedAt"])
+        && chunk.slot in ["a0", "a1", "a2", "a3", "a4"]
+        && chunk.index is int && chunk.index >= 0 && chunk.index < attachment.chunkCount
+        && businessChunkIdValid(chunkId, chunk.slot, chunk.index)
+        && chunk.size is int && chunk.size >= 1 && chunk.size <= 524288
+        && chunk.data is bytes && chunk.data.size() == chunk.size
+        && ((chunk.index < attachment.chunkCount - 1 && chunk.size == 524288)
+          || (chunk.index == attachment.chunkCount - 1 && chunk.size == attachment.size - (attachment.chunkCount - 1) * 524288))
+        && chunk.sha256 == attachment.sha256 && chunk.uploaderUid == request.auth.uid
+        && chunk.uploadedAt == request.time;
+    }
+    function businessChunkExists(documentId, slot, index) {
+      return (index == 0 && exists(/databases/$(database)/documents/business_documents/$(documentId)/attachment_chunks/$(slot + "-0")))
+        || (index == 1 && exists(/databases/$(database)/documents/business_documents/$(documentId)/attachment_chunks/$(slot + "-1")))
+        || (index == 2 && exists(/databases/$(database)/documents/business_documents/$(documentId)/attachment_chunks/$(slot + "-2")))
+        || (index == 3 && exists(/databases/$(database)/documents/business_documents/$(documentId)/attachment_chunks/$(slot + "-3")))
+        || (index == 4 && exists(/databases/$(database)/documents/business_documents/$(documentId)/attachment_chunks/$(slot + "-4")))
+        || (index == 5 && exists(/databases/$(database)/documents/business_documents/$(documentId)/attachment_chunks/$(slot + "-5")));
+    }
+    function businessManifestCreateValid(documentId, slot) {
+      let parent = get(/databases/$(database)/documents/business_documents/$(documentId)).data;
+      let manifest = request.resource.data;
+      let empty = {"name": "", "size": 0, "contentType": "", "chunkCount": 0, "sha256": "", "firestorePath": ""};
+      let attachment = parent.attachments.get(slot, empty);
+      return businessActive() && parent.schemaVersion == 6 && parent.clientMode == "spark-firestore"
+        && parent.status == "draft" && parent.requesterUid == request.auth.uid
+        && slot in ["a0", "a1", "a2", "a3", "a4"]
+        && manifest.keys().hasOnly(["name", "size", "contentType", "chunkCount", "sha256", "firestorePath", "uploaderUid", "completedAt"])
+        && manifest.name == attachment.name && manifest.size == attachment.size
+        && manifest.contentType == attachment.contentType && manifest.chunkCount == attachment.chunkCount
+        && manifest.sha256 == attachment.sha256 && manifest.firestorePath == attachment.firestorePath
+        && manifest.uploaderUid == request.auth.uid && manifest.completedAt == request.time
+        && businessChunkExists(documentId, slot, 0)
+        && (attachment.chunkCount < 2 || businessChunkExists(documentId, slot, 1))
+        && (attachment.chunkCount < 3 || businessChunkExists(documentId, slot, 2))
+        && (attachment.chunkCount < 4 || businessChunkExists(documentId, slot, 3))
+        && (attachment.chunkCount < 5 || businessChunkExists(documentId, slot, 4))
+        && (attachment.chunkCount < 6 || businessChunkExists(documentId, slot, 5));
+    }
     match /business_approver_directory/{uid} {
       allow read: if businessActive();
       allow create, update: if arIsAdmin()
@@ -1076,6 +1169,16 @@ service cloud.firestore {
       match /history/{historyId} {
         allow read: if businessCanRead(get(/databases/$(database)/documents/business_documents/$(documentId)).data);
         allow create: if businessHistoryCreateValid(documentId, historyId);
+        allow update, delete: if false;
+      }
+      match /attachment_chunks/{chunkId} {
+        allow read: if businessCanRead(get(/databases/$(database)/documents/business_documents/$(documentId)).data);
+        allow create: if businessChunkCreateValid(documentId, chunkId);
+        allow update, delete: if false;
+      }
+      match /attachment_uploads/{slot} {
+        allow read: if businessCanRead(get(/databases/$(database)/documents/business_documents/$(documentId)).data);
+        allow create: if businessManifestCreateValid(documentId, slot);
         allow update, delete: if false;
       }
       match /payments/{paymentId} { allow read, write: if false; }
