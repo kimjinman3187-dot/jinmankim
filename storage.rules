@@ -108,18 +108,17 @@ service firebase.storage {
     match /business-document-files/{documentId}/{slot} {
       allow read: if businessReader(firestore.get(/databases/(default)/documents/business_documents/$(documentId)).data);
       allow write: if businessActive() && validSlot(slot)
+        && firestore.get(/databases/(default)/documents/business_documents/$(documentId)).data.schemaVersion == 5
+        && firestore.get(/databases/(default)/documents/business_documents/$(documentId)).data.clientMode == "spark"
         && firestore.get(/databases/(default)/documents/business_documents/$(documentId)).data.requesterUid == request.auth.uid
         && firestore.get(/databases/(default)/documents/business_documents/$(documentId)).data.status == "draft"
-        && businessFileMatches(firestore.get(/databases/(default)/documents/business_documents/$(documentId)).data.attachments[slot]);
+        && businessFileMatches(firestore.get(/databases/(default)/documents/business_documents/$(documentId)).data.attachments.get(slot, {
+          "name": "", "size": 0, "contentType": "", "storagePath": ""
+        }));
     }
     match /business-payment-files/{documentId}/{paymentId}/proof {
       allow read: if businessReader(firestore.get(/databases/(default)/documents/business_documents/$(documentId)).data);
-      allow write: if businessActive()
-        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ["admin", "accounting"]
-        && firestore.get(/databases/(default)/documents/business_documents/$(documentId)).data.status == "approved"
-        && firestore.get(/databases/(default)/documents/business_documents/$(documentId)/payments/$(paymentId)).data.actorUid == request.auth.uid
-        && firestore.get(/databases/(default)/documents/business_documents/$(documentId)/payments/$(paymentId)).data.status == "draft"
-        && businessFileMatches(firestore.get(/databases/(default)/documents/business_documents/$(documentId)/payments/$(paymentId)).data.proof);
+      allow write: if false;
     }
 
     // 그 외 모든 경로 차단

@@ -159,10 +159,19 @@
 }
 #yjBusinessDocuments .yb-error {
   padding: 12px;
-  color: #991b1b;
-  background: #fee2e2;
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.28);
+  border: 1px solid rgba(248, 113, 113, 0.45);
   border-radius: 8px;
   margin: 14px 0;
+}
+#yjBusinessDocuments fieldset:disabled {
+  opacity: 0.72;
+}
+#yjBusinessDocuments fieldset:disabled input,
+#yjBusinessDocuments fieldset:disabled textarea,
+#yjBusinessDocuments fieldset:disabled select {
+  cursor: not-allowed;
 }
 #ybList {
   max-height: 360px;
@@ -326,6 +335,16 @@
   }
   #ybPrint h4 {
     margin-top: 20px;
+  }
+  #ybPrint .yb-print-meta {
+    color: #555;
+    font-size: 10px;
+    text-align: right;
+  }
+  #ybPrint .yb-print-attachment {
+    border: 1px solid #ddd;
+    padding: 6px 8px;
+    margin: 6px 0;
   }
   #ybPrint {
     overflow-wrap: anywhere;

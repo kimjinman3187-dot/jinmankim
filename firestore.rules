@@ -916,9 +916,170 @@ service cloud.firestore {
       }
     }
 
-    // WORK46: standardized documents use the authenticated callable as their only API.
-    // Do not permit client writes, including admins; history and payment receipts are immutable.
-    match /business_documents/{path=**} { allow read, write: if false; }
+    // WORK53: Spark plan document workflow. Firestore transactions + Rules replace callable Functions.
+    function businessActive() {
+      return arIsActiveUser()
+        && request.auth.token.firebase.sign_in_provider != "anonymous";
+    }
+    function businessUser(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+    function businessCanRead(d) {
+      return businessActive() && (
+        d.requesterUid == request.auth.uid
+        || request.auth.uid in d.approverUids
+        || arUserDoc().get("role", "") == "admin"
+        || (arUserDoc().get("role", "") == "accounting" && d.kind in ["expense", "purchase"])
+      );
+    }
+    function businessText(v, min, max) {
+      return v is string && v.size() >= min && v.size() <= max;
+    }
+    function businessDate(v) {
+      return v is string && v.matches("^\\d{4}-\\d{2}-\\d{2}$");
+    }
+    function businessDetailsValid(kind, d) {
+      return d is map && businessText(d.title, 1, 80) && businessText(d.reason, 1, 2000)
+        && (
+          (kind == "expense"
+            && d.keys().hasOnly(["title", "reason", "settlementType", "category", "supplyAmount", "taxAmount", "amount", "payee", "transactionDate", "plannedDate", "paymentMethod", "purchaseId", "orderReference"])
+            && d.settlementType in ["vendor", "reimbursement", "prepaid"]
+            && d.category in ["material", "outsourcing", "general", "entertainment", "other"]
+            && d.supplyAmount is int && d.supplyAmount >= 0
+            && d.taxAmount is int && d.taxAmount >= 0
+            && d.amount is int && d.amount > 0 && d.amount == d.supplyAmount + d.taxAmount
+            && businessText(d.payee, 1, 100) && businessDate(d.transactionDate) && businessDate(d.plannedDate)
+            && d.paymentMethod in ["bank_transfer", "corporate_card", "cash"]
+            && (d.paymentMethod != "corporate_card" || d.settlementType == "prepaid")
+            && businessText(d.purchaseId, 0, 128) && businessText(d.orderReference, 0, 128))
+          || (kind == "purchase"
+            && d.keys().hasOnly(["title", "reason", "category", "item", "quantity", "amount", "neededDate", "vendor"])
+            && d.category in ["purchase", "repair"] && businessText(d.item, 1, 300)
+            && d.quantity is number && d.quantity > 0 && d.quantity <= 1000000
+            && d.amount is int && d.amount > 0 && businessDate(d.neededDate) && businessText(d.vendor, 0, 100))
+          || (kind == "leave"
+            && d.keys().hasOnly(["title", "reason", "category", "startDate", "endDate", "hours", "handover"])
+            && d.category in ["annual", "half", "outing", "other"]
+            && businessDate(d.startDate) && businessDate(d.endDate) && d.endDate >= d.startDate
+            && d.hours is number && d.hours > 0 && d.hours <= 744 && businessText(d.handover, 1, 1000))
+          || (kind == "general"
+            && d.keys().hasOnly(["title", "reason", "effectiveDate", "amount"])
+            && businessDate(d.effectiveDate) && d.amount is int && d.amount >= 0)
+          || (kind == "quality"
+            && d.keys().hasOnly(["title", "reason", "orderReference", "category", "quantity", "actionPlan", "impact"])
+            && businessText(d.orderReference, 1, 128) && d.category in ["defect", "rework", "scrap", "delay"]
+            && d.quantity is number && d.quantity > 0 && businessText(d.actionPlan, 1, 1000) && businessText(d.impact, 1, 1000))
+        );
+    }
+    function businessApproverValid(uid, name, roles) {
+      let u = businessUser(uid);
+      return uid is string && uid != request.auth.uid
+        && u.get("status", "") == "active" && u.get("role", "") in roles
+        && name == u.get("name", "");
+    }
+    function businessRouteValid(d) {
+      return d.approverUids is list && d.approverNames is list
+        && d.approverUids.size() == d.approverNames.size()
+        && (
+          (d.kind == "expense" && d.approverUids.size() == 2
+            && d.approverUids[0] != d.approverUids[1]
+            && businessApproverValid(d.approverUids[0], d.approverNames[0], ["accounting", "admin"])
+            && businessApproverValid(d.approverUids[1], d.approverNames[1], ["admin"]))
+          || (d.kind != "expense" && d.approverUids.size() == 1
+            && businessApproverValid(d.approverUids[0], d.approverNames[0], ["admin"]))
+        );
+    }
+    function businessHistoryPath(documentId, operationId) {
+      return /databases/$(database)/documents/business_documents/$(documentId)/history/$(operationId);
+    }
+    function businessAttachmentsValid(documentId, d) {
+      return d.attachments is map && d.attachmentCount is int
+        && d.attachmentCount >= 0 && d.attachmentCount <= 5
+        && d.attachments.keys().size() == d.attachmentCount
+        && d.attachmentsTotalSize is int && d.attachmentsTotalSize >= 0 && d.attachmentsTotalSize <= 31457280
+        && (d.kind != "expense" || d.attachmentCount >= 1)
+        && attachmentsMapValid(d.attachments, "business-document-files/" + documentId + "/")
+        && d.attachmentsTotalSize == attachmentsSizeSum(d.attachments);
+    }
+    function businessDocumentCreateValid(documentId) {
+      let d = request.resource.data;
+      return businessActive()
+        && d.keys().hasOnly(["schemaVersion", "clientMode", "kind", "number", "details", "requesterUid", "requesterName", "requesterRole", "approverUids", "approverNames", "status", "step", "attachments", "attachmentCount", "attachmentsTotalSize", "createdAt", "updatedAt", "submittedAt", "approvedAt", "rejectionReason", "paidAmount", "paymentStatus", "settledAt", "completedAt", "allocatedAmount", "purchaseReserved", "revisedFrom", "lastOperationId"])
+        && d.schemaVersion == 5 && d.clientMode == "spark" && d.kind in ["expense", "purchase", "leave", "general", "quality"]
+        && businessText(d.number, 12, 80) && businessDetailsValid(d.kind, d.details)
+        && d.requesterUid == request.auth.uid && d.requesterName == arUserDoc().get("name", "") && d.requesterRole == arUserDoc().get("role", "")
+        && businessRouteValid(d) && d.status == "draft" && d.step == 0
+        && businessAttachmentsValid(documentId, d)
+        && d.createdAt == request.time && d.updatedAt == request.time && d.submittedAt == null && d.approvedAt == null
+        && d.rejectionReason == "" && d.paidAmount == 0 && d.settledAt == null && d.completedAt == null
+        && d.allocatedAmount == 0 && d.purchaseReserved == false
+        && ((d.kind == "expense" && d.paymentStatus in ["unpaid", "not_required"]) || (d.kind != "expense" && d.paymentStatus == null))
+        && d.revisedFrom is string && d.lastOperationId is string && d.lastOperationId.size() >= 16
+        && !exists(businessHistoryPath(documentId, d.lastOperationId))
+        && existsAfter(businessHistoryPath(documentId, d.lastOperationId));
+    }
+    function businessCurrentApproverValid(d) {
+      return d.step is int && d.step >= 0 && d.step < d.approverUids.size()
+        && d.requesterUid != request.auth.uid && d.approverUids[d.step] == request.auth.uid
+        && ((d.kind == "expense" && d.step == 0 && arUserDoc().get("role", "") in ["accounting", "admin"])
+          || ((d.kind != "expense" || d.step > 0) && arUserDoc().get("role", "") == "admin"));
+    }
+    function businessDocumentUpdateValid(documentId) {
+      let od = resource.data;
+      let nd = request.resource.data;
+      let hp = businessHistoryPath(documentId, nd.lastOperationId);
+      let h = getAfter(hp).data;
+      return businessActive() && od.schemaVersion == 5
+        && nd.diff(od).affectedKeys().hasOnly(["status", "step", "submittedAt", "approvedAt", "rejectionReason", "updatedAt", "lastOperationId"])
+        && nd.updatedAt == request.time && nd.lastOperationId is string && nd.lastOperationId != od.lastOperationId
+        && !exists(hp) && existsAfter(hp)
+        && (
+          (h.action == "submit" && od.status == "draft" && nd.status == "pending" && od.requesterUid == request.auth.uid
+            && nd.step == od.step && nd.submittedAt == request.time && nd.approvedAt == null)
+          || (h.action == "withdraw" && od.status == "pending" && nd.status == "withdrawn" && od.requesterUid == request.auth.uid
+            && nd.step == od.step && nd.submittedAt == od.submittedAt && nd.approvedAt == od.approvedAt)
+          || (h.action == "reject" && od.status == "pending" && nd.status == "rejected" && businessCurrentApproverValid(od)
+            && nd.step == od.step && businessText(nd.rejectionReason, 1, 500) && nd.rejectionReason == h.reason)
+          || (h.action == "approve" && od.status == "pending" && businessCurrentApproverValid(od)
+            && ((od.step < od.approverUids.size() - 1 && nd.status == "pending" && nd.step == od.step + 1 && nd.approvedAt == null)
+              || (od.step == od.approverUids.size() - 1 && nd.status == "approved" && nd.step == od.step && nd.approvedAt == request.time)))
+        );
+    }
+    function businessHistoryCreateValid(documentId, historyId) {
+      let h = request.resource.data;
+      let dp = /databases/$(database)/documents/business_documents/$(documentId);
+      let after = getAfter(dp).data;
+      return businessActive() && h.keys().hasOnly(["operationId", "action", "actorUid", "actorName", "actorRole", "at", "reason", "previousStatus", "nextStatus"])
+        && h.operationId == historyId && h.operationId == after.lastOperationId
+        && h.action in ["create", "submit", "approve", "reject", "withdraw"]
+        && h.actorUid == request.auth.uid && h.actorName == arUserDoc().get("name", "") && h.actorRole == arUserDoc().get("role", "")
+        && h.at == request.time && h.reason is string && h.reason.size() <= 500
+        && h.nextStatus == after.status
+        && ((h.action == "create" && !exists(dp) && h.previousStatus == "none" && h.nextStatus == "draft")
+          || (h.action != "create" && exists(dp) && h.previousStatus == get(dp).data.status));
+    }
+    match /business_approver_directory/{uid} {
+      allow read: if businessActive();
+      allow create, update: if arIsAdmin()
+        && request.resource.data.keys().hasOnly(["name", "role", "status"])
+        && request.resource.data.name == businessUser(uid).get("name", "")
+        && request.resource.data.role == businessUser(uid).get("role", "")
+        && request.resource.data.role in ["admin", "accounting"]
+        && request.resource.data.status == businessUser(uid).get("status", "");
+      allow delete: if false;
+    }
+    match /business_documents/{documentId} {
+      allow get, list: if businessCanRead(resource.data);
+      allow create: if businessDocumentCreateValid(documentId);
+      allow update: if businessDocumentUpdateValid(documentId);
+      allow delete: if false;
+      match /history/{historyId} {
+        allow read: if businessCanRead(get(/databases/$(database)/documents/business_documents/$(documentId)).data);
+        allow create: if businessHistoryCreateValid(documentId, historyId);
+        allow update, delete: if false;
+      }
+      match /payments/{paymentId} { allow read, write: if false; }
+    }
     match /business_document_sequences/{id} { allow read, write: if false; }
     match /business_payment_references/{id} { allow read, write: if false; }
 

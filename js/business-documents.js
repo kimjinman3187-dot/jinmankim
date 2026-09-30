@@ -115,6 +115,8 @@
     operations: new Map(),
     loaded: false,
     view: "create",
+    loadFailed: false,
+    directoryReady: false,
   };
   const uuid = () => crypto.randomUUID();
   const money = (n) => Number(n || 0).toLocaleString("ko-KR") + "원";
@@ -260,6 +262,8 @@
       state.rows = [];
       state.users = [];
       state.loaded = false;
+      state.loadFailed = false;
+      state.directoryReady = false;
       state.busy = false;
       state.draft = null;
       state.selected = null;
@@ -277,7 +281,8 @@
           : "승인된 개인 계정으로 로그인하세요.",
       );
     }
-    $("ybFieldset").disabled = !state.uid || state.busy;
+    $("ybFieldset").disabled =
+      !state.uid || state.busy || state.loadFailed || (state.loaded && !state.directoryReady);
     return !!state.uid;
   }
   function guard(epoch) {
@@ -287,13 +292,11 @@
   }
   async function api(data, epoch) {
     guard(epoch);
-    const call = window.firebase
-      .app()
-      .functions("asia-northeast3")
-      .httpsCallable("businessDocument");
-    const r = await call(data);
+    if (!window.YJBusinessDocumentClient?.request)
+      throw new Error("문서 기능을 준비하지 못했습니다. 새로고침 후 다시 시도하세요.");
+    const r = await window.YJBusinessDocumentClient.request(data);
     guard(epoch);
-    return r.data;
+    return r;
   }
   function operation(data) {
     const key = JSON.stringify(data);
@@ -319,21 +322,24 @@
           ].includes(e.code)
         )
           state.draft = null;
-        const missing = [
-          "functions/not-found",
-          "functions/unavailable",
-        ].includes(e.code);
+        state.loadFailed = !state.loaded;
+        renderMetrics();
+        const friendly = {
+          "permission-denied": "현재 계정으로 문서에 접근할 수 없습니다.",
+          unauthenticated: "개인 계정으로 다시 로그인하세요.",
+          unavailable: "문서 저장소 연결이 원활하지 않습니다. 잠시 후 다시 시도하세요.",
+        };
         message(
-          missing
-            ? "표준 문서 서비스에 연결하지 못했습니다. 배포·연결 상태를 확인하세요."
-            : e.message,
+          friendly[String(e.code || "").replace(/^functions\//, "")] ||
+            (e.message === "internal" ? "문서를 불러오지 못했습니다. 새로고침 후 다시 시도하세요." : e.message),
           true,
         );
       }
     } finally {
       if (epoch === state.epoch) {
         state.busy = false;
-        $("ybFieldset").disabled = !state.uid;
+        $("ybFieldset").disabled =
+          !state.uid || state.loadFailed || (state.loaded && !state.directoryReady);
       }
     }
   }
@@ -345,6 +351,10 @@
     state.rows = a.documents;
     state.users = b.users;
     state.loaded = true;
+    state.loadFailed = false;
+    state.directoryReady = state.users.some(
+      (u) => u.role === "admin" && u.uid !== state.uid,
+    );
     const selections = {
       reviewerUid: $("yb-reviewerUid")?.value,
       approverUid: $("yb-approverUid")?.value,
@@ -369,10 +379,14 @@
     }
     renderWorkspace();
     message(
-      a.capped
-        ? "조회 상한에 도달했습니다. 목록은 일부 자료이며 전체 합계가 아닙니다."
-        : "표준 문서 " + state.rows.length + "건을 확인했습니다.",
+      !state.directoryReady
+        ? "문서 조회는 가능하지만 결재자 명단이 아직 준비되지 않았습니다. 관리자에게 문서 결재 초기 설정을 요청하세요."
+        : a.capped
+          ? "조회 상한에 도달했습니다. 목록은 일부 자료이며 전체 합계가 아닙니다."
+          : "표준 문서 " + state.rows.length + "건을 확인했습니다.",
+      !state.directoryReady,
     );
+    $("ybFieldset").disabled = !state.directoryReady;
   }
   $("ybRefresh").onclick = () => run(load);
   $("ybFilter").onchange = renderList;
@@ -392,7 +406,8 @@
     return ["admin", "accounting"].includes(state.user?.role);
   }
   function applyRoleVisibility() {
-    const finance = isFinance();
+    // Spark 1단계에서는 지급 기록을 의도적으로 제외한다.
+    const finance = false;
     const paymentTab = root.querySelector('[data-yb-view="payments"]');
     if (paymentTab) {
       paymentTab.hidden = !finance;
@@ -400,7 +415,7 @@
     }
     const paymentMetric = $("ybMetricPayment")?.parentElement;
     if (paymentMetric) paymentMetric.hidden = !finance;
-    if (!finance && state.view === "payments") state.view = "my";
+    if (state.view === "payments") state.view = "my";
   }
   function visibleRows() {
     let rows = state.rows;
@@ -448,26 +463,29 @@
         ["unpaid", "partial"].includes(d.paymentStatus),
     );
     const mine = state.rows.filter((d) => d.requesterUid === state.uid);
-    $("ybMetricMine").textContent = mine.length;
-    $("ybMetricPending").textContent = actionable.length;
-    $("ybMetricRejected").textContent = rejected.length;
-    $("ybMetricPayment").textContent = isFinance() ? payments.length : 0;
+    const metric = (value) => (state.loadFailed ? "—" : value);
+    $("ybMetricMine").textContent = metric(mine.length);
+    $("ybMetricPending").textContent = metric(actionable.length);
+    $("ybMetricRejected").textContent = metric(rejected.length);
+    $("ybMetricPayment").textContent = "—";
     const set = (id, value) => {
       const node = document.getElementById(id);
       if (node) node.textContent = value;
     };
-    set("pcHubDocGlancePending", actionable.length);
-    set("pcHubDocGlanceRejected", rejected.length);
-    set("pcHubDocGlancePayment", isFinance() ? payments.length : 0);
+    set("pcHubDocGlancePending", metric(actionable.length));
+    set("pcHubDocGlanceRejected", metric(rejected.length));
+    set("pcHubDocGlancePayment", "—");
     set(
       "pcHubDocGlanceTotal",
-      `${actionable.length + rejected.length + (isFinance() ? payments.length : 0)}건`,
+      state.loadFailed ? "조회 실패" : `${actionable.length + rejected.length}건`,
     );
     const stateNode = document.getElementById("pcHubDocGlanceState");
     if (stateNode)
       stateNode.textContent = state.loaded
         ? "표준 문서 기준 · 기존 문서는 보관함에서 조회"
-        : "표준 문서 조회 전";
+        : state.loadFailed
+          ? "문서 조회 실패 · 새로고침 필요"
+          : "표준 문서 조회 전";
     renderApprovalInbox(actionable);
   }
   function renderApprovalInbox(rows) {
@@ -612,7 +630,9 @@
     if (d.completedAt) pair(dl, "처리 결과", d.completionNote);
     box.append(dl);
     for (const a of Object.values(d.attachments)) {
-      box.append(button("첨부: " + a.name, () => run((e) => download(a, e))));
+      const attachmentButton = button("첨부: " + a.name, () => run((e) => download(a, e)));
+      attachmentButton.className = "yb-attachment";
+      box.append(attachmentButton);
     }
     const actions = el("div", undefined, "yb-actions");
     box.append(actions);
@@ -719,7 +739,7 @@
         button("승인 취소", () => run(() => act("cancelApproved", note.value))),
       );
     }
-    const finance = ["admin", "accounting"].includes(state.user?.role);
+    const finance = false;
     if (d.status === "approved" && d.kind === "expense" && finance) {
       if (d.details.settlementType === "prepaid" && !d.settledAt) {
         const note = field(
@@ -872,7 +892,7 @@
       box.append(
         el(
           "p",
-          new Date(h.at).toLocaleString("ko-KR") +
+          new Date(window.YJBusinessDocumentClient?.millis(h.at) || h.at).toLocaleString("ko-KR") +
             " · " +
             h.actorName +
             " · " +
@@ -887,8 +907,15 @@
   function print(r) {
     const host = el("section", undefined, "yb-print");
     host.id = "ybPrint";
-    host.append(el("h1", kinds[r.document.kind]), el("p", r.document.number));
+    host.append(
+      el("h1", kinds[r.document.kind]),
+      el("p", r.document.number),
+      el("p", "출력일시 " + new Date().toLocaleString("ko-KR"), "yb-print-meta"),
+    );
     const copy = $("ybDetail").cloneNode(true);
+    copy.querySelectorAll(".yb-attachment").forEach((n) =>
+      n.replaceWith(el("p", n.textContent, "yb-print-attachment")),
+    );
     copy
       .querySelectorAll("button,input,textarea,select,.yb-actions")
       .forEach((n) => n.remove());

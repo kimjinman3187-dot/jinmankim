@@ -15,6 +15,8 @@ const opts = { contentType: "application/pdf" };
 async function seed(id, kind = "expense", status = "draft") {
   await env.withSecurityRulesDisabled(async (c) => {
     await setDoc(doc(c.firestore(), "business_documents/" + id), {
+      schemaVersion: 5,
+      clientMode: "spark",
       kind,
       status,
       requesterUid: "storage-employee",
@@ -165,7 +167,7 @@ test("pending state locks uploads; leave attachments hidden from unrelated accou
     ),
   );
 });
-test("only registered payment actor uploads proof, completed proof immutable", async () => {
+test("Spark 1단계에서는 지급 증빙 쓰기를 전면 차단한다", async () => {
   await seed("payment-doc", "expense", "approved");
   await env.withSecurityRulesDisabled((c) =>
     setDoc(
@@ -179,18 +181,7 @@ test("only registered payment actor uploads proof, completed proof immutable", a
   );
   const p = "business-payment-files/payment-doc/payment-id/proof";
   await assertFails(uploadBytes(ref(storage("storage-admin"), p), bytes, opts));
-  await assertSucceeds(
-    uploadBytes(ref(storage("storage-finance"), p), bytes, opts),
-  );
-  await env.withSecurityRulesDisabled((c) =>
-    updateDoc(
-      doc(c.firestore(), "business_documents/payment-doc/payments/payment-id"),
-      { status: "recorded" },
-    ),
-  );
   await assertFails(
     uploadBytes(ref(storage("storage-finance"), p), bytes, opts),
   );
-  await assertFails(deleteObject(ref(storage("storage-finance"), p)));
-  await assertSucceeds(getMetadata(ref(storage("storage-employee"), p)));
 });
