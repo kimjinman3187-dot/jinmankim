@@ -8,12 +8,16 @@ const { chromium } = require("playwright");
 let browser, page;
 const requests = [];
 let listDocuments = [];
+let directoryUsers = [];
+let detailDocument = null;
 const users = [
   { uid: "finance", name: "회계 직원", role: "accounting" },
   { uid: "admin", name: "최종 승인자", role: "admin" },
 ];
 let slowResolve;
 async function mount() {
+  directoryUsers = users;
+  detailDocument = null;
   await page.route("https://yj.test/", (r) =>
     r.fulfill({
       contentType: "text/html",
@@ -36,24 +40,19 @@ async function mount() {
       status: "active",
     };
     window.yjGetCurrentUser = () => window.testUser;
-    window.firebase = {
-      app: () => ({
-        functions: () => ({
-          httpsCallable: () => async (data) => ({
-            data: await window.backend(data),
-          }),
-        }),
+    window.YJBusinessDocumentClient = {
+      request: (data) => window.backend(data),
+      millis: (value) => Number(value) || Date.now(),
+      describeFile: async (file) => ({
+        name: file.name,
+        size: file.size,
+        contentType: file.type,
+        chunkCount: 1,
+        sha256: "a".repeat(64),
       }),
-      storage: () => ({
-        ref: () => ({
-          getMetadata: async () => {
-            throw Object.assign(new Error("missing"), {
-              code: "storage/object-not-found",
-            });
-          },
-          put: async () => {},
-        }),
-      }),
+      uploadAttachment: async () => ({ ok: true }),
+      downloadAttachment: async () => new Blob(["test"]),
+      limits: { maxTotalSize: 10 * 1024 * 1024 },
     };
   });
   await page.addScriptTag({
@@ -73,11 +72,15 @@ test.before(async () => {
   page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await page.exposeFunction("backend", async (data) => {
     requests.push(data);
-    if (data.action === "directory") return { users };
+    if (data.action === "directory") return { users: directoryUsers };
     if (data.action === "list") return { documents: listDocuments, capped: false };
     if (data.action === "create") return { document: { attachments: {} } };
     if (data.action === "submit") return { ok: true };
-    if (data.action === "detail") throw new Error("simulated refresh failure");
+    if (data.action === "detail") {
+      if (detailDocument)
+        return { document: detailDocument, history: [], payments: [], capped: false };
+      throw new Error("simulated refresh failure");
+    }
     return {};
   });
 });
@@ -177,6 +180,82 @@ test("legacy document areas are marked as collapsed read-only archives", () => {
   assert.match(html, /이전 결재 기록/);
   assert.equal((html.match(/data-yj-legacy-readonly="true"/g) || []).length, 2);
 });
+test("Spark-only attachment UI has explicit limits and no Cloud Storage calls", () => {
+  const ui = fs.readFileSync(
+    path.join(__dirname, "../js/business-documents.js"),
+    "utf8",
+  );
+  const client = fs.readFileSync(
+    path.join(__dirname, "../js/business-document-client.js"),
+    "utf8",
+  );
+  assert.match(ui, /각 3MB·합계 10MB/);
+  assert.match(client, /attachment_chunks/);
+  assert.doesNotMatch(ui + client, /firebase\.storage\s*\(/);
+});
+test("missing approver setup is explained and prevents unsafe document submission", async () => {
+  listDocuments = [];
+  await mount();
+  directoryUsers = [];
+  await page.getByRole("button", { name: "새로고침", exact: true }).click();
+  await page
+    .getByText(/결재자 명단이 아직 준비되지 않았습니다/)
+    .waitFor();
+  await page.waitForFunction(() => document.getElementById("ybFieldset").disabled);
+  assert.equal(await page.locator("#ybFieldset").evaluate((node) => node.disabled), true);
+  assert.equal(await page.locator("#ybMetricMine").innerText(), "0");
+});
+test("load failure shows an honest unknown state instead of zero counts or raw internal", async () => {
+  await mount();
+  await page.evaluate(() => {
+    window.YJBusinessDocumentClient.request = async () => {
+      throw new Error("internal");
+    };
+  });
+  await page.getByRole("button", { name: "새로고침", exact: true }).click();
+  await page.getByText(/문서를 불러오지 못했습니다/).waitFor();
+  assert.equal(await page.locator("#ybMetricMine").innerText(), "—");
+  assert.equal(await page.locator("#pcHubDocGlanceTotal").innerText(), "조회 실패");
+  assert.doesNotMatch(await page.locator("#yjBusinessDocuments").innerText(), /\binternal\b/);
+});
+test("A4 print view produces a readable PDF without interactive controls", async () => {
+  const document = {
+    id: "printable",
+    number: "YJ-GEN-20260930-ABC123",
+    kind: "general",
+    status: "approved",
+    requesterUid: "employee",
+    requesterName: "시험 직원",
+    approverUids: ["admin"],
+    approverNames: ["최종 승인자"],
+    step: 0,
+    attachments: {},
+    details: {
+      title: "인쇄 검증 문서",
+      reason: "A4 PDF 저장 검증",
+      category: "report",
+      content: "출력 본문",
+    },
+  };
+  listDocuments = [document];
+  await mount();
+  detailDocument = document;
+  await page.getByRole("button", { name: "새로고침", exact: true }).click();
+  await page.getByText("표준 문서 1건을 확인했습니다.").waitFor();
+  await page.locator("#ybList .yb-row").first().click();
+  await page.locator("#ybDetail h4").first().waitFor();
+  const printButton = page.locator("#ybDetail button").filter({ hasText: "A4 인쇄 / PDF" });
+  await printButton.waitFor();
+  await page.evaluate(() => {
+    window.print = () => {};
+  });
+  await printButton.click();
+  assert.equal(await page.locator("#ybPrint").count(), 1);
+  assert.equal(await page.locator("#ybPrint button,#ybPrint input,#ybPrint select").count(), 0);
+  const pdfPath = path.join(os.tmpdir(), "yj-work53-document-a4.pdf");
+  await page.pdf({ path: pdfPath, format: "A4", printBackground: true });
+  assert.equal(fs.readFileSync(pdfPath).subarray(0, 4).toString(), "%PDF");
+});
 test("account switch clears sensitive form values and invalidates old session", async () => {
   listDocuments = [];
   await mount();
@@ -221,4 +300,32 @@ test("no horizontal overflow at 360,390,430,1440; labels and focus exist", async
     path: path.join(os.tmpdir(), "yj-work46-documents-mobile.png"),
     fullPage: true,
   });
+});
+test("actual Spark client hashes files and enforces the 3MiB chunk limit", async () => {
+  await page.addScriptTag({
+    content: fs.readFileSync(
+      path.join(__dirname, "../js/business-document-client.js"),
+      "utf8",
+    ),
+  });
+  const result = await page.evaluate(async () => {
+    const file = new File([new Uint8Array(600000)], "proof.pdf", {
+      type: "application/pdf",
+    });
+    const metadata = await window.YJBusinessDocumentClient.describeFile(file);
+    let oversizedMessage = "";
+    try {
+      await window.YJBusinessDocumentClient.describeFile(
+        new File([new Uint8Array(3 * 1024 * 1024 + 1)], "large.pdf", {
+          type: "application/pdf",
+        }),
+      );
+    } catch (error) {
+      oversizedMessage = error.message;
+    }
+    return { metadata, oversizedMessage };
+  });
+  assert.equal(result.metadata.chunkCount, 2);
+  assert.equal(result.metadata.sha256.length, 64);
+  assert.match(result.oversizedMessage, /3MB 이하/);
 });
