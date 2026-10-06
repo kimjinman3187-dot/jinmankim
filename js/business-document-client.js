@@ -229,7 +229,9 @@
     const ref = database().collection(COLLECTION).doc(id);
     const [document, history] = await Promise.all([ref.get(), ref.collection("history").orderBy("at", "desc").limit(101).get()]);
     check(document.exists, "문서를 찾을 수 없습니다.", "not-found");
-    return { document: publicDoc(document), history: history.docs.slice(0, 100).map(publicDoc), payments: [], capped: history.size > 100 };
+    const row = publicDoc(document);
+    row.attachmentCompletion = await attachmentCompletion(id, row.attachments);
+    return { document: row, history: history.docs.slice(0, 100).map(publicDoc), payments: [], capped: history.size > 100 };
   }
   async function loadRoute(kind, requester, reviewerUid, approverUid) {
     const ids = kind === "expense" ? [reviewerUid, approverUid] : [approverUid];
@@ -472,9 +474,10 @@
     const bytes = new Uint8Array(expected.size);
     let offset = 0;
     rows.forEach((row, index) => {
-      check(row.index === index && row.sha256 === expected.sha256, "첨부 순서 또는 해시가 다릅니다.");
+      check(row.slot === slot && row.index === index && row.sha256 === expected.sha256, "첨부 순서 또는 해시가 다릅니다.");
       const part = row.data.toUint8Array();
-      check(part.byteLength === row.size, "첨부 청크 크기가 다릅니다.");
+      const expectedSize = Math.min(CHUNK_SIZE, expected.size - index * CHUNK_SIZE);
+      check(row.size === expectedSize && part.byteLength === expectedSize, "첨부 청크 크기가 다릅니다.");
       bytes.set(part, offset);
       offset += part.byteLength;
     });
@@ -483,10 +486,26 @@
     check(sha256 === expected.sha256, "첨부 무결성 검증에 실패했습니다.");
     return new global.Blob([bytes], { type: expected.contentType });
   }
+  async function attachmentCompletion(documentId, attachments) {
+    const entries = Object.entries(attachments || {});
+    const documentRef = database().collection(COLLECTION).doc(documentId);
+    const manifests = await Promise.all(
+      entries.map(([slot]) =>
+        documentRef.collection("attachment_uploads").doc(slot).get(),
+      ),
+    );
+    return Object.fromEntries(
+      entries.map(([slot, expected], index) => [
+        slot,
+        manifests[index].exists && sameAttachment(manifests[index].data(), expected),
+      ]),
+    );
+  }
   async function verifyAttachments(document) {
-    const entries = Object.entries(document.attachments || {});
-    const manifests = await Promise.all(entries.map(([slot]) => database().collection(COLLECTION).doc(document.id).collection("attachment_uploads").doc(slot).get()));
-    entries.forEach(([slot, expected], index) => check(manifests[index].exists && sameAttachment(manifests[index].data(), expected), slot + " 첨부 업로드가 완료되지 않았습니다."));
+    const completion = await attachmentCompletion(document.id, document.attachments);
+    Object.entries(document.attachments || {}).forEach(([slot]) =>
+      check(completion[slot] === true, slot + " 첨부 업로드가 완료되지 않았습니다."),
+    );
   }
   async function transition(data) {
     const user = await actor();
@@ -573,6 +592,7 @@
     describeFile,
     uploadAttachment,
     downloadAttachment,
+    attachmentCompletion,
     limits: { chunkSize: CHUNK_SIZE, maxFileSize: MAX_FILE_SIZE, maxTotalSize: MAX_TOTAL_SIZE, maxFiles: MAX_FILES },
   };
 })(window);
