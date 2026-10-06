@@ -584,6 +584,7 @@
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+    message("첨부 다운로드와 SHA-256 무결성 검증을 완료했습니다.");
   }
   function fileInfo(f) {
     const ext = f.name.split(".").pop().toLowerCase();
@@ -694,6 +695,7 @@
         }),
       );
       for (const [slot, a] of Object.entries(d.attachments)) {
+        if (d.attachmentCompletion?.[slot] === true) continue;
         const input = field(
           actions,
           "retry-" + slot,
@@ -705,7 +707,8 @@
             const f = input.files[0];
             if (!f) return;
             await uploadDocumentAttachment(d.id, slot, f, a, e);
-            message("첨부 업로드 완료");
+            await detail(d.id, e);
+            message("첨부 업로드 완료 상태를 저장하고 확인했습니다.");
           });
       }
       actions.append(button("결재 요청", () => run(() => act("submit"))));
