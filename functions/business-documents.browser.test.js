@@ -74,7 +74,8 @@ test.before(async () => {
     requests.push(data);
     if (data.action === "directory") return { users: directoryUsers };
     if (data.action === "list") return { documents: listDocuments, capped: false };
-    if (data.action === "create") return { document: { attachments: {} } };
+    if (["create", "updateDraft"].includes(data.action))
+      return { document: { attachments: {} } };
     if (data.action === "submit") return { ok: true };
     if (data.action === "detail") {
       if (detailDocument)
@@ -121,6 +122,80 @@ test("all five forms render; form values survive disabled fieldset during submis
   assert.equal(create.details.amount, 11000);
   assert.equal(create.approverUid, "admin");
   assert.equal(requests.filter((x) => x.action === "submit").length, 1);
+});
+test("partial forms can be saved as drafts and existing drafts can be edited", async () => {
+  listDocuments = [];
+  await mount();
+  await page.getByRole("button", { name: "새로고침", exact: true }).click();
+  await page.getByText("표준 문서 0건을 확인했습니다.").waitFor();
+  await page.locator("#yb-kind").selectOption("general");
+  await page.locator("#yb-title").fill("작성 중 품의");
+  await page.getByRole("button", { name: "임시저장", exact: true }).click();
+  await page.getByText(/임시저장은 완료됐지만/).waitFor();
+  const created = requests.findLast((item) => item.action === "create");
+  assert.equal(created.draftOnly, true);
+  assert.equal(created.details.reason, "");
+
+  const draft = {
+    id: "draft-edit-1",
+    number: "YJ-GENERAL-20261006-DRAFT1",
+    kind: "general",
+    status: "draft",
+    requesterUid: "employee",
+    requesterName: "시험 직원",
+    approverUids: ["admin"],
+    approverNames: ["최종 승인자"],
+    attachmentCount: 0,
+    attachments: {},
+    step: 0,
+    details: { title: "수정 전", reason: "기존 내용", effectiveDate: "", amount: 0 },
+  };
+  listDocuments = [draft];
+  detailDocument = draft;
+  await page.getByRole("button", { name: "새로고침", exact: true }).click();
+  await page.locator("#ybList .yb-row").first().click();
+  await page.getByRole("button", { name: "작성 중 문서 수정", exact: true }).click();
+  await page.locator("#yb-title").fill("수정 후");
+  await page.getByRole("button", { name: "임시저장", exact: true }).click();
+  const updated = requests.findLast((item) => item.action === "updateDraft");
+  assert.equal(updated.id, "draft-edit-1");
+  assert.equal(updated.details.title, "수정 후");
+  assert.equal(updated.draftOnly, true);
+});
+
+test("approved document actions call cancelApproved and complete backends", async () => {
+  const approved = {
+    id: "approved-actions",
+    number: "YJ-GENERAL-20261006-DONE01",
+    kind: "general",
+    status: "approved",
+    requesterUid: "other",
+    requesterName: "다른 직원",
+    approverUids: ["employee"],
+    approverNames: ["시험 관리자"],
+    attachments: {},
+    step: 0,
+    paidAmount: 0,
+    allocatedAmount: 0,
+    settledAt: null,
+    completedAt: null,
+    details: { title: "승인 완료 문서", reason: "후속 처리 검증", effectiveDate: "2026-10-06", amount: 0 },
+  };
+  listDocuments = [approved];
+  await mount();
+  await page.evaluate(() => {
+    window.testUser.role = "admin";
+  });
+  detailDocument = approved;
+  await page.getByRole("button", { name: "새로고침", exact: true }).click();
+  await page.getByRole("button", { name: "전체 문서", exact: true }).click();
+  await page.locator("#ybList .yb-row").first().click();
+  await page.locator("#yb-cancelReason").fill("조건 변경");
+  await page.getByRole("button", { name: "승인 취소", exact: true }).click();
+  assert.equal(requests.findLast((item) => item.action === "cancelApproved").reason, "조건 변경");
+  await page.locator("#yb-completionNote").fill("업무 반영 완료");
+  await page.getByRole("button", { name: "처리 완료 기록", exact: true }).click();
+  assert.equal(requests.findLast((item) => item.action === "complete").reason, "업무 반영 완료");
 });
 test("unified workspace separates my documents, approval inbox and dashboard metrics", async () => {
   listDocuments = [

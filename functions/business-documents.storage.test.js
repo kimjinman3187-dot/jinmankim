@@ -12,6 +12,7 @@ const {
   Bytes,
   doc,
   getDoc,
+  deleteDoc,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -52,7 +53,7 @@ test.before(async () => {
     projectId,
     firestore: {
       host: "127.0.0.1",
-      port: 8185,
+      port: 8080,
       rules: fs.readFileSync(path.join(__dirname, "../firestore.rules"), "utf8"),
     },
   });
@@ -69,7 +70,7 @@ test.before(async () => {
       });
     }
     await setDoc(doc(context.firestore(), "business_documents/" + documentId), {
-      schemaVersion: 6,
+      schemaVersion: 7,
       clientMode: "spark-firestore",
       kind: "general",
       status: "draft",
@@ -156,6 +157,15 @@ test("요청자·결재자는 첨부를 읽고 무관 사용자는 읽지 못한
   await assertSucceeds(getDoc(doc(db("file-employee"), pathName)));
   await assertSucceeds(getDoc(doc(db("file-admin"), pathName)));
   await assertFails(getDoc(doc(db("file-outsider"), pathName)));
+});
+
+test("작성 중 요청자는 첨부를 교체할 수 있고 무관 사용자는 삭제할 수 없다", async () => {
+  const chunkPath = `business_documents/${documentId}/attachment_chunks/a0-0`;
+  const manifestPath = `business_documents/${documentId}/attachment_uploads/a0`;
+  await assertFails(deleteDoc(doc(db("file-outsider"), chunkPath)));
+  await assertFails(deleteDoc(doc(db("file-outsider"), manifestPath)));
+  await assertSucceeds(deleteDoc(doc(db("file-employee"), manifestPath)));
+  await assertSucceeds(deleteDoc(doc(db("file-employee"), chunkPath)));
 });
 
 test("제출 이후에는 새 청크와 매니페스트를 만들 수 없다", async () => {

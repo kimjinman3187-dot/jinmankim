@@ -7,6 +7,7 @@
   const MAX_FILE_SIZE = 3 * 1024 * 1024;
   const MAX_TOTAL_SIZE = 10 * 1024 * 1024;
   const MAX_FILES = 5;
+  const SCHEMA_VERSION = 7;
   const MIME = {
     pdf: "application/pdf",
     png: "image/png",
@@ -88,6 +89,59 @@
       out.amount = money(d.amount || 0, "예상 비용", true);
     }
     return out;
+  }
+
+  function draftDetails(kind, input) {
+    check(KINDS.includes(kind), "문서 종류를 확인하세요.");
+    const d = input || {};
+    const value = (key, max) => String(d[key] || "").trim().slice(0, max);
+    const number = (key, max = Number.MAX_SAFE_INTEGER) => {
+      const n = Number(d[key] || 0);
+      return Number.isFinite(n) && n >= 0 ? Math.min(n, max) : 0;
+    };
+    const out = { title: value("title", 80), reason: value("reason", 2000) };
+    if (kind === "expense") {
+      out.settlementType = ["vendor", "reimbursement", "prepaid"].includes(d.settlementType) ? d.settlementType : "vendor";
+      out.category = ["material", "outsourcing", "general", "entertainment", "other"].includes(d.category) ? d.category : "material";
+      out.supplyAmount = Math.trunc(number("supplyAmount"));
+      out.taxAmount = Math.trunc(number("taxAmount"));
+      out.amount = out.supplyAmount + out.taxAmount;
+      out.payee = value("payee", 100);
+      out.transactionDate = value("transactionDate", 10);
+      out.plannedDate = value("plannedDate", 10);
+      out.paymentMethod = ["bank_transfer", "corporate_card", "cash"].includes(d.paymentMethod) ? d.paymentMethod : "bank_transfer";
+      out.purchaseId = value("purchaseId", 128);
+      out.orderReference = value("orderReference", 128);
+    } else if (kind === "purchase") {
+      out.category = ["purchase", "repair"].includes(d.category) ? d.category : "purchase";
+      out.item = value("item", 300);
+      out.quantity = number("quantity", 1000000);
+      out.amount = Math.trunc(number("amount"));
+      out.neededDate = value("neededDate", 10);
+      out.vendor = value("vendor", 100);
+    } else if (kind === "leave") {
+      out.category = ["annual", "half", "outing", "other"].includes(d.category) ? d.category : "annual";
+      out.startDate = value("startDate", 10);
+      out.endDate = value("endDate", 10);
+      out.hours = number("hours", 744);
+      out.handover = value("handover", 1000);
+    } else if (kind === "general") {
+      out.effectiveDate = value("effectiveDate", 10);
+      out.amount = Math.trunc(number("amount"));
+    } else {
+      out.orderReference = value("orderReference", 128);
+      out.category = ["defect", "rework", "scrap", "delay"].includes(d.category) ? d.category : "defect";
+      out.quantity = number("quantity", 1000000);
+      out.actionPlan = value("actionPlan", 1000);
+      out.impact = value("impact", 1000);
+    }
+    return out;
+  }
+
+  function routeReady(kind, reviewerUid, approverUid) {
+    return kind === "expense"
+      ? Boolean(reviewerUid && approverUid)
+      : Boolean(approverUid);
   }
 
   function database() {
@@ -193,10 +247,16 @@
 
   async function create(data) {
     const user = await actor();
-    const details = validate(data.kind, data.details);
-    const route = await loadRoute(data.kind, user, data.reviewerUid, data.approverUid);
+    const draftOnly = data.draftOnly === true;
+    const details = draftOnly
+      ? draftDetails(data.kind, data.details)
+      : validate(data.kind, data.details);
+    const route =
+      draftOnly && !routeReady(data.kind, data.reviewerUid, data.approverUid)
+        ? []
+        : await loadRoute(data.kind, user, data.reviewerUid, data.approverUid);
     const files = Array.isArray(data.files) ? data.files : [];
-    check(files.length <= MAX_FILES && (data.kind !== "expense" || files.length > 0), data.kind === "expense" ? "지출결의서는 증빙을 첨부하세요." : "첨부는 최대 5개입니다.", "invalid-argument");
+    check(files.length <= MAX_FILES, "첨부는 최대 5개입니다.", "invalid-argument");
     const attachments = {};
     files.forEach((file, index) => {
       attachments["a" + index] = fileMeta(file, data.id, "a" + index);
@@ -209,7 +269,7 @@
     }
     const dateKey = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()).replace(/-/g, "");
     const document = {
-      schemaVersion: 6,
+      schemaVersion: SCHEMA_VERSION,
       clientMode: "spark-firestore",
       kind: data.kind,
       number: "YJ-" + data.kind.toUpperCase() + "-" + dateKey + "-" + data.id.replace(/-/g, "").slice(-6).toUpperCase(),
@@ -233,6 +293,8 @@
       paymentStatus: data.kind === "expense" ? (details.settlementType === "prepaid" ? "not_required" : "unpaid") : null,
       settledAt: null,
       completedAt: null,
+      completionNote: "",
+      cancellationReason: "",
       allocatedAmount: 0,
       purchaseReserved: false,
       revisedFrom: data.revisedFrom || "",
@@ -248,6 +310,108 @@
       transaction.set(historyRef, historyData(data.operationId, "create", user, "", "none", "draft"));
     });
     return { ok: true, id: data.id, document };
+  }
+
+  async function draftAttachmentRefs(ref, document) {
+    check(
+      document.status === "draft",
+      "작성 중 문서의 첨부만 변경할 수 있습니다.",
+      "failed-precondition",
+    );
+    const [chunks, manifests] = await Promise.all([
+      ref.collection("attachment_chunks").get(),
+      ref.collection("attachment_uploads").get(),
+    ]);
+    return [...chunks.docs, ...manifests.docs].map((snapshot) => snapshot.ref);
+  }
+
+  async function updateDraft(data) {
+    const user = await actor();
+    const draftOnly = data.draftOnly === true;
+    const details = draftOnly
+      ? draftDetails(data.kind, data.details)
+      : validate(data.kind, data.details);
+    const route =
+      draftOnly && !routeReady(data.kind, data.reviewerUid, data.approverUid)
+        ? []
+        : await loadRoute(
+            data.kind,
+            user,
+            data.reviewerUid,
+            data.approverUid,
+          );
+    const ref = database().collection(COLLECTION).doc(data.id);
+    const before = await ref.get();
+    check(before.exists, "문서를 찾을 수 없습니다.", "not-found");
+    const current = before.data();
+    check(
+      current.requesterUid === user.uid && current.status === "draft",
+      "본인의 작성 중 문서만 수정할 수 있습니다.",
+      "permission-denied",
+    );
+    check(current.kind === data.kind, "문서 종류는 변경할 수 없습니다.");
+
+    const replaceAttachments = data.replaceAttachments === true;
+    const files = Array.isArray(data.files) ? data.files : [];
+    check(files.length <= MAX_FILES, "첨부는 최대 5개입니다.");
+    let attachments = current.attachments || {};
+    let totalSize = current.attachmentsTotalSize || 0;
+    let attachmentRefs = [];
+    if (replaceAttachments) {
+      attachmentRefs = await draftAttachmentRefs(ref, current);
+      attachments = {};
+      files.forEach((file, index) => {
+        attachments["a" + index] = fileMeta(file, data.id, "a" + index);
+      });
+      totalSize = Object.values(attachments).reduce(
+        (sum, item) => sum + item.size,
+        0,
+      );
+      check(totalSize <= MAX_TOTAL_SIZE, "첨부 합계는 10MB 이하입니다.");
+    }
+
+    const historyRef = ref.collection("history").doc(data.operationId);
+    return database().runTransaction(async (transaction) => {
+      const [snapshot, existing] = await Promise.all([
+        transaction.get(ref),
+        transaction.get(historyRef),
+      ]);
+      if (existing.exists)
+        return { ok: true, duplicate: true, document: { id: snapshot.id, ...snapshot.data() } };
+      check(snapshot.exists, "문서를 찾을 수 없습니다.", "not-found");
+      const document = snapshot.data();
+      check(
+        document.requesterUid === user.uid && document.status === "draft",
+        "본인의 작성 중 문서만 수정할 수 있습니다.",
+        "permission-denied",
+      );
+      const patch = {
+        schemaVersion: SCHEMA_VERSION,
+        details,
+        approverUids: route.map((item) => item.uid),
+        approverNames: route.map((item) => item.name),
+        attachments,
+        attachmentCount: Object.keys(attachments).length,
+        attachmentsTotalSize: totalSize,
+        paymentStatus:
+          data.kind === "expense"
+            ? details.settlementType === "prepaid"
+              ? "not_required"
+              : "unpaid"
+            : null,
+        completionNote: document.completionNote || "",
+        cancellationReason: document.cancellationReason || "",
+        updatedAt: serverTime(),
+        lastOperationId: data.operationId,
+      };
+      attachmentRefs.forEach((attachmentRef) => transaction.delete(attachmentRef));
+      transaction.update(ref, patch);
+      transaction.set(
+        historyRef,
+        historyData(data.operationId, "updateDraft", user, "", "draft", "draft"),
+      );
+      return { ok: true, id: data.id, document: { id: data.id, ...document, ...patch } };
+    });
   }
 
   async function uploadAttachment(documentId, slot, file, expected) {
@@ -330,6 +494,11 @@
     if (data.action === "submit") {
       const snapshot = await ref.get();
       check(snapshot.exists, "문서를 찾을 수 없습니다.", "not-found");
+      check(
+        snapshot.data().kind !== "expense" || snapshot.data().attachmentCount > 0,
+        "지출결의서는 증빙을 첨부하세요.",
+        "failed-precondition",
+      );
       await verifyAttachments({ id: snapshot.id, ...snapshot.data() });
     }
     const historyRef = ref.collection("history").doc(data.operationId);
@@ -356,6 +525,29 @@
           const final = document.step === document.approverUids.length - 1;
           patch = { status: final ? "approved" : "pending", step: final ? document.step : document.step + 1, approvedAt: final ? serverTime() : null, updatedAt: serverTime(), lastOperationId: data.operationId };
         }
+      } else if (data.action === "cancelApproved") {
+        check(
+          user.role === "admin" && user.uid !== document.requesterUid,
+          "작성자가 아닌 관리자만 승인을 취소할 수 있습니다.",
+          "permission-denied",
+        );
+        check(
+          document.status === "approved" && !document.paidAmount && !document.settledAt && !document.completedAt && !document.allocatedAmount,
+          "지급·정산·처리 전 승인 문서만 취소할 수 있습니다.",
+          "failed-precondition",
+        );
+        const reason = text(data.reason || "", "승인 취소 사유", 500);
+        patch = { status: "cancelled", cancellationReason: reason, updatedAt: serverTime(), lastOperationId: data.operationId };
+      } else if (data.action === "complete") {
+        check(document.kind !== "expense", "지출결의서는 지급·정산에서 완료 처리합니다.", "failed-precondition");
+        check(document.status === "approved" && !document.completedAt, "승인 후 미완료 문서만 처리할 수 있습니다.", "failed-precondition");
+        check(
+          user.role === "admin" || (document.requesterUid === user.uid && document.kind !== "leave"),
+          "현재 계정은 처리 완료 권한이 없습니다.",
+          "permission-denied",
+        );
+        const note = text(data.reason || "", "처리 결과", 500);
+        patch = { completedAt: serverTime(), completionNote: note, updatedAt: serverTime(), lastOperationId: data.operationId };
       } else {
         fail("failed-precondition", "무료 요금제 1단계에서는 문서 결재 기능만 지원합니다.");
       }
@@ -370,6 +562,7 @@
     if (data.action === "list") return list();
     if (data.action === "detail") return detail(data.id);
     if (data.action === "create") return create(data);
+    if (data.action === "updateDraft") return updateDraft(data);
     return transition(data);
   }
 
