@@ -121,6 +121,13 @@
   };
   const uuid = () => crypto.randomUUID();
   const money = (n) => Number(n || 0).toLocaleString("ko-KR") + "원";
+  const formatBytes = (value) => {
+    const bytes = Number(value || 0);
+    if (bytes < 1024) return bytes.toLocaleString("ko-KR") + "B";
+    if (bytes < 1024 * 1024)
+      return (bytes / 1024).toFixed(bytes < 10 * 1024 ? 1 : 0) + "KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + "MB";
+  };
   function el(tag, text, cls) {
     const n = document.createElement(tag);
     if (text !== undefined) n.textContent = text;
@@ -137,7 +144,7 @@
     '<div class="yb-header"><div><p class="yb-eyebrow">표준 문서 업무</p><h3>문서 작성·결재·지급을 한곳에서 처리합니다</h3><p>신규 업무는 표준 문서 5종으로 작성하고, 결재 상태와 실제 처리 결과를 함께 확인합니다.</p></div><button type="button" id="ybRefresh">새로고침</button></div>' +
     '<nav class="yb-tabs" aria-label="문서 업무 구분"><button type="button" data-yb-view="create">새 문서 작성</button><button type="button" data-yb-view="my">내 문서</button><button type="button" data-yb-view="inbox">결재함</button><button type="button" data-yb-view="payments">지급관리</button><button type="button" data-yb-view="all">전체 문서</button></nav>' +
     '<div class="yb-summary"><div><span>내 문서</span><strong id="ybMetricMine">0</strong></div><div><span>결재 대기</span><strong id="ybMetricPending">0</strong></div><div><span>반려</span><strong id="ybMetricRejected">0</strong></div><div><span>지급 대기</span><strong id="ybMetricPayment">0</strong></div></div>' +
-    '<p id="ybMessage" role="status" aria-live="polite"></p><div class="yb-layout"><form id="ybForm"><fieldset id="ybFieldset"><h4 id="ybFormTitle">새 문서 작성</h4><div id="ybCommon"></div><div id="ybFields" class="yb-grid"></div><div id="ybRoute" class="yb-grid"></div><label>첨부파일 (최대 5개, 각 3MB·합계 10MB)<input id="ybFiles" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx,.csv"></label><label id="ybClearFilesLabel"><input id="ybClearFiles" type="checkbox"> 기존 첨부를 모두 제거</label><p id="ybAttachmentHelp" class="yb-help">무료 요금제 전용 보안 저장 · 지출은 증빙 필수 · 구매·수리는 견적 첨부 권장</p><button type="submit" name="intent" value="submit" class="yb-primary">저장하고 결재 요청</button><button type="submit" name="intent" value="draft">임시저장</button><button type="button" id="ybNew">새 양식</button></fieldset></form><section id="ybRecords"><div class="yb-toolbar"><div><h4 id="ybListTitle">내 문서</h4><p id="ybListHelp" class="yb-help">작성한 표준 문서를 확인합니다.</p></div><label>문서 종류<select id="ybFilter"><option value="all">전체</option></select></label></div><div id="ybList"></div><div id="ybDetail"></div></section></div>';
+    '<p id="ybMessage" role="status" aria-live="polite"></p><div class="yb-layout"><form id="ybForm"><fieldset id="ybFieldset"><h4 id="ybFormTitle">새 문서 작성</h4><div id="ybCommon"></div><div id="ybFields" class="yb-grid"></div><div id="ybRoute" class="yb-grid"></div><label>첨부파일 (최대 5개, 각 3MB·합계 10MB)<input id="ybFiles" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx,.csv"></label><div id="ybAttachmentState" class="yb-attachment-state" role="status" aria-live="polite"></div><label id="ybClearFilesLabel"><input id="ybClearFiles" type="checkbox"> 기존 첨부를 모두 제거</label><p id="ybAttachmentHelp" class="yb-help">무료 요금제 전용 보안 저장 · 지출은 증빙 필수 · 구매·수리는 견적 첨부 권장</p><button type="submit" name="intent" value="submit" class="yb-primary">저장하고 결재 요청</button><button type="submit" name="intent" value="draft">임시저장</button><button type="button" id="ybNew">새 양식</button></fieldset></form><section id="ybRecords"><div class="yb-toolbar"><div><h4 id="ybListTitle">내 문서</h4><p id="ybListHelp" class="yb-help">작성한 표준 문서를 확인합니다.</p></div><label>문서 종류<select id="ybFilter"><option value="all">전체</option></select></label></div><div id="ybList"></div><div id="ybDetail"></div></section></div>';
   const $ = (id) => document.getElementById(id);
   const form = $("ybForm");
   const views = ["create", "my", "inbox", "payments", "all"];
@@ -151,6 +158,45 @@
   function message(s, error = false) {
     $("ybMessage").textContent = s;
     $("ybMessage").className = error ? "yb-error" : "yb-message";
+  }
+  function attachmentEntries(document) {
+    return Object.entries(document?.attachments || {});
+  }
+  function renderFormAttachmentState(document, selectedFiles) {
+    const host = $("ybAttachmentState");
+    host.replaceChildren();
+    host.className = "yb-attachment-state";
+    const selected = [...(selectedFiles || [])];
+    const entries = attachmentEntries(document);
+    let title = "첨부 없음";
+    let detail = "선택한 파일이 없습니다.";
+    if (selected.length) {
+      const total = selected.reduce((sum, file) => sum + file.size, 0);
+      title = `저장 전 · ${selected.length}개`;
+      detail =
+        selected.map((file) => `${file.name} (${formatBytes(file.size)})`).join(", ") +
+        ` · 합계 ${formatBytes(total)}`;
+      host.classList.add("is-pending");
+    } else if ($("ybClearFiles")?.checked && entries.length) {
+      title = "제거 예정";
+      detail = "저장하면 기존 첨부가 모두 제거됩니다.";
+      host.classList.add("is-warning");
+    } else if (entries.length) {
+      const complete = entries.filter(
+        ([slot]) => document.attachmentCompletion?.[slot] === true,
+      ).length;
+      title =
+        complete === entries.length
+          ? `저장·무결성 확인 완료 · ${complete}개`
+          : `재업로드 필요 · ${entries.length - complete}개`;
+      detail = entries
+        .map(([, file]) => `${file.name} (${formatBytes(file.size)})`)
+        .join(", ");
+      host.classList.add(
+        complete === entries.length ? "is-complete" : "is-warning",
+      );
+    }
+    host.append(el("strong", title), el("span", detail));
   }
   function field(parent, key, label, type, value) {
     const wrap = el("label", label);
@@ -241,9 +287,25 @@
     state.revise = null;
     state.editing = null;
     renderFields();
+    renderFormAttachmentState(null);
   });
   renderFields();
   $("ybClearFilesLabel").hidden = true;
+  renderFormAttachmentState(null);
+  $("ybFiles").addEventListener("change", () => {
+    const files = [...$("ybFiles").files];
+    if (files.length) $("ybClearFiles").checked = false;
+    renderFormAttachmentState(state.editing, files);
+    $("ybAttachmentHelp").textContent = files.length
+      ? "선택한 파일은 아직 저장 전입니다. 임시저장 또는 결재 요청을 완료해야 서버에 보관됩니다."
+      : state.editing?.attachmentCount
+        ? "파일 선택란이 비어 있어도 아래 저장 완료 표시가 있으면 기존 첨부는 유지됩니다."
+        : "무료 요금제 전용 보안 저장 · 지출은 증빙 필수 · 구매·수리는 견적 첨부 권장";
+  });
+  $("ybClearFiles").addEventListener("change", () => {
+    if ($("ybClearFiles").checked) $("ybFiles").value = "";
+    renderFormAttachmentState(state.editing, $("ybFiles").files);
+  });
   function keyNow() {
     const a = window.auth?.currentUser;
     const u = window.yjGetCurrentUser?.();
@@ -282,6 +344,7 @@
       $("ybClearFilesLabel").hidden = true;
       $("ybAttachmentHelp").textContent =
         "무료 요금제 전용 보안 저장 · 지출은 증빙 필수 · 구매·수리는 견적 첨부 권장";
+      renderFormAttachmentState(null);
       renderFields();
       renderWorkspace();
       message(
@@ -413,6 +476,7 @@
     $("ybClearFilesLabel").hidden = true;
     $("ybAttachmentHelp").textContent =
       "무료 요금제 전용 보안 저장 · 지출은 증빙 필수 · 구매·수리는 견적 첨부 권장";
+    renderFormAttachmentState(null);
     message(
       "새 문서를 작성합니다. 저장된 작성 중 문서는 목록에서 확인할 수 있습니다.",
     );
@@ -650,12 +714,43 @@
     if (d.completedAt) pair(dl, "처리 결과", d.completionNote);
     if (d.cancellationReason) pair(dl, "승인 취소 사유", d.cancellationReason);
     box.append(dl);
-    for (const [slot, a] of Object.entries(d.attachments)) {
-      const attachmentButton = button("첨부: " + a.name, () =>
-        run((e) => download(d.id, slot, a, e)),
+    const documentAttachments = attachmentEntries(d);
+    const completedAttachments = documentAttachments.filter(
+      ([slot]) => d.attachmentCompletion?.[slot] === true,
+    ).length;
+    if (documentAttachments.length) {
+      const panel = el("section", undefined, "yb-attachment-panel");
+      panel.append(
+        el("h5", "첨부 저장상태"),
+        el(
+          "p",
+          completedAttachments === documentAttachments.length
+            ? `저장·무결성 확인 완료 ${completedAttachments}/${documentAttachments.length}`
+            : `재업로드 필요 ${documentAttachments.length - completedAttachments}개`,
+          completedAttachments === documentAttachments.length
+            ? "yb-attachment-summary is-complete"
+            : "yb-attachment-summary is-warning",
+        ),
       );
-      attachmentButton.className = "yb-attachment";
-      box.append(attachmentButton);
+      for (const [slot, a] of documentAttachments) {
+        const ready = d.attachmentCompletion?.[slot] === true;
+        const row = el("div", undefined, "yb-attachment-item");
+        const attachmentButton = button("다운로드: " + a.name, () =>
+          run((e) => download(d.id, slot, a, e)),
+        );
+        attachmentButton.className = "yb-attachment";
+        attachmentButton.disabled = !ready;
+        attachmentButton.title = ready
+          ? "다운로드 시 SHA-256 무결성을 검증합니다."
+          : "업로드를 완료해야 다운로드할 수 있습니다.";
+        const meta = el("span", `${formatBytes(a.size)} · ` + (ready ? "저장 완료" : "업로드 미완료"));
+        meta.className = ready ? "is-complete" : "is-warning";
+        row.append(attachmentButton, meta);
+        panel.append(row);
+      }
+      box.append(panel);
+    } else {
+      box.append(el("p", "저장된 첨부가 없습니다.", "yb-attachment-empty"));
     }
     const actions = el("div", undefined, "yb-actions");
     box.append(actions);
@@ -686,8 +781,9 @@
           $("ybFormTitle").textContent = "작성 중 문서 수정";
           $("ybClearFilesLabel").hidden = !d.attachmentCount;
           $("ybClearFiles").checked = false;
+          renderFormAttachmentState(d);
           $("ybAttachmentHelp").textContent = d.attachmentCount
-            ? "새 파일을 선택하면 기존 첨부 전체를 교체합니다. 선택하지 않으면 기존 첨부를 유지합니다."
+            ? "파일 선택란이 비어 있어도 저장 완료 표시가 있으면 기존 첨부는 유지됩니다. 새 파일을 선택하면 전체 교체합니다."
             : "현재 첨부가 없습니다. 지출결의서는 결재 요청 전에 증빙이 필요합니다.";
           setView("create");
           form.scrollIntoView({ behavior: "smooth" });
@@ -711,7 +807,19 @@
             message("첨부 업로드 완료 상태를 저장하고 확인했습니다.");
           });
       }
-      actions.append(button("결재 요청", () => run(() => act("submit"))));
+      const submit = button("결재 요청", () => run(() => act("submit")));
+      const attachmentBlocked =
+        completedAttachments !== documentAttachments.length ||
+        (d.kind === "expense" && documentAttachments.length === 0);
+      submit.disabled = attachmentBlocked;
+      if (attachmentBlocked) {
+        submit.title =
+          d.kind === "expense" && documentAttachments.length === 0
+            ? "지출결의서는 증빙 첨부를 저장한 후 결재 요청할 수 있습니다."
+            : "모든 첨부의 저장 완료를 확인한 후 결재 요청할 수 있습니다.";
+        actions.append(el("p", submit.title, "yb-action-warning"));
+      }
+      actions.append(submit);
     }
     if (d.status === "pending" && d.requesterUid === state.uid)
       actions.append(button("회수", () => run(() => act("withdraw"))));
@@ -1000,6 +1108,35 @@
           window.YJBusinessDocumentClient.limits.maxTotalSize
         )
           throw new Error("첨부 합계는 10MB 이하만 가능합니다.");
+        const clearExisting = !!state.editing && $("ybClearFiles").checked;
+        const replaceAttachments =
+          !!state.editing && (files.length > 0 || clearExisting);
+        const existingAttachments = attachmentEntries(state.editing);
+        const effectiveAttachmentCount = files.length
+          ? files.length
+          : clearExisting
+            ? 0
+            : existingAttachments.length;
+        const existingAttachmentsReady = existingAttachments.every(
+          ([slot]) => state.editing?.attachmentCompletion?.[slot] === true,
+        );
+        if (
+          intent === "submit" &&
+          type.value === "expense" &&
+          effectiveAttachmentCount === 0
+        )
+          throw new Error(
+            "지출결의서는 증빙 첨부를 저장한 후 결재 요청하세요.",
+          );
+        if (
+          intent === "submit" &&
+          state.editing &&
+          !replaceAttachments &&
+          !existingAttachmentsReady
+        )
+          throw new Error(
+            "미완료 첨부를 재업로드한 후 결재 요청하세요.",
+          );
         state.draft = {
           id: state.editing?.id || uuid(),
           kind: type.value,
@@ -1010,8 +1147,7 @@
           fileDescriptions,
           revisedFrom: state.revise,
           editing: !!state.editing,
-          replaceAttachments:
-            !!state.editing && (files.length > 0 || $("ybClearFiles").checked),
+          replaceAttachments,
         };
       }
       const d = state.draft;
@@ -1061,6 +1197,7 @@
       $("ybClearFilesLabel").hidden = true;
       $("ybAttachmentHelp").textContent =
         "무료 요금제 전용 보안 저장 · 지출은 증빙 필수 · 구매·수리는 견적 첨부 권장";
+      renderFormAttachmentState(null);
       try {
         await load(epoch);
         await detail(d.id, epoch);
@@ -1099,6 +1236,7 @@
     state.revise = null;
     state.editing = null;
     form.reset();
+    renderFormAttachmentState(null);
     type.disabled = false;
     $("ybFormTitle").textContent = "새 문서 작성";
     $("ybClearFilesLabel").hidden = true;
