@@ -68,10 +68,12 @@ test('Google 팝업 뒤 뷰포트가 복원되면 인증 화면도 PC 화면으�
     assert.equal(appMobile.style.display, 'flex');
     assert.equal(appPC.style.display, 'none');
 
+    sandbox.location.hash = '#sales';
     sandbox.window.innerWidth = 1200;
     listeners.resize();
     assert.equal(appPC.style.display, 'flex');
     assert.equal(appMobile.style.display, 'none');
+    assert.equal(sandbox.location.hash, 'docbox');
     assert.deepEqual(switchedTabs, ['docbox']);
 });
 

@@ -1862,6 +1862,8 @@ function requireView(area, message = '이 화면에 접근할 권한이 없습�
 function requireWrite(area, message = '이 작업을 수행할 권한이 없습니다.') { return canWrite(area) || denyAccess(message); }
 function clearSavedSession() {
     currentUser = null;
+    authenticatedShellMode = '';
+    authenticatedPreferredPCTab = '';
     sessionStorage.removeItem('yongjin_session');
     sessionStorage.removeItem('active_tab');
 }
@@ -3736,13 +3738,19 @@ function getCurrentUserDisplayText() {
 }
 
 let authenticatedShellMode = '';
+let authenticatedPreferredPCTab = '';
 
 function syncAuthenticatedShellForViewport() {
     if (!currentUser || googleGateActive) return '';
     const nextMode = window.innerWidth > 768 ? 'desktop' : 'mobile';
     const previousMode = authenticatedShellMode;
+    const requestedTab = getHashTargetTab();
     const appPC = document.getElementById('appPC');
     const appMobile = document.getElementById('appMobile');
+
+    if (nextMode === 'mobile' && requestedTab && getAllowedPCTabs().includes(requestedTab) && canView(getAccessAreaForTab(requestedTab))) {
+        authenticatedPreferredPCTab = requestedTab;
+    }
 
     if (appPC) {
         appPC.classList.toggle('hidden', nextMode !== 'desktop');
@@ -3757,10 +3765,11 @@ function syncAuthenticatedShellForViewport() {
     if (previousMode && previousMode !== nextMode) {
         if (nextMode === 'desktop') {
             const defaultTab = getDefaultPCTab();
-            const requestedTab = getHashTargetTab();
-            const targetTab = requestedTab && getAllowedPCTabs().includes(requestedTab) && canView(getAccessAreaForTab(requestedTab))
-                ? requestedTab
+            const returnTab = authenticatedPreferredPCTab || requestedTab;
+            const targetTab = returnTab && getAllowedPCTabs().includes(returnTab) && canView(getAccessAreaForTab(returnTab))
+                ? returnTab
                 : defaultTab;
+            authenticatedPreferredPCTab = targetTab;
             sessionStorage.setItem('active_tab', targetTab);
             location.hash = targetTab;
             switchPCTab(targetTab, false);
