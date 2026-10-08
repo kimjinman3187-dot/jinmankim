@@ -135,6 +135,78 @@
   color: white;
   border-color: #1d4ed8;
 }
+#yjBusinessDocuments button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+#yjBusinessDocuments .yb-attachment-state {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 8px 0 10px;
+  padding: 10px 12px;
+  border: 1px solid #334155;
+  border-radius: 9px;
+  background: #0f1522;
+}
+#yjBusinessDocuments .yb-attachment-state strong {
+  color: #e2e8f0;
+  font-size: 12px;
+}
+#yjBusinessDocuments .yb-attachment-state span {
+  color: #94a3b8;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+#yjBusinessDocuments .yb-attachment-state.is-pending {
+  border-color: rgba(96, 165, 250, 0.62);
+  background: rgba(30, 64, 175, 0.2);
+}
+#yjBusinessDocuments .yb-attachment-state.is-complete {
+  border-color: rgba(52, 211, 153, 0.48);
+  background: rgba(6, 78, 59, 0.25);
+}
+#yjBusinessDocuments .yb-attachment-state.is-complete strong,
+#yjBusinessDocuments .is-complete {
+  color: #a7f3d0;
+}
+#yjBusinessDocuments .yb-attachment-state.is-warning,
+#yjBusinessDocuments .is-warning,
+#yjBusinessDocuments .yb-action-warning {
+  color: #fde68a;
+}
+#yjBusinessDocuments .yb-attachment-panel {
+  margin: 14px 0;
+  padding: 12px;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  background: #0f1522;
+}
+#yjBusinessDocuments .yb-attachment-panel h5 {
+  margin: 0 0 4px;
+  color: #f8fafc;
+  font-size: 13px;
+}
+#yjBusinessDocuments .yb-attachment-summary,
+#yjBusinessDocuments .yb-attachment-empty,
+#yjBusinessDocuments .yb-action-warning {
+  margin: 5px 0;
+  font-size: 12px;
+}
+#yjBusinessDocuments .yb-attachment-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 6px;
+}
+#yjBusinessDocuments .yb-attachment-item span {
+  flex: 0 0 auto;
+  font-size: 11px;
+}
+#yjBusinessDocuments .yb-attachment-empty {
+  color: #94a3b8;
+}
 #yjBusinessDocuments fieldset:disabled {
   opacity: 0.65;
 }
@@ -308,6 +380,11 @@
   .yb-inbox-header,
   .yj-legacy-archive > summary {
     flex-direction: column;
+  }
+  #yjBusinessDocuments .yb-attachment-item {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 2px;
   }
 }
 @media print {
