@@ -1175,8 +1175,18 @@
         signed: document.status !== "draft",
       },
     ];
-    (document.approverNames || []).forEach((name, index) => {
-      const uid = document.approverUids?.[index];
+    const approverNames = Array.isArray(document.approverNames)
+      ? document.approverNames
+      : [];
+    const approverUids = Array.isArray(document.approverUids)
+      ? document.approverUids
+      : [];
+    const approvalRoles =
+      document.kind === "expense" ? ["회계 검토", "최종 승인"] : ["최종 승인"];
+    const approvalSlotCount = Math.max(approvalRoles.length, approverNames.length);
+    Array.from({ length: approvalSlotCount }).forEach((_, index) => {
+      const name = approverNames[index];
+      const uid = approverUids[index];
       const approved = history.find(
         (item) => item.action === "approve" && item.actorUid === uid,
       );
@@ -1184,8 +1194,10 @@
         .reverse()
         .find((item) => item.action === "reject" && item.actorUid === uid);
       signatures.push({
-        role: index === document.approverNames.length - 1 ? "최종 승인" : "회계 검토",
-        name: name || "-",
+        role:
+          approvalRoles[index] ||
+          (index === approvalSlotCount - 1 ? "최종 승인" : "중간 검토"),
+        name: name || "미지정",
         state: approved ? "전자승인" : rejected ? "반려" : "서명/도장",
         at: approved?.at || rejected?.at,
         signed: Boolean(approved),

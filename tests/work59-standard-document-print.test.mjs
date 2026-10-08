@@ -24,6 +24,13 @@ test("담당자·검토자·최종승인자의 서명 또는 전자결재 상태
   assert.match(css, /\.yb-signature-mark\.is-approved/);
 });
 
+test("결재선 미지정 문서도 문서 종류별 표준 서명칸을 유지한다", () => {
+  assert.match(ui, /document\.kind === "expense"/);
+  assert.match(ui, /\["회계 검토", "최종 승인"\]/);
+  assert.match(ui, /\["최종 승인"\]/);
+  assert.match(ui, /name: name \|\| "미지정"/);
+});
+
 test("인쇄 DOM을 두 프레임 렌더링한 뒤 인쇄하여 흰 종이 회귀를 막는다", () => {
   assert.match(ui, /requestAnimationFrame\(\(\) =>\s*requestAnimationFrame/);
   assert.match(css, /body\.yb-printing > #ybPrint/);
@@ -33,5 +40,5 @@ test("인쇄 DOM을 두 프레임 렌더링한 뒤 인쇄하여 흰 종이 회�
 
 test("WORK59 인쇄 서식 자산은 새 캐시 버전을 사용한다", () => {
   assert.match(html, /business-documents\.css\?v=20261008-work59/);
-  assert.match(html, /business-documents\.js\?v=20261008-work59/);
+  assert.match(html, /business-documents\.js\?v=20261008-work59b/);
 });
