@@ -1137,25 +1137,193 @@
       );
     if (r.capped)
       box.append(el("p", "이력은 최근 100건만 표시합니다.", "yb-error"));
-    box.append(button("A4 인쇄 / PDF", () => print(r)));
+    box.append(button("A4 표준서식 인쇄 / PDF", () => print(r)));
   }
-  function print(r) {
+  function printDate(value) {
+    const millis = window.YJBusinessDocumentClient?.millis(value) || Number(value || 0);
+    return millis ? new Date(millis).toLocaleString("ko-KR") : "-";
+  }
+  function printFieldValue(document, key, type) {
+    let value = document.details[key];
+    if (Array.isArray(type)) {
+      const found = type.find((option) => option.split(":")[0] === value);
+      value = found?.slice(found.indexOf(":") + 1) || value;
+    }
+    if (["amount", "supplyAmount", "taxAmount", "contractAmount"].includes(key))
+      value = money(value);
+    return value === undefined || value === null || value === "" ? "-" : String(value);
+  }
+  function printRow(table, label, value, className) {
+    const row = el("tr", undefined, className);
+    row.append(el("th", label), el("td", value || "-"));
+    table.append(row);
+  }
+  function approvalSignatures(r) {
+    const document = r.document;
+    const history = [...(r.history || [])].sort(
+      (left, right) =>
+        (window.YJBusinessDocumentClient?.millis(left.at) || 0) -
+        (window.YJBusinessDocumentClient?.millis(right.at) || 0),
+    );
+    const submitted = history.find((item) => item.action === "submit");
+    const signatures = [
+      {
+        role: "담당",
+        name: document.requesterName || "-",
+        state: document.status === "draft" ? "작성 중" : "전자제출",
+        at: submitted?.at || document.submittedAt || document.createdAt,
+        signed: document.status !== "draft",
+      },
+    ];
+    (document.approverNames || []).forEach((name, index) => {
+      const uid = document.approverUids?.[index];
+      const approved = history.find(
+        (item) => item.action === "approve" && item.actorUid === uid,
+      );
+      const rejected = [...history]
+        .reverse()
+        .find((item) => item.action === "reject" && item.actorUid === uid);
+      signatures.push({
+        role: index === document.approverNames.length - 1 ? "최종 승인" : "회계 검토",
+        name: name || "-",
+        state: approved ? "전자승인" : rejected ? "반려" : "서명/도장",
+        at: approved?.at || rejected?.at,
+        signed: Boolean(approved),
+        rejected: Boolean(rejected),
+      });
+    });
+    return signatures;
+  }
+  function buildPrintDocument(r) {
+    const document = r.document;
     const host = el("section", undefined, "yb-print");
     host.id = "ybPrint";
-    host.append(
-      el("h1", kinds[r.document.kind]),
-      el("p", r.document.number),
-      el("p", "출력일시 " + new Date().toLocaleString("ko-KR"), "yb-print-meta"),
+
+    const heading = el("header", undefined, "yb-print-heading");
+    const brand = el("div", undefined, "yb-print-brand");
+    brand.append(
+      el("p", "용진기업 · YJ FLOW", "yb-print-company"),
+      el("h1", kinds[document.kind] || "표준 결재문서"),
+      el("p", `문서번호 ${document.number || "-"}`, "yb-print-number"),
     );
-    const copy = $("ybDetail").cloneNode(true);
-    copy.querySelectorAll(".yb-attachment").forEach((n) =>
-      n.replaceWith(el("p", n.textContent, "yb-print-attachment")),
+    const approvalTable = el("table", undefined, "yb-print-approval");
+    approvalTable.setAttribute("aria-label", "결재 서명란");
+    const signatures = approvalSignatures(r);
+    const roleRow = el("tr");
+    roleRow.append(el("th", "결재"));
+    signatures.forEach((signature) => roleRow.append(el("th", signature.role)));
+    const nameRow = el("tr");
+    nameRow.append(el("th", "성명"));
+    signatures.forEach((signature) => nameRow.append(el("td", signature.name)));
+    const signRow = el("tr", undefined, "yb-print-sign-row");
+    signRow.append(el("th", "서명/도장"));
+    signatures.forEach((signature) => {
+      const cell = el("td");
+      const mark = el(
+        "div",
+        signature.state,
+        "yb-signature-mark" +
+          (signature.signed ? " is-approved" : "") +
+          (signature.rejected ? " is-rejected" : ""),
+      );
+      cell.append(mark);
+      signRow.append(cell);
+    });
+    const dateRow = el("tr");
+    dateRow.append(el("th", "일시"));
+    signatures.forEach((signature) => dateRow.append(el("td", printDate(signature.at))));
+    approvalTable.append(roleRow, nameRow, signRow, dateRow);
+    heading.append(brand, approvalTable);
+    host.append(heading);
+
+    const meta = el("table", undefined, "yb-print-table yb-print-meta-table");
+    printRow(meta, "문서 상태", status[document.status] || document.status);
+    printRow(meta, "작성자", document.requesterName);
+    printRow(meta, "작성일시", printDate(document.createdAt));
+    printRow(meta, "제출일시", printDate(document.submittedAt));
+    printRow(meta, "최종 승인일시", printDate(document.approvedAt));
+    host.append(el("h2", "문서 기본정보"), meta);
+
+    const content = el("table", undefined, "yb-print-table yb-print-content-table");
+    printRow(content, "제목", document.details.title || "제목 없는 문서", "yb-print-title-row");
+    printRow(content, "요청 내용·사유", document.details.reason || "-");
+    for (const [key, label, type] of fields[document.kind] || [])
+      printRow(content, label, printFieldValue(document, key, type));
+    if (document.kind === "expense") {
+      printRow(content, "총액", money(document.details.amount));
+      printRow(content, "지급 상태", paymentLabels[document.paymentStatus] || "-");
+      printRow(content, "지급액", money(document.paidAmount));
+    }
+    if (document.completedAt) printRow(content, "처리 결과", document.completionNote || "-");
+    if (document.cancellationReason)
+      printRow(content, "승인 취소 사유", document.cancellationReason);
+    host.append(el("h2", "결재 내용"), content);
+
+    const attachments = attachmentEntries(document);
+    const attachmentTable = el("table", undefined, "yb-print-table yb-print-files");
+    const attachmentHead = el("tr");
+    attachmentHead.append(el("th", "번호"), el("th", "첨부파일"), el("th", "크기"), el("th", "저장 상태"));
+    attachmentTable.append(attachmentHead);
+    if (attachments.length) {
+      attachments.forEach(([slot, attachment], index) => {
+        const row = el("tr");
+        row.append(
+          el("td", String(index + 1)),
+          el("td", attachment.name),
+          el("td", formatBytes(attachment.size)),
+          el("td", document.attachmentCompletion?.[slot] === true ? "저장·무결성 확인" : "업로드 미완료"),
+        );
+        attachmentTable.append(row);
+      });
+    } else {
+      const row = el("tr");
+      const cell = el("td", "첨부 없음");
+      cell.colSpan = 4;
+      row.append(cell);
+      attachmentTable.append(row);
+    }
+    host.append(el("h2", "첨부 내역"), attachmentTable);
+
+    const historyTable = el("table", undefined, "yb-print-table yb-print-history");
+    const historyHead = el("tr");
+    historyHead.append(el("th", "일시"), el("th", "처리자"), el("th", "처리"), el("th", "의견"));
+    historyTable.append(historyHead);
+    const historyLabels = {
+      create: "문서 작성",
+      updateDraft: "임시저장 수정",
+      submit: "결재 요청",
+      approve: "승인",
+      reject: "반려",
+      withdraw: "회수",
+      preparePayment: "지급 증빙 준비",
+      pay: "지급 기록",
+      settle: "정산 완료",
+      complete: "처리 완료",
+      cancelApproved: "승인 취소",
+    };
+    (r.history || []).forEach((item) => {
+      const row = el("tr");
+      row.append(
+        el("td", printDate(item.at)),
+        el("td", item.actorName || "-"),
+        el("td", historyLabels[item.action] || item.action),
+        el("td", item.reason || "-"),
+      );
+      historyTable.append(row);
+    });
+    host.append(el("h2", "결재·처리 이력"), historyTable);
+
+    const footer = el("footer", undefined, "yb-print-footer");
+    footer.append(
+      el("p", "본 문서는 YJ FLOW 전자결재 기록을 기준으로 출력되었습니다."),
+      el("p", "서명 이미지가 등록되지 않은 계정은 성명과 전자결재 상태로 표시됩니다."),
+      el("p", "출력일시 " + new Date().toLocaleString("ko-KR")),
     );
-    copy
-      .querySelectorAll("button,input,textarea,select,.yb-actions")
-      .forEach((n) => n.remove());
-    copy.removeAttribute("id");
-    host.append(copy);
+    host.append(footer);
+    return host;
+  }
+  function print(r) {
+    const host = buildPrintDocument(r);
     document.getElementById("ybPrint")?.remove();
     document.body.append(host);
     document.body.classList.add("yb-printing");
@@ -1164,7 +1332,16 @@
       document.body.classList.remove("yb-printing");
     };
     window.addEventListener("afterprint", clean, { once: true });
-    window.print();
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        try {
+          window.print();
+        } catch (error) {
+          clean();
+          throw error;
+        }
+      }),
+    );
   }
   form.addEventListener("submit", (event) => {
     event.preventDefault();
