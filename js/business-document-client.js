@@ -2,12 +2,12 @@
   "use strict";
 
   const COLLECTION = "business_documents";
-  const KINDS = ["expense", "purchase", "leave", "general", "quality"];
+  const KINDS = ["expense", "purchase", "vendor_contract", "leave", "general", "quality"];
   const CHUNK_SIZE = 512 * 1024;
   const MAX_FILE_SIZE = 3 * 1024 * 1024;
   const MAX_TOTAL_SIZE = 10 * 1024 * 1024;
   const MAX_FILES = 5;
-  const SCHEMA_VERSION = 7;
+  const SCHEMA_VERSION = 8;
   const MIME = {
     pdf: "application/pdf",
     png: "image/png",
@@ -77,6 +77,21 @@
       check(Number.isFinite(d.hours) && d.hours > 0 && d.hours <= 744, "신청 시간을 확인하세요.", "invalid-argument");
       out.hours = d.hours;
       out.handover = text(d.handover, "인수인계", 1000);
+    } else if (kind === "vendor_contract") {
+      out.partnerName = text(d.partnerName, "거래처", 100);
+      out.contractType = choice(
+        d.contractType,
+        ["supply", "service", "purchase", "sales", "nda", "other"],
+        "계약 구분",
+      );
+      out.startDate = date(d.startDate, "계약 시작일");
+      out.endDate = date(d.endDate, "계약 종료일");
+      check(out.endDate >= out.startDate, "계약 종료일을 확인하세요.", "invalid-argument");
+      out.contractAmount = money(d.contractAmount, "계약금액", true);
+      out.paymentTerms = text(d.paymentTerms, "대금조건", 500);
+      out.renewalTerms = text(d.renewalTerms || "", "갱신조건", 500, true);
+      out.ownerDepartment = text(d.ownerDepartment, "담당부서", 80);
+      out.riskNotes = text(d.riskNotes || "", "주요 위험사항", 1000, true);
     } else if (kind === "quality") {
       out.orderReference = text(d.orderReference, "관련 주문", 128);
       out.category = choice(d.category, ["defect", "rework", "scrap", "delay"], "예외 구분");
@@ -125,6 +140,16 @@
       out.endDate = value("endDate", 10);
       out.hours = number("hours", 744);
       out.handover = value("handover", 1000);
+    } else if (kind === "vendor_contract") {
+      out.partnerName = value("partnerName", 100);
+      out.contractType = ["supply", "service", "purchase", "sales", "nda", "other"].includes(d.contractType) ? d.contractType : "supply";
+      out.startDate = value("startDate", 10);
+      out.endDate = value("endDate", 10);
+      out.contractAmount = Math.trunc(number("contractAmount"));
+      out.paymentTerms = value("paymentTerms", 500);
+      out.renewalTerms = value("renewalTerms", 500);
+      out.ownerDepartment = value("ownerDepartment", 80);
+      out.riskNotes = value("riskNotes", 1000);
     } else if (kind === "general") {
       out.effectiveDate = value("effectiveDate", 10);
       out.amount = Math.trunc(number("amount"));
@@ -199,6 +224,12 @@
       firestorePath: COLLECTION + "/" + documentId + "/attachment_uploads/" + slot,
     };
   }
+  function paymentProofMeta(file, documentId, paymentId) {
+    const result = fileMeta(file, documentId, "a0");
+    result.firestorePath =
+      COLLECTION + "/" + documentId + "/payments/" + paymentId + "/proof_upload";
+    return result;
+  }
   function sameAttachment(left, right) {
     return ["name", "size", "contentType", "chunkCount", "sha256", "firestorePath"].every((key) => left?.[key] === right?.[key]);
   }
@@ -227,11 +258,21 @@
   async function detail(id) {
     await actor();
     const ref = database().collection(COLLECTION).doc(id);
-    const [document, history] = await Promise.all([ref.get(), ref.collection("history").orderBy("at", "desc").limit(101).get()]);
+    const [document, history, payments] = await Promise.all([
+      ref.get(),
+      ref.collection("history").orderBy("at", "desc").limit(101).get(),
+      ref.collection("payments").orderBy("createdAt", "desc").limit(101).get(),
+    ]);
     check(document.exists, "문서를 찾을 수 없습니다.", "not-found");
     const row = publicDoc(document);
     row.attachmentCompletion = await attachmentCompletion(id, row.attachments);
-    return { document: row, history: history.docs.slice(0, 100).map(publicDoc), payments: [], capped: history.size > 100 };
+    const paymentRows = payments.docs.slice(0, 100).map(publicDoc);
+    return {
+      document: row,
+      history: history.docs.slice(0, 100).map(publicDoc),
+      payments: paymentRows,
+      capped: history.size > 100 || payments.size > 100,
+    };
   }
   async function loadRoute(kind, requester, reviewerUid, approverUid) {
     const ids = kind === "expense" ? [reviewerUid, approverUid] : [approverUid];
@@ -501,6 +542,184 @@
       ]),
     );
   }
+  function paymentReference(value) {
+    const result = text(value, "이체번호", 64).toUpperCase();
+    check(
+      /^[A-Z0-9._-]+$/.test(result),
+      "이체번호는 영문자·숫자·하이픈·밑줄·점만 사용하세요.",
+      "invalid-argument",
+    );
+    return result;
+  }
+  function notificationData(document, operationId, event, recipientUid, user) {
+    return {
+      schemaVersion: 1,
+      documentId: document.id,
+      number: document.number,
+      kind: document.kind,
+      title: document.details?.title || "표준 문서",
+      event,
+      recipientUid,
+      actorUid: user.uid,
+      actorName: user.name,
+      operationId,
+      createdAt: serverTime(),
+      readAt: null,
+    };
+  }
+  function addNotification(transaction, document, operationId, event, recipientUid, user) {
+    if (!recipientUid || recipientUid === user.uid) return;
+    const id = operationId + "-" + recipientUid;
+    transaction.set(
+      database().collection("business_document_notifications").doc(id),
+      notificationData(document, operationId, event, recipientUid, user),
+    );
+  }
+  async function listNotifications() {
+    const user = await actor();
+    const snapshot = await database()
+      .collection("business_document_notifications")
+      .where("recipientUid", "==", user.uid)
+      .limit(51)
+      .get();
+    const rows = snapshot.docs
+      .map(publicDoc)
+      .sort((left, right) => millis(right.createdAt) - millis(left.createdAt));
+    return {
+      notifications: rows.slice(0, 50),
+      capped: snapshot.size > 50,
+    };
+  }
+  async function markNotificationRead(id) {
+    const user = await actor();
+    const ref = database().collection("business_document_notifications").doc(id);
+    return database().runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(ref);
+      check(snapshot.exists && snapshot.data().recipientUid === user.uid, "본인 알림만 읽음 처리할 수 있습니다.", "permission-denied");
+      if (snapshot.data().readAt) return { ok: true, duplicate: true };
+      transaction.update(ref, { readAt: serverTime() });
+      return { ok: true };
+    });
+  }
+  async function preparePayment(data) {
+    const user = await actor();
+    check(["admin", "accounting"].includes(user.role), "관리자·회계만 지급을 준비할 수 있습니다.", "permission-denied");
+    const documentRef = database().collection(COLLECTION).doc(data.id);
+    const document = await documentRef.get();
+    check(document.exists, "문서를 찾을 수 없습니다.", "not-found");
+    const row = document.data();
+    check(row.kind === "expense" && row.status === "approved", "승인된 지출결의서만 지급할 수 있습니다.");
+    check(row.details.settlementType !== "prepaid", "기지급 문서는 정산 완료로 처리하세요.");
+    const amount = money(Number(data.amount), "지급액");
+    check((row.paidAmount || 0) + amount <= row.details.amount, "승인금액을 초과할 수 없습니다.");
+    const paidDate = date(data.paidDate, "실제 지급일");
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+    check(paidDate <= today, "미래 지급일은 기록할 수 없습니다.");
+    const reference = paymentReference(data.reference);
+    const proof = paymentProofMeta(data.proof, data.id, data.paymentId);
+    const payment = {
+      schemaVersion: 1,
+      status: "draft",
+      amount,
+      paidDate,
+      reference,
+      proof,
+      actorUid: user.uid,
+      actorName: user.name,
+      actorRole: user.role,
+      operationId: data.operationId,
+      createdAt: serverTime(),
+      recordedAt: null,
+    };
+    const paymentRef = documentRef.collection("payments").doc(data.paymentId);
+    const duplicateRef = database().collection("business_payment_references").doc(reference);
+    const [existing, duplicate] = await Promise.all([paymentRef.get(), duplicateRef.get()]);
+    check(!duplicate.exists || duplicate.data().paymentId === data.paymentId, "이미 사용한 이체번호입니다.", "already-exists");
+    if (existing.exists) {
+      check(existing.data().operationId === data.operationId, "이미 존재하는 지급 준비 기록입니다.");
+      return { ok: true, duplicate: true, payment: publicDoc(existing) };
+    }
+    await paymentRef.set(payment);
+    return { ok: true, payment: { id: data.paymentId, ...payment } };
+  }
+  async function uploadPaymentProof(documentId, paymentId, file, expected) {
+    const user = await actor();
+    const actual = await describeFile(file);
+    check(sameAttachment({ ...actual, firestorePath: expected.firestorePath }, expected), "등록한 지급 증빙과 파일이 일치해야 합니다.");
+    const paymentRef = database().collection(COLLECTION).doc(documentId).collection("payments").doc(paymentId);
+    const manifestRef = paymentRef.collection("proof_upload").doc("manifest");
+    const completed = await manifestRef.get();
+    if (completed.exists) return { ok: true, resumed: true };
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    for (let index = 0; index < expected.chunkCount; index++) {
+      const start = index * CHUNK_SIZE;
+      const part = bytes.slice(start, Math.min(start + CHUNK_SIZE, bytes.length));
+      await paymentRef.collection("proof_chunks").doc(String(index)).set({
+        index,
+        size: part.byteLength,
+        sha256: expected.sha256,
+        data: global.firebase.firestore.Blob.fromUint8Array(part),
+        uploaderUid: user.uid,
+        uploadedAt: serverTime(),
+      });
+    }
+    await manifestRef.set({ ...expected, uploaderUid: user.uid, completedAt: serverTime() });
+    return { ok: true };
+  }
+  async function paymentProofBlob(documentId, paymentId, expected) {
+    await actor();
+    const paymentRef = database().collection(COLLECTION).doc(documentId).collection("payments").doc(paymentId);
+    const [manifest, chunks] = await Promise.all([
+      paymentRef.collection("proof_upload").doc("manifest").get(),
+      paymentRef.collection("proof_chunks").orderBy("index").get(),
+    ]);
+    check(manifest.exists && sameAttachment(manifest.data(), expected), "지급 증빙 완료 정보를 확인할 수 없습니다.");
+    const bytes = new Uint8Array(expected.size);
+    let offset = 0;
+    chunks.docs.forEach((snapshot, index) => {
+      const row = snapshot.data();
+      check(row.index === index && row.sha256 === expected.sha256, "지급 증빙 청크를 확인하세요.");
+      const part = row.data.toUint8Array();
+      bytes.set(part, offset);
+      offset += part.byteLength;
+    });
+    check(offset === expected.size, "지급 증빙 일부가 누락됐습니다.");
+    check(hex(await global.crypto.subtle.digest("SHA-256", bytes)) === expected.sha256, "지급 증빙 무결성 검증에 실패했습니다.");
+    return new global.Blob([bytes], { type: expected.contentType });
+  }
+  async function recordPayment(data) {
+    const user = await actor();
+    check(["admin", "accounting"].includes(user.role), "관리자·회계만 지급을 기록할 수 있습니다.", "permission-denied");
+    const ref = database().collection(COLLECTION).doc(data.id);
+    const paymentRef = ref.collection("payments").doc(data.paymentId);
+    const historyRef = ref.collection("history").doc(data.operationId);
+    return database().runTransaction(async (transaction) => {
+      const [documentSnapshot, paymentSnapshot, manifest, existing] = await Promise.all([
+        transaction.get(ref),
+        transaction.get(paymentRef),
+        transaction.get(paymentRef.collection("proof_upload").doc("manifest")),
+        transaction.get(historyRef),
+      ]);
+      if (existing.exists) return { ok: true, duplicate: true };
+      check(documentSnapshot.exists && paymentSnapshot.exists, "지급 준비 기록을 찾을 수 없습니다.");
+      const document = { id: documentSnapshot.id, ...documentSnapshot.data() };
+      const payment = paymentSnapshot.data();
+      check(document.kind === "expense" && document.status === "approved" && payment.status === "draft", "지급 상태를 확인하세요.");
+      check(manifest.exists && sameAttachment(manifest.data(), payment.proof), "지급 증빙 업로드를 완료하세요.");
+      const paidAmount = (document.paidAmount || 0) + payment.amount;
+      check(paidAmount <= document.details.amount, "승인금액을 초과할 수 없습니다.");
+      const markerRef = database().collection("business_payment_references").doc(payment.reference);
+      const marker = await transaction.get(markerRef);
+      check(!marker.exists || (marker.data().documentId === data.id && marker.data().paymentId === data.paymentId), "이미 사용한 이체번호입니다.", "already-exists");
+      const status = paidAmount === document.details.amount ? "paid" : "partial";
+      transaction.update(paymentRef, { status: "recorded", recordedAt: serverTime() });
+      if (!marker.exists) transaction.set(markerRef, { documentId: data.id, paymentId: data.paymentId, reference: payment.reference, actorUid: user.uid, createdAt: serverTime() });
+      transaction.update(ref, { paidAmount, paymentStatus: status, updatedAt: serverTime(), lastOperationId: data.operationId });
+      transaction.set(historyRef, historyData(data.operationId, "pay", user, payment.reference, "approved", "approved"));
+      addNotification(transaction, document, data.operationId, "payment_recorded", document.requesterUid, user);
+      return { ok: true, paidAmount, paymentStatus: status };
+    });
+  }
   async function verifyAttachments(document) {
     const completion = await attachmentCompletion(document.id, document.attachments);
     Object.entries(document.attachments || {}).forEach(([slot]) =>
@@ -528,21 +747,31 @@
       const document = snapshot.data();
       const previous = document.status;
       let patch;
+      let notificationRecipient = "";
+      let notificationEvent = "";
       if (data.action === "submit") {
         check(document.requesterUid === user.uid && document.status === "draft", "본인의 작성 중 문서만 제출할 수 있습니다.", "permission-denied");
         patch = { status: "pending", submittedAt: serverTime(), updatedAt: serverTime(), lastOperationId: data.operationId };
+        notificationRecipient = document.approverUids[0];
+        notificationEvent = "approval_requested";
       } else if (data.action === "withdraw") {
         check(document.requesterUid === user.uid && document.status === "pending", "작성자만 결재 대기 문서를 회수할 수 있습니다.", "permission-denied");
         patch = { status: "withdrawn", updatedAt: serverTime(), lastOperationId: data.operationId };
+        notificationRecipient = document.approverUids[document.step];
+        notificationEvent = "approval_withdrawn";
       } else if (["approve", "reject"].includes(data.action)) {
         check(document.status === "pending" && document.requesterUid !== user.uid && document.approverUids[document.step] === user.uid, "현재 지정 결재자만 처리할 수 있습니다.", "permission-denied");
         const roles = document.kind === "expense" && document.step === 0 ? ["accounting", "admin"] : ["admin"];
         check(roles.includes(user.role), "현재 계정의 결재 권한이 변경되었습니다.", "permission-denied");
         if (data.action === "reject") {
           patch = { status: "rejected", rejectionReason: text(data.reason || "", "반려 사유", 500), updatedAt: serverTime(), lastOperationId: data.operationId };
+          notificationRecipient = document.requesterUid;
+          notificationEvent = "approval_rejected";
         } else {
           const final = document.step === document.approverUids.length - 1;
           patch = { status: final ? "approved" : "pending", step: final ? document.step : document.step + 1, approvedAt: final ? serverTime() : null, updatedAt: serverTime(), lastOperationId: data.operationId };
+          notificationRecipient = final ? document.requesterUid : document.approverUids[document.step + 1];
+          notificationEvent = final ? "approval_completed" : "approval_requested";
         }
       } else if (data.action === "cancelApproved") {
         check(
@@ -557,6 +786,15 @@
         );
         const reason = text(data.reason || "", "승인 취소 사유", 500);
         patch = { status: "cancelled", cancellationReason: reason, updatedAt: serverTime(), lastOperationId: data.operationId };
+        notificationRecipient = document.requesterUid;
+        notificationEvent = "approval_cancelled";
+      } else if (data.action === "settle") {
+        check(["admin", "accounting"].includes(user.role), "관리자·회계만 정산을 완료할 수 있습니다.", "permission-denied");
+        check(document.kind === "expense" && document.status === "approved" && document.details.settlementType === "prepaid" && !document.settledAt, "정산 대상 문서를 확인하세요.");
+        const note = text(data.reason || "", "정산 확인 내용", 500);
+        patch = { settledAt: serverTime(), completionNote: note, updatedAt: serverTime(), lastOperationId: data.operationId };
+        notificationRecipient = document.requesterUid;
+        notificationEvent = "settlement_completed";
       } else if (data.action === "complete") {
         check(document.kind !== "expense", "지출결의서는 지급·정산에서 완료 처리합니다.", "failed-precondition");
         check(document.status === "approved" && !document.completedAt, "승인 후 미완료 문서만 처리할 수 있습니다.", "failed-precondition");
@@ -567,12 +805,22 @@
         );
         const note = text(data.reason || "", "처리 결과", 500);
         patch = { completedAt: serverTime(), completionNote: note, updatedAt: serverTime(), lastOperationId: data.operationId };
+        notificationRecipient = document.requesterUid;
+        notificationEvent = "processing_completed";
       } else {
         fail("failed-precondition", "무료 요금제 1단계에서는 문서 결재 기능만 지원합니다.");
       }
       const next = patch.status || document.status;
       transaction.update(ref, patch);
       transaction.set(historyRef, historyData(data.operationId, data.action, user, data.reason, previous, next));
+      addNotification(
+        transaction,
+        { id: data.id, ...document },
+        data.operationId,
+        notificationEvent,
+        notificationRecipient,
+        user,
+      );
       return { ok: true, id: data.id, status: next };
     });
   }
@@ -580,8 +828,12 @@
     if (data.action === "directory") return directory();
     if (data.action === "list") return list();
     if (data.action === "detail") return detail(data.id);
+    if (data.action === "notifications") return listNotifications();
+    if (data.action === "readNotification") return markNotificationRead(data.id);
     if (data.action === "create") return create(data);
     if (data.action === "updateDraft") return updateDraft(data);
+    if (data.action === "preparePayment") return preparePayment(data);
+    if (data.action === "pay") return recordPayment(data);
     return transition(data);
   }
 
@@ -593,6 +845,8 @@
     uploadAttachment,
     downloadAttachment,
     attachmentCompletion,
+    uploadPaymentProof,
+    downloadPaymentProof: paymentProofBlob,
     limits: { chunkSize: CHUNK_SIZE, maxFileSize: MAX_FILE_SIZE, maxTotalSize: MAX_TOTAL_SIZE, maxFiles: MAX_FILES },
   };
 })(window);

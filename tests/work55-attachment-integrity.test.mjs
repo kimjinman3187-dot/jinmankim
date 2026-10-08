@@ -120,6 +120,6 @@ test("WORK55 UI hides retry after persisted completion and reports verified down
   assert.match(uiSource, /if \(d\.attachmentCompletion\?\.\[slot\] === true\) continue/);
   assert.match(uiSource, /await detail\(d\.id, e\)/);
   assert.match(uiSource, /SHA-256 무결성 검증을 완료했습니다/);
-  assert.match(htmlSource, /business-document-client\.js\?v=20261006-work55/);
-  assert.match(htmlSource, /business-documents\.js\?v=20261008-work56/);
+  assert.match(htmlSource, /business-document-client\.js\?v=20261008-work57/);
+  assert.match(htmlSource, /business-documents\.js\?v=20261008-work57/);
 });

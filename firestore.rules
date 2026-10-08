@@ -962,6 +962,14 @@ service cloud.firestore {
             && d.category in ["annual", "half", "outing", "other"]
             && businessDate(d.startDate) && businessDate(d.endDate) && d.endDate >= d.startDate
             && d.hours is number && d.hours > 0 && d.hours <= 744 && businessText(d.handover, 1, 1000))
+          || (kind == "vendor_contract"
+            && d.keys().hasOnly(["title", "reason", "partnerName", "contractType", "startDate", "endDate", "contractAmount", "paymentTerms", "renewalTerms", "ownerDepartment", "riskNotes"])
+            && businessText(d.partnerName, 1, 100)
+            && d.contractType in ["supply", "service", "purchase", "sales", "nda", "other"]
+            && businessDate(d.startDate) && businessDate(d.endDate) && d.endDate >= d.startDate
+            && d.contractAmount is int && d.contractAmount >= 0
+            && businessText(d.paymentTerms, 1, 500) && businessText(d.renewalTerms, 0, 500)
+            && businessText(d.ownerDepartment, 1, 80) && businessText(d.riskNotes, 0, 1000))
           || (kind == "general"
             && d.keys().hasOnly(["title", "reason", "effectiveDate", "amount"])
             && businessDate(d.effectiveDate) && d.amount is int && d.amount >= 0)
@@ -999,6 +1007,14 @@ service cloud.firestore {
             && d.category in ["annual", "half", "outing", "other"]
             && businessDraftDate(d.startDate) && businessDraftDate(d.endDate)
             && d.hours is number && d.hours >= 0 && d.hours <= 744 && businessDraftText(d.handover, 1000))
+          || (kind == "vendor_contract"
+            && d.keys().hasOnly(["title", "reason", "partnerName", "contractType", "startDate", "endDate", "contractAmount", "paymentTerms", "renewalTerms", "ownerDepartment", "riskNotes"])
+            && businessDraftText(d.partnerName, 100)
+            && d.contractType in ["supply", "service", "purchase", "sales", "nda", "other"]
+            && businessDraftDate(d.startDate) && businessDraftDate(d.endDate)
+            && d.contractAmount is int && d.contractAmount >= 0
+            && businessDraftText(d.paymentTerms, 500) && businessDraftText(d.renewalTerms, 500)
+            && businessDraftText(d.ownerDepartment, 80) && businessDraftText(d.riskNotes, 1000))
           || (kind == "general"
             && d.keys().hasOnly(["title", "reason", "effectiveDate", "amount"])
             && businessDraftDate(d.effectiveDate) && d.amount is int && d.amount >= 0)
@@ -1081,11 +1097,138 @@ service cloud.firestore {
         && businessAttachmentsMapValid(d.attachments, documentId)
         && d.attachmentsTotalSize == attachmentsSizeSum(d.attachments);
     }
+    function businessFinance() {
+      return businessActive() && arUserDoc().get("role", "") in ["admin", "accounting"];
+    }
+    function businessPaymentPath(documentId, paymentId) {
+      return /databases/$(database)/documents/business_documents/$(documentId)/payments/$(paymentId);
+    }
+    function businessPaymentReferencePath(reference) {
+      return /databases/$(database)/documents/business_payment_references/$(reference);
+    }
+    function businessPaymentProofValid(documentId, paymentId, proof) {
+      return proof.keys().hasOnly(["name", "size", "contentType", "chunkCount", "sha256", "firestorePath"])
+        && businessText(proof.name, 1, 255)
+        && proof.size is int && proof.size >= 1 && proof.size <= 3145728
+        && proof.contentType in ["application/pdf", "image/png", "image/jpeg", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "text/csv"]
+        && proof.chunkCount is int && proof.chunkCount >= 1 && proof.chunkCount <= 6
+        && proof.size > (proof.chunkCount - 1) * 524288 && proof.size <= proof.chunkCount * 524288
+        && proof.sha256 is string && proof.sha256.matches("^[0-9a-f]{64}$")
+        && proof.firestorePath == "business_documents/" + documentId + "/payments/" + paymentId + "/proof_upload";
+    }
+    function businessPaymentRecordedValid(documentId, od, nd, history) {
+      let markerPath = businessPaymentReferencePath(history.reason);
+      let marker = getAfter(markerPath).data;
+      let paymentPath = businessPaymentPath(documentId, marker.paymentId);
+      let payment = getAfter(paymentPath).data;
+      return history.reason.matches("^[A-Z0-9._-]{1,64}$")
+        && existsAfter(markerPath) && marker.documentId == documentId && marker.reference == history.reason
+        && existsAfter(paymentPath) && payment.status == "recorded" && payment.reference == history.reason
+        && payment.amount is int && payment.amount > 0
+        && nd.paidAmount == od.paidAmount + payment.amount
+        && nd.paidAmount <= od.details.amount
+        && ((nd.paidAmount == od.details.amount && nd.paymentStatus == "paid")
+          || (nd.paidAmount < od.details.amount && nd.paymentStatus == "partial"));
+    }
+    function businessPaymentDraftCreateValid(documentId, paymentId) {
+      let parent = get(/databases/$(database)/documents/business_documents/$(documentId)).data;
+      let p = request.resource.data;
+      return businessFinance() && parent.kind == "expense" && parent.status == "approved"
+        && parent.details.settlementType != "prepaid"
+        && p.keys().hasOnly(["schemaVersion", "status", "amount", "paidDate", "reference", "proof", "actorUid", "actorName", "actorRole", "operationId", "createdAt", "recordedAt"])
+        && p.schemaVersion == 1 && p.status == "draft"
+        && p.amount is int && p.amount > 0 && parent.paidAmount + p.amount <= parent.details.amount
+        && businessDate(p.paidDate) && p.reference is string && p.reference.matches("^[A-Z0-9._-]{1,64}$")
+        && businessPaymentProofValid(documentId, paymentId, p.proof)
+        && p.actorUid == request.auth.uid && p.actorName == arUserDoc().get("name", "")
+        && p.actorRole == arUserDoc().get("role", "") && p.operationId is string && p.operationId.size() >= 16
+        && p.createdAt == request.time && p.recordedAt == null;
+    }
+    function businessPaymentUpdateValid(documentId, paymentId) {
+      let od = resource.data;
+      let nd = request.resource.data;
+      let parent = getAfter(/databases/$(database)/documents/business_documents/$(documentId)).data;
+      let marker = getAfter(businessPaymentReferencePath(od.reference)).data;
+      return businessFinance() && od.status == "draft" && nd.status == "recorded"
+        && nd.diff(od).affectedKeys().hasOnly(["status", "recordedAt"])
+        && nd.recordedAt == request.time
+        && parent.lastOperationId is string && parent.paidAmount >= od.amount
+        && marker.documentId == documentId && marker.paymentId == paymentId && marker.reference == od.reference;
+    }
+    function businessPaymentChunkIdValid(chunkId, index) {
+      return (index == 0 && chunkId == "0") || (index == 1 && chunkId == "1")
+        || (index == 2 && chunkId == "2") || (index == 3 && chunkId == "3")
+        || (index == 4 && chunkId == "4") || (index == 5 && chunkId == "5");
+    }
+    function businessPaymentChunkCreateValid(documentId, paymentId, chunkId) {
+      let payment = get(businessPaymentPath(documentId, paymentId)).data;
+      let chunk = request.resource.data;
+      return businessFinance() && payment.status == "draft" && payment.actorUid == request.auth.uid
+        && chunk.keys().hasOnly(["index", "size", "sha256", "data", "uploaderUid", "uploadedAt"])
+        && chunk.index is int && chunk.index >= 0 && chunk.index < payment.proof.chunkCount
+        && businessPaymentChunkIdValid(chunkId, chunk.index)
+        && chunk.size is int && chunk.size >= 1 && chunk.size <= 524288
+        && chunk.data is bytes && chunk.data.size() == chunk.size
+        && ((chunk.index < payment.proof.chunkCount - 1 && chunk.size == 524288)
+          || (chunk.index == payment.proof.chunkCount - 1 && chunk.size == payment.proof.size - (payment.proof.chunkCount - 1) * 524288))
+        && chunk.sha256 == payment.proof.sha256 && chunk.uploaderUid == request.auth.uid
+        && chunk.uploadedAt == request.time;
+    }
+    function businessPaymentChunkExists(documentId, paymentId, index) {
+      return exists(/databases/$(database)/documents/business_documents/$(documentId)/payments/$(paymentId)/proof_chunks/$(index));
+    }
+    function businessPaymentManifestCreateValid(documentId, paymentId, manifestId) {
+      let payment = get(businessPaymentPath(documentId, paymentId)).data;
+      let manifest = request.resource.data;
+      return businessFinance() && manifestId == "manifest" && payment.status == "draft" && payment.actorUid == request.auth.uid
+        && manifest.keys().hasOnly(["name", "size", "contentType", "chunkCount", "sha256", "firestorePath", "uploaderUid", "completedAt"])
+        && manifest.name == payment.proof.name && manifest.size == payment.proof.size
+        && manifest.contentType == payment.proof.contentType && manifest.chunkCount == payment.proof.chunkCount
+        && manifest.sha256 == payment.proof.sha256 && manifest.firestorePath == payment.proof.firestorePath
+        && manifest.uploaderUid == request.auth.uid && manifest.completedAt == request.time
+        && businessPaymentChunkExists(documentId, paymentId, "0")
+        && (payment.proof.chunkCount < 2 || businessPaymentChunkExists(documentId, paymentId, "1"))
+        && (payment.proof.chunkCount < 3 || businessPaymentChunkExists(documentId, paymentId, "2"))
+        && (payment.proof.chunkCount < 4 || businessPaymentChunkExists(documentId, paymentId, "3"))
+        && (payment.proof.chunkCount < 5 || businessPaymentChunkExists(documentId, paymentId, "4"))
+        && (payment.proof.chunkCount < 6 || businessPaymentChunkExists(documentId, paymentId, "5"));
+    }
+    function businessNotificationCreateValid(notificationId) {
+      let n = request.resource.data;
+      let documentPath = /databases/$(database)/documents/business_documents/$(n.documentId);
+      let historyPath = /databases/$(database)/documents/business_documents/$(n.documentId)/history/$(n.operationId);
+      let document = getAfter(documentPath).data;
+      let history = getAfter(historyPath).data;
+      return businessActive()
+        && n.keys().hasOnly(["schemaVersion", "documentId", "number", "kind", "title", "event", "recipientUid", "actorUid", "actorName", "operationId", "createdAt", "readAt"])
+        && n.schemaVersion == 1 && n.actorUid == request.auth.uid
+        && n.actorName == arUserDoc().get("name", "")
+        && n.event in ["approval_requested", "approval_withdrawn", "approval_rejected", "approval_completed", "approval_cancelled", "payment_recorded", "settlement_completed", "processing_completed"]
+        && businessText(n.recipientUid, 1, 128)
+        && n.operationId is string && notificationId == n.operationId + "-" + n.recipientUid
+        && n.createdAt == request.time && n.readAt == null && n.recipientUid != request.auth.uid
+        && existsAfter(documentPath) && existsAfter(historyPath)
+        && businessCanRead(document) && history.operationId == n.operationId
+        && history.actorUid == request.auth.uid && document.lastOperationId == n.operationId
+        && n.number == document.number && n.kind == document.kind && n.title == document.details.title
+        && (
+          (n.event == "approval_requested"
+            && ((history.action == "submit" && n.recipientUid == document.approverUids[0])
+              || (history.action == "approve" && document.status == "pending" && n.recipientUid == document.approverUids[document.step])))
+          || (n.event == "approval_withdrawn" && history.action == "withdraw" && n.recipientUid == document.approverUids[document.step])
+          || (n.event == "approval_rejected" && history.action == "reject" && n.recipientUid == document.requesterUid)
+          || (n.event == "approval_completed" && history.action == "approve" && document.status == "approved" && n.recipientUid == document.requesterUid)
+          || (n.event == "approval_cancelled" && history.action == "cancelApproved" && n.recipientUid == document.requesterUid)
+          || (n.event == "payment_recorded" && history.action == "pay" && n.recipientUid == document.requesterUid)
+          || (n.event == "settlement_completed" && history.action == "settle" && n.recipientUid == document.requesterUid)
+          || (n.event == "processing_completed" && history.action == "complete" && n.recipientUid == document.requesterUid)
+        );
+    }
     function businessDocumentCreateValid(documentId) {
       let d = request.resource.data;
       return businessActive()
         && d.keys().hasOnly(["schemaVersion", "clientMode", "kind", "number", "details", "requesterUid", "requesterName", "requesterRole", "approverUids", "approverNames", "status", "step", "attachments", "attachmentCount", "attachmentsTotalSize", "createdAt", "updatedAt", "submittedAt", "approvedAt", "rejectionReason", "paidAmount", "paymentStatus", "settledAt", "completedAt", "completionNote", "cancellationReason", "allocatedAmount", "purchaseReserved", "revisedFrom", "lastOperationId"])
-        && d.schemaVersion == 7 && d.clientMode == "spark-firestore" && d.kind in ["expense", "purchase", "leave", "general", "quality"]
+        && d.schemaVersion == 8 && d.clientMode == "spark-firestore" && d.kind in ["expense", "purchase", "vendor_contract", "leave", "general", "quality"]
         && businessText(d.number, 12, 80) && businessDraftDetailsValid(d.kind, d.details)
         && d.requesterUid == request.auth.uid && d.requesterName == arUserDoc().get("name", "") && d.requesterRole == arUserDoc().get("role", "")
         && businessDraftRouteValid(d) && d.status == "draft" && d.step == 0
@@ -1110,13 +1253,13 @@ service cloud.firestore {
       let nd = request.resource.data;
       let hp = businessHistoryPath(documentId, nd.lastOperationId);
       let h = getAfter(hp).data;
-      return businessActive() && od.schemaVersion in [6, 7] && od.clientMode == "spark-firestore"
+      return businessActive() && od.schemaVersion in [6, 7, 8] && od.clientMode == "spark-firestore"
         && nd.updatedAt == request.time && nd.lastOperationId is string && nd.lastOperationId != od.lastOperationId
         && !exists(hp) && existsAfter(hp)
         && (
           (h.action == "updateDraft" && od.status == "draft" && nd.status == "draft" && od.requesterUid == request.auth.uid
             && nd.diff(od).affectedKeys().hasOnly(["schemaVersion", "details", "approverUids", "approverNames", "attachments", "attachmentCount", "attachmentsTotalSize", "paymentStatus", "completionNote", "cancellationReason", "updatedAt", "lastOperationId"])
-            && nd.schemaVersion == 7 && businessDraftDetailsValid(nd.kind, nd.details) && businessDraftRouteValid(nd)
+            && nd.schemaVersion == 8 && businessDraftDetailsValid(nd.kind, nd.details) && businessDraftRouteValid(nd)
             && businessAttachmentsValid(documentId, nd) && nd.step == od.step
             && ((nd.kind == "expense" && nd.paymentStatus in ["unpaid", "not_required"])
               || (nd.kind != "expense" && nd.paymentStatus == null)))
@@ -1145,6 +1288,14 @@ service cloud.firestore {
             && nd.diff(od).affectedKeys().hasOnly(["completedAt", "completionNote", "updatedAt", "lastOperationId"])
             && (arUserDoc().get("role", "") == "admin" || (od.requesterUid == request.auth.uid && od.kind != "leave"))
             && nd.completedAt == request.time && businessText(nd.completionNote, 1, 500) && nd.completionNote == h.reason)
+          || (h.action == "settle" && od.status == "approved" && nd.status == "approved" && od.kind == "expense"
+            && od.details.settlementType == "prepaid" && od.settledAt == null && businessFinance()
+            && nd.diff(od).affectedKeys().hasOnly(["settledAt", "completionNote", "updatedAt", "lastOperationId"])
+            && nd.settledAt == request.time && businessText(nd.completionNote, 1, 500) && nd.completionNote == h.reason)
+          || (h.action == "pay" && od.status == "approved" && nd.status == "approved" && od.kind == "expense"
+            && od.details.settlementType != "prepaid" && businessFinance()
+            && nd.diff(od).affectedKeys().hasOnly(["paidAmount", "paymentStatus", "updatedAt", "lastOperationId"])
+            && businessPaymentRecordedValid(documentId, od, nd, h))
         );
     }
     function businessHistoryCreateValid(documentId, historyId) {
@@ -1153,7 +1304,7 @@ service cloud.firestore {
       let after = getAfter(dp).data;
       return businessActive() && h.keys().hasOnly(["operationId", "action", "actorUid", "actorName", "actorRole", "at", "reason", "previousStatus", "nextStatus"])
         && h.operationId == historyId && h.operationId == after.lastOperationId
-        && h.action in ["create", "updateDraft", "submit", "approve", "reject", "withdraw", "cancelApproved", "complete"]
+        && h.action in ["create", "updateDraft", "submit", "approve", "reject", "withdraw", "cancelApproved", "complete", "settle", "pay"]
         && h.actorUid == request.auth.uid && h.actorName == arUserDoc().get("name", "") && h.actorRole == arUserDoc().get("role", "")
         && h.at == request.time && h.reason is string && h.reason.size() <= 500
         && h.nextStatus == after.status
@@ -1173,7 +1324,7 @@ service cloud.firestore {
       let chunk = request.resource.data;
       let empty = {"name": "", "size": 0, "contentType": "", "chunkCount": 0, "sha256": "", "firestorePath": ""};
       let attachment = parent.attachments.get(chunk.slot, empty);
-      return businessActive() && parent.schemaVersion in [6, 7] && parent.clientMode == "spark-firestore"
+      return businessActive() && parent.schemaVersion in [6, 7, 8] && parent.clientMode == "spark-firestore"
         && parent.status == "draft" && parent.requesterUid == request.auth.uid
         && chunk.keys().hasOnly(["slot", "index", "size", "sha256", "data", "uploaderUid", "uploadedAt"])
         && chunk.slot in ["a0", "a1", "a2", "a3", "a4"]
@@ -1199,7 +1350,7 @@ service cloud.firestore {
       let manifest = request.resource.data;
       let empty = {"name": "", "size": 0, "contentType": "", "chunkCount": 0, "sha256": "", "firestorePath": ""};
       let attachment = parent.attachments.get(slot, empty);
-      return businessActive() && parent.schemaVersion in [6, 7] && parent.clientMode == "spark-firestore"
+      return businessActive() && parent.schemaVersion in [6, 7, 8] && parent.clientMode == "spark-firestore"
         && parent.status == "draft" && parent.requesterUid == request.auth.uid
         && slot in ["a0", "a1", "a2", "a3", "a4"]
         && manifest.keys().hasOnly(["name", "size", "contentType", "chunkCount", "sha256", "firestorePath", "uploaderUid", "completedAt"])
@@ -1250,10 +1401,41 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/business_documents/$(documentId)).data.status == "draft"
           && get(/databases/$(database)/documents/business_documents/$(documentId)).data.requesterUid == request.auth.uid;
       }
-      match /payments/{paymentId} { allow read, write: if false; }
+      match /payments/{paymentId} {
+        allow read: if businessCanRead(get(/databases/$(database)/documents/business_documents/$(documentId)).data);
+        allow create: if businessPaymentDraftCreateValid(documentId, paymentId);
+        allow update: if businessPaymentUpdateValid(documentId, paymentId);
+        allow delete: if false;
+        match /proof_chunks/{chunkId} {
+          allow read: if businessCanRead(get(/databases/$(database)/documents/business_documents/$(documentId)).data);
+          allow create: if businessPaymentChunkCreateValid(documentId, paymentId, chunkId);
+          allow update, delete: if false;
+        }
+        match /proof_upload/{manifestId} {
+          allow read: if businessCanRead(get(/databases/$(database)/documents/business_documents/$(documentId)).data);
+          allow create: if businessPaymentManifestCreateValid(documentId, paymentId, manifestId);
+          allow update, delete: if false;
+        }
+      }
     }
     match /business_document_sequences/{id} { allow read, write: if false; }
-    match /business_payment_references/{id} { allow read, write: if false; }
+    match /business_payment_references/{reference} {
+      allow read: if businessFinance();
+      allow create: if businessFinance()
+        && request.resource.data.keys().hasOnly(["documentId", "paymentId", "reference", "actorUid", "createdAt"])
+        && request.resource.data.reference == reference && reference.matches("^[A-Z0-9._-]{1,64}$")
+        && request.resource.data.actorUid == request.auth.uid && request.resource.data.createdAt == request.time
+        && getAfter(businessPaymentPath(request.resource.data.documentId, request.resource.data.paymentId)).data.status == "recorded";
+      allow update, delete: if false;
+    }
+    match /business_document_notifications/{notificationId} {
+      allow read: if businessActive() && resource.data.recipientUid == request.auth.uid;
+      allow create: if businessNotificationCreateValid(notificationId);
+      allow update: if businessActive() && resource.data.recipientUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["readAt"])
+        && resource.data.readAt == null && request.resource.data.readAt == request.time;
+      allow delete: if false;
+    }
 
     match /expense_approval_requests/{requestId} {
       allow read: if arIsAdmin() || isExpenseApprovalOwner() || arIsAccounting();
