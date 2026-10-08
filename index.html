@@ -3176,7 +3176,9 @@ function canUsePinLogin(user) {
 async function syncUsers() {
     let fetchedUsers = [];
     try { 
-        if(typeof db !== 'undefined') { 
+        // 운영 로그인은 Google 승인 사용자 단건 조회만 사용한다.
+        // users 목록 조회는 Rules상 관리자 전용이므로 로컬 DEV PIN 모드에서만 수행한다.
+        if(AUTH_DEV_MODE && typeof db !== 'undefined') {
             const snapshot = await db.collection('users').orderBy('sort_index', 'asc').get(); 
             fetchedUsers = snapshot.docs.map(doc => {
                 const d = doc.data(); 
@@ -3189,7 +3191,7 @@ async function syncUsers() {
             }
         } 
     } catch(e) { 
-        console.warn('Users sync failed. Login is disabled unless dev auth fallback is explicitly enabled:', e);
+        console.warn('DEV AUTH MODE users sync failed; local fallback PIN users will be used when configured:', e);
     }
 
     if (!fetchedUsers.length) {
@@ -3733,6 +3735,46 @@ function getCurrentUserDisplayText() {
     return `${teamLabels[currentUser.role] || '직원'} · ${name}`;
 }
 
+let authenticatedShellMode = '';
+
+function syncAuthenticatedShellForViewport() {
+    if (!currentUser || googleGateActive) return '';
+    const nextMode = window.innerWidth > 768 ? 'desktop' : 'mobile';
+    const previousMode = authenticatedShellMode;
+    const appPC = document.getElementById('appPC');
+    const appMobile = document.getElementById('appMobile');
+
+    if (appPC) {
+        appPC.classList.toggle('hidden', nextMode !== 'desktop');
+        appPC.style.display = nextMode === 'desktop' ? 'flex' : 'none';
+    }
+    if (appMobile) {
+        appMobile.classList.toggle('hidden', nextMode !== 'mobile');
+        appMobile.style.display = nextMode === 'mobile' ? 'flex' : 'none';
+    }
+
+    authenticatedShellMode = nextMode;
+    if (previousMode && previousMode !== nextMode) {
+        if (nextMode === 'desktop') {
+            const defaultTab = getDefaultPCTab();
+            const requestedTab = getHashTargetTab();
+            const targetTab = requestedTab && getAllowedPCTabs().includes(requestedTab) && canView(getAccessAreaForTab(requestedTab))
+                ? requestedTab
+                : defaultTab;
+            sessionStorage.setItem('active_tab', targetTab);
+            location.hash = targetTab;
+            switchPCTab(targetTab, false);
+        } else {
+            enforceCurrentHashAccess();
+        }
+    }
+    return nextMode;
+}
+
+window.addEventListener('resize', () => {
+    syncAuthenticatedShellForViewport();
+});
+
 function processLoginSuccess() {
     if (handleInactiveUser(currentUser)) return;
     try {
@@ -3751,8 +3793,7 @@ function processLoginSuccess() {
     const pcLogin = document.getElementById('loginPC'); 
     if (pcLogin) { pcLogin.style.display = 'none'; pcLogin.remove(); }
     
-    if (window.innerWidth > 768) { const appPC = document.getElementById('appPC'); if (appPC) { appPC.classList.remove('hidden'); appPC.style.display = 'flex'; } } 
-    else { const appMob = document.getElementById('appMobile'); if (appMob) { appMob.classList.remove('hidden'); appMob.style.display = 'flex'; } }
+    const shellMode = syncAuthenticatedShellForViewport();
     
     document.getElementById('displayUser').textContent = getCurrentUserDisplayText();
     const pcDisplay = document.getElementById('pcDisplayUser'); if(pcDisplay) pcDisplay.textContent = getCurrentUserDisplayText();
@@ -3762,7 +3803,7 @@ function processLoginSuccess() {
     }
     applyPCRoleAccess();
     initTabs();
-    if (window.innerWidth > 768) {
+    if (shellMode === 'desktop') {
         const defaultTab = getDefaultPCTab();
         sessionStorage.setItem('active_tab', defaultTab);
         location.hash = defaultTab;
@@ -6396,7 +6437,7 @@ window.addEventListener('load', () => {
 <script src="js/live-operations-hub.js"></script>
 <script src="js/approval-dashboard.js"></script>
 <script src="js/approval.js"></script>
-<script src="js/employee-document-requests.js"></script>
+<script src="js/employee-document-requests.js?v=20261008-work58"></script>
 <script src="js/business-document-client.js?v=20261008-work57"></script>
 <script src="js/business-documents.js?v=20261008-work57"></script>
 </body>

@@ -1058,8 +1058,6 @@
                     .get(),
                 window.db.collection(EXPENSE_COLLECTION)
                     .where('requesterUid', '==', ready.auth.uid)
-                    .orderBy(SORT_FIELD, 'desc')
-                    .limit(LIMIT)
                     .get()
             ]);
             // R3: 사용자가 바뀐 뒤 도착한 오래된 응답은 state·DOM·LIVE 카드 어디에도 반영하지 않는다.
