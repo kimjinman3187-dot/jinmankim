@@ -5,6 +5,7 @@
   const kinds = {
     expense: "지출결의서",
     purchase: "구매·수리 요청서",
+    vendor_contract: "거래처·계약조건 승인서",
     leave: "휴가·근태 신청서",
     general: "일반 품의서",
     quality: "생산·품질 예외처리서",
@@ -74,6 +75,17 @@
       ["neededDate", "필요일", "date"],
       ["vendor", "견적 거래처 (선택)", "text"],
     ],
+    vendor_contract: [
+      ["partnerName", "거래처명", "text"],
+      ["contractType", "계약 구분", ["supply:납품", "service:용역", "purchase:매입", "sales:매출", "nda:비밀유지", "other:기타"]],
+      ["startDate", "계약 시작일", "date"],
+      ["endDate", "계약 종료일", "date"],
+      ["contractAmount", "계약금액 (원, 없으면 0)", "number"],
+      ["paymentTerms", "대금·결제 조건", "textarea"],
+      ["renewalTerms", "갱신·해지 조건 (선택)", "textarea"],
+      ["ownerDepartment", "담당부서", "text"],
+      ["riskNotes", "주요 위험사항 (선택)", "textarea"],
+    ],
     leave: [
       [
         "category",
@@ -108,6 +120,7 @@
     user: null,
     rows: [],
     users: [],
+    notifications: [],
     busy: false,
     draft: null,
     selected: null,
@@ -141,10 +154,10 @@
     return b;
   }
   root.innerHTML =
-    '<div class="yb-header"><div><p class="yb-eyebrow">표준 문서 업무</p><h3>문서 작성·결재·지급을 한곳에서 처리합니다</h3><p>신규 업무는 표준 문서 5종으로 작성하고, 결재 상태와 실제 처리 결과를 함께 확인합니다.</p></div><button type="button" id="ybRefresh">새로고침</button></div>' +
+    '<div class="yb-header"><div><p class="yb-eyebrow">표준 문서 업무</p><h3>문서 작성·결재·지급을 한곳에서 처리합니다</h3><p>업무 카테고리별 표준 문서를 작성하고, 결재 상태와 실제 처리 결과를 함께 확인합니다.</p></div><button type="button" id="ybRefresh">새로고침</button></div>' +
     '<nav class="yb-tabs" aria-label="문서 업무 구분"><button type="button" data-yb-view="create">새 문서 작성</button><button type="button" data-yb-view="my">내 문서</button><button type="button" data-yb-view="inbox">결재함</button><button type="button" data-yb-view="payments">지급관리</button><button type="button" data-yb-view="all">전체 문서</button></nav>' +
     '<div class="yb-summary"><div><span>내 문서</span><strong id="ybMetricMine">0</strong></div><div><span>결재 대기</span><strong id="ybMetricPending">0</strong></div><div><span>반려</span><strong id="ybMetricRejected">0</strong></div><div><span>지급 대기</span><strong id="ybMetricPayment">0</strong></div></div>' +
-    '<p id="ybMessage" role="status" aria-live="polite"></p><div class="yb-layout"><form id="ybForm"><fieldset id="ybFieldset"><h4 id="ybFormTitle">새 문서 작성</h4><div id="ybCommon"></div><div id="ybFields" class="yb-grid"></div><div id="ybRoute" class="yb-grid"></div><label>첨부파일 (최대 5개, 각 3MB·합계 10MB)<input id="ybFiles" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx,.csv"></label><div id="ybAttachmentState" class="yb-attachment-state" role="status" aria-live="polite"></div><label id="ybClearFilesLabel"><input id="ybClearFiles" type="checkbox"> 기존 첨부를 모두 제거</label><p id="ybAttachmentHelp" class="yb-help">무료 요금제 전용 보안 저장 · 지출은 증빙 필수 · 구매·수리는 견적 첨부 권장</p><button type="submit" name="intent" value="submit" class="yb-primary">저장하고 결재 요청</button><button type="submit" name="intent" value="draft">임시저장</button><button type="button" id="ybNew">새 양식</button></fieldset></form><section id="ybRecords"><div class="yb-toolbar"><div><h4 id="ybListTitle">내 문서</h4><p id="ybListHelp" class="yb-help">작성한 표준 문서를 확인합니다.</p></div><label>문서 종류<select id="ybFilter"><option value="all">전체</option></select></label></div><div id="ybList"></div><div id="ybDetail"></div></section></div>';
+    '<p id="ybMessage" role="status" aria-live="polite"></p><section id="ybNotifications" class="yb-notifications" aria-label="문서 알림"></section><div class="yb-layout"><form id="ybForm"><fieldset id="ybFieldset"><h4 id="ybFormTitle">새 문서 작성</h4><div id="ybCommon"></div><div id="ybFields" class="yb-grid"></div><div id="ybRoute" class="yb-grid"></div><label>첨부파일 (최대 5개, 각 3MB·합계 10MB)<input id="ybFiles" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx,.csv"></label><div id="ybAttachmentState" class="yb-attachment-state" role="status" aria-live="polite"></div><label id="ybClearFilesLabel"><input id="ybClearFiles" type="checkbox"> 기존 첨부를 모두 제거</label><p id="ybAttachmentHelp" class="yb-help">무료 요금제 전용 보안 저장 · 지출은 증빙 필수 · 구매·수리는 견적 첨부 권장</p><button type="submit" name="intent" value="submit" class="yb-primary">저장하고 결재 요청</button><button type="submit" name="intent" value="draft">임시저장</button><button type="button" id="ybNew">새 양식</button></fieldset></form><section id="ybRecords"><div class="yb-toolbar"><div><h4 id="ybListTitle">내 문서</h4><p id="ybListHelp" class="yb-help">작성한 표준 문서를 확인합니다.</p></div><label>문서 종류<select id="ybFilter"><option value="all">전체</option></select></label></div><div id="ybList"></div><div id="ybDetail"></div></section></div>';
   const $ = (id) => document.getElementById(id);
   const form = $("ybForm");
   const views = ["create", "my", "inbox", "payments", "all"];
@@ -326,6 +339,7 @@
       state.user = current?.user || null;
       state.rows = [];
       state.users = [];
+      state.notifications = [];
       state.loaded = false;
       state.loadFailed = false;
       state.directoryReady = false;
@@ -416,12 +430,14 @@
     }
   }
   async function load(epoch) {
-    const [a, b] = await Promise.all([
+    const [a, b, c] = await Promise.all([
       api({ action: "list" }, epoch),
       api({ action: "directory" }, epoch),
+      api({ action: "notifications" }, epoch),
     ]);
     state.rows = a.documents;
     state.users = b.users;
+    state.notifications = c.notifications;
     state.loaded = true;
     state.loadFailed = false;
     state.directoryReady = state.users.some(
@@ -485,8 +501,7 @@
     return ["admin", "accounting"].includes(state.user?.role);
   }
   function applyRoleVisibility() {
-    // Spark 1단계에서는 지급 기록을 의도적으로 제외한다.
-    const finance = false;
+    const finance = isFinance();
     const paymentTab = root.querySelector('[data-yb-view="payments"]');
     if (paymentTab) {
       paymentTab.hidden = !finance;
@@ -494,7 +509,7 @@
     }
     const paymentMetric = $("ybMetricPayment")?.parentElement;
     if (paymentMetric) paymentMetric.hidden = !finance;
-    if (state.view === "payments") state.view = "my";
+    if (!finance && state.view === "payments") state.view = "my";
   }
   function visibleRows() {
     let rows = state.rows;
@@ -546,14 +561,14 @@
     $("ybMetricMine").textContent = metric(mine.length);
     $("ybMetricPending").textContent = metric(actionable.length);
     $("ybMetricRejected").textContent = metric(rejected.length);
-    $("ybMetricPayment").textContent = "—";
+    $("ybMetricPayment").textContent = metric(payments.length);
     const set = (id, value) => {
       const node = document.getElementById(id);
       if (node) node.textContent = value;
     };
     set("pcHubDocGlancePending", metric(actionable.length));
     set("pcHubDocGlanceRejected", metric(rejected.length));
-    set("pcHubDocGlancePayment", "—");
+    set("pcHubDocGlancePayment", metric(payments.length));
     set(
       "pcHubDocGlanceTotal",
       state.loadFailed ? "조회 실패" : `${actionable.length + rejected.length}건`,
@@ -576,7 +591,7 @@
     copy.append(
       el("p", "표준 문서 결재", "yb-eyebrow"),
       el("h3", "통합 결재함"),
-      el("p", "표준 문서 5종의 검토·승인 대상을 한곳에서 처리합니다."),
+      el("p", "표준 문서의 검토·승인 대상을 한곳에서 처리합니다."),
     );
     const open = button("전체 결재함 열기", () => {
       window.switchPCTab?.("docbox");
@@ -602,10 +617,49 @@
     });
     host.append(list);
   }
+  function renderNotifications() {
+    const host = $("ybNotifications");
+    host.replaceChildren();
+    const unread = state.notifications.filter((item) => !item.readAt);
+    const head = el("div", undefined, "yb-notification-head");
+    head.append(
+      el("strong", `문서 알림 ${unread.length}건`),
+      el("span", "결재·지급·처리 결과는 계정별로 따로 읽음 처리됩니다."),
+    );
+    host.append(head);
+    const labels = {
+      approval_requested: "결재 요청",
+      approval_withdrawn: "결재 회수",
+      approval_rejected: "반려",
+      approval_completed: "승인 완료",
+      approval_cancelled: "승인 취소",
+      payment_recorded: "지급 기록",
+      settlement_completed: "정산 완료",
+      processing_completed: "처리 완료",
+    };
+    unread.slice(0, 5).forEach((item) => {
+      const row = button("", () =>
+        run(async (epoch) => {
+          await api({ action: "readNotification", id: item.id }, epoch);
+          item.readAt = Date.now();
+          renderNotifications();
+          await detail(item.documentId, epoch);
+        }),
+      );
+      row.className = "yb-notification-row";
+      row.append(
+        el("strong", labels[item.event] || "문서 알림"),
+        el("span", `${item.number} · ${item.title}`),
+      );
+      host.append(row);
+    });
+    host.hidden = unread.length === 0;
+  }
   function renderWorkspace() {
     applyRoleVisibility();
     setView(state.view);
     renderMetrics();
+    renderNotifications();
   }
   function renderList() {
     const list = $("ybList");
@@ -650,13 +704,33 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     message("첨부 다운로드와 SHA-256 무결성 검증을 완료했습니다.");
   }
-  function fileInfo(f) {
-    const ext = f.name.split(".").pop().toLowerCase();
-    if (!mime[ext]) throw new Error("PDF·이미지·XLSX·CSV 파일을 선택하세요.");
-    return { name: f.name, size: f.size, contentType: mime[ext] };
+  async function uploadPaymentProof(documentId, paymentId, file, meta, epoch) {
+    guard(epoch);
+    await window.YJBusinessDocumentClient.uploadPaymentProof(
+      documentId,
+      paymentId,
+      file,
+      meta,
+    );
+    guard(epoch);
   }
-  async function unavailablePaymentAttachment() {
-    throw new Error("무료 요금제 1단계에서는 지급 증빙 기능을 지원하지 않습니다.");
+  async function downloadPaymentProof(documentId, payment, epoch) {
+    guard(epoch);
+    const blob = await window.YJBusinessDocumentClient.downloadPaymentProof(
+      documentId,
+      payment.id,
+      payment.proof,
+    );
+    guard(epoch);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = payment.proof.name;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    message("지급 증빙 다운로드와 SHA-256 무결성 검증을 완료했습니다.");
   }
   async function uploadDocumentAttachment(documentId, slot, file, meta, epoch) {
     guard(epoch);
@@ -891,7 +965,7 @@
         button("승인 취소", () => run(() => act("cancelApproved", note.value))),
       );
     }
-    const finance = false;
+    const finance = isFinance();
     if (d.status === "approved" && d.kind === "expense" && finance) {
       if (d.details.settlementType === "prepaid" && !d.settledAt) {
         const note = field(
@@ -946,11 +1020,17 @@
                   amount: pending.amount,
                   paidDate: pending.paidDate,
                   reference: pending.reference,
-                  proof: fileInfo(pending.file),
+                  proof: await window.YJBusinessDocumentClient.describeFile(pending.file),
                 }),
                 e,
               );
-              await unavailablePaymentAttachment();
+              await uploadPaymentProof(
+                id,
+                pending.id,
+                pending.file,
+                prep.payment.proof,
+                e,
+              );
               await api(
                 operation({ action: "pay", id, paymentId: pending.id }),
                 e,
@@ -994,9 +1074,11 @@
           p.reference,
       );
       box.append(line);
-      if (p.proof)
+      if (p.proof && p.status === "recorded")
         box.append(
-          button("지급 증빙 보기", () => run(() => unavailablePaymentAttachment())),
+          button("지급 증빙 다운로드", () =>
+            run((epoch) => downloadPaymentProof(id, p, epoch)),
+          ),
         );
       if (p.status === "draft" && p.actorUid === state.uid) {
         const input = field(
@@ -1009,14 +1091,14 @@
           button("이 지급 기록 확정", () =>
             run(async (e) => {
               if (input.files[0]) {
-                const m = fileInfo(input.files[0]);
+                const m = await window.YJBusinessDocumentClient.describeFile(input.files[0]);
                 if (
                   m.name !== p.proof.name ||
                   m.size !== p.proof.size ||
                   m.contentType !== p.proof.contentType
                 )
                   throw new Error("등록한 증빙과 다른 파일입니다.");
-                await unavailablePaymentAttachment();
+                await uploadPaymentProof(id, p.id, input.files[0], p.proof, e);
               }
               await api(operation({ action: "pay", id, paymentId: p.id }), e);
               await load(e);

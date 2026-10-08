@@ -145,7 +145,7 @@
         .pc-page table tbody tr td { padding-top: 1rem; padding-bottom: 1rem; }
         .reject-reason-box { background: #fee2e2; border: 1px dashed #f87171; color: #b91c1c; padding: 8px 12px; border-radius: 8px; font-size: 11px; font-weight: 800; }
     </style>
-    <link rel="stylesheet" href="business-documents.css?v=20261008-work56">
+    <link rel="stylesheet" href="business-documents.css?v=20261008-work57">
 </head>
 <body oncontextmenu="return false">
 
@@ -4973,27 +4973,27 @@ async function openPaymentCancelModal(orderId, eventId) {
             <div class="flex justify-between"><span class="text-slate-500 font-bold">처리 전 누적</span><b class="text-white">${paymentWon(paidBefore)}</b></div>
             <div class="flex justify-between"><span class="text-slate-500 font-bold">처리 후 누적</span><b class="text-white">${paymentWon(paidAfter)}</b></div>
             <div class="flex justify-between"><span class="text-slate-500 font-bold">처리 후 잔액</span><b class="text-amber-300">${paymentWon(Math.max(0, total - paidAfter))}</b></div>
-            <input type="hidden" id="paymentOpOpId" value="${opId}">
-            <input type="hidden" id="paymentOpOrig" value="${origAmount}">
-            <input type="hidden" id="paymentOpTarget" value="${eventId}">
-            <label class="block text-[11px] font-bold text-slate-400 pt-1">취소 사유 (필수)<textarea id="paymentOpReason" rows="2" class="mt-1 w-full p-2.5 bg-[#0f1522] border border-[#334155] rounded-lg text-white font-bold outline-none focus:border-rose-400 resize-none"></textarea></label>
-            <p id="paymentOpError" class="min-h-[16px] text-[11px] font-black text-red-400"></p>
+            <input type="hidden" id="paymentCancelOpId" value="${opId}">
+            <input type="hidden" id="paymentCancelOrig" value="${origAmount}">
+            <input type="hidden" id="paymentCancelTarget" value="${eventId}">
+            <label class="block text-[11px] font-bold text-slate-400 pt-1">취소 사유 (필수)<textarea id="paymentCancelReason" rows="2" class="mt-1 w-full p-2.5 bg-[#0f1522] border border-[#334155] rounded-lg text-white font-bold outline-none focus:border-rose-400 resize-none"></textarea></label>
+            <p id="paymentCancelError" class="min-h-[16px] text-[11px] font-black text-red-400"></p>
           </div>
           <div class="p-4 border-t border-[#334155] flex gap-2 justify-end">
             <button onclick="closePaymentModal()" class="px-4 py-2 rounded-lg bg-[#0f1522] border border-[#334155] text-slate-300 text-xs font-black">닫기</button>
-            <button id="paymentOpSubmit" onclick="submitPaymentCancel('${orderId}')" class="px-5 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-black">입금 취소 기록</button>
+            <button id="paymentCancelSubmit" onclick="submitPaymentCancel('${orderId}')" class="px-5 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-black">입금 취소 기록</button>
           </div>
         </div>
       </div>`;
 }
 async function submitPaymentCancel(orderId) {
     if (!canManagePayment()) return alert('입금 취소는 관리자·회계만 가능합니다.');
-    const errEl = document.getElementById('paymentOpError');
-    const reason = String(document.getElementById('paymentOpReason')?.value || '').trim();
+    const errEl = document.getElementById('paymentCancelError');
+    const reason = String(document.getElementById('paymentCancelReason')?.value || '').trim();
     if (!reason) { if (errEl) errEl.textContent = '취소 사유는 필수입니다.'; return; }
-    const op = { operationId: document.getElementById('paymentOpOpId')?.value || paymentOpId(), kind: 'reversal', amount: Number(document.getElementById('paymentOpOrig')?.value || 0), targetEventId: document.getElementById('paymentOpTarget')?.value || '', reason };
+    const op = { operationId: document.getElementById('paymentCancelOpId')?.value || paymentOpId(), kind: 'reversal', amount: Number(document.getElementById('paymentCancelOrig')?.value || 0), targetEventId: document.getElementById('paymentCancelTarget')?.value || '', reason };
     try {
-        const result = await runPaymentLedgerOp(orderId, op, { button: document.getElementById('paymentOpSubmit'), busyText: '처리 중…', idleText: '입금 취소 기록' });
+        const result = await runPaymentLedgerOp(orderId, op, { button: document.getElementById('paymentCancelSubmit'), busyText: '처리 중…', idleText: '입금 취소 기록' });
         if (!result) return;
         closePaymentModal(); yjRefreshAfterPayment(orderId);
         if (typeof showToast === 'function') showToast('noti-accounting', '↩️', '입금 취소', `${result.client} 입금 취소를 기록했습니다.`);
@@ -5027,12 +5027,12 @@ async function openPaymentCorrectionModal(orderId, eventId) {
             </div>
             <div class="flex justify-between"><span class="text-slate-500 font-bold">처리 후 누적</span><b id="paymentCorrAfter" class="text-white">-</b></div>
             <div class="flex justify-between"><span class="text-slate-500 font-bold">처리 후 잔액</span><b id="paymentCorrRemain" class="text-amber-300">-</b></div>
-            <label class="block text-[11px] font-bold text-slate-400">정정 사유 (필수)<textarea id="paymentOpReason" rows="2" class="mt-1 w-full p-2.5 bg-[#0f1522] border border-[#334155] rounded-lg text-white font-bold outline-none focus:border-amber-400 resize-none"></textarea></label>
-            <p id="paymentOpError" class="min-h-[16px] text-[11px] font-black text-red-400"></p>
+            <label class="block text-[11px] font-bold text-slate-400">정정 사유 (필수)<textarea id="paymentCorrReason" rows="2" class="mt-1 w-full p-2.5 bg-[#0f1522] border border-[#334155] rounded-lg text-white font-bold outline-none focus:border-amber-400 resize-none"></textarea></label>
+            <p id="paymentCorrError" class="min-h-[16px] text-[11px] font-black text-red-400"></p>
           </div>
           <div class="p-4 border-t border-[#334155] flex gap-2 justify-end">
             <button onclick="closePaymentModal()" class="px-4 py-2 rounded-lg bg-[#0f1522] border border-[#334155] text-slate-300 text-xs font-black">닫기</button>
-            <button id="paymentOpSubmit" onclick="submitPaymentCorrection('${orderId}')" class="px-5 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-black">정정 기록</button>
+            <button id="paymentCorrSubmit" onclick="submitPaymentCorrection('${orderId}')" class="px-5 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-black">정정 기록</button>
           </div>
         </div>
       </div>`;
@@ -5046,16 +5046,16 @@ function paymentCorrPreview() {
     const after = before - orig + (newAmt || 0);
     const afterEl = document.getElementById('paymentCorrAfter');
     const remainEl = document.getElementById('paymentCorrRemain');
-    const err = document.getElementById('paymentOpError');
+    const err = document.getElementById('paymentCorrError');
     if (afterEl) afterEl.textContent = paymentWon(after);
     if (remainEl) remainEl.textContent = paymentWon(Math.max(0, total - after));
     if (err) err.textContent = (newAmt !== null && after > total) ? '정정 후 누적이 총 청구액을 초과합니다.' : '';
 }
 async function submitPaymentCorrection(orderId) {
     if (!canManagePayment()) return alert('입금 정정은 관리자·회계만 가능합니다.');
-    const errEl = document.getElementById('paymentOpError');
+    const errEl = document.getElementById('paymentCorrError');
     const newAmt = paymentModalParse(document.getElementById('paymentCorrAmount')?.value);
-    const reason = String(document.getElementById('paymentOpReason')?.value || '').trim();
+    const reason = String(document.getElementById('paymentCorrReason')?.value || '').trim();
     if (newAmt === null || newAmt <= 0) { if (errEl) errEl.textContent = '정정 입금액을 올바르게 입력하세요.'; return; }
     if (!reason) { if (errEl) errEl.textContent = '정정 사유는 필수입니다.'; return; }
     // 정정 모달의 실제 ID(paymentCorr*)를 읽는다. 취소·정정 금액은 서버 트랜잭션에서
@@ -5068,7 +5068,7 @@ async function submitPaymentCorrection(orderId) {
         paymentMethod: document.getElementById('paymentCorrMethod')?.value || 'bank_transfer'
     };
     try {
-        const result = await runPaymentLedgerOp(orderId, op, { button: document.getElementById('paymentOpSubmit'), busyText: '처리 중…', idleText: '정정 기록' });
+        const result = await runPaymentLedgerOp(orderId, op, { button: document.getElementById('paymentCorrSubmit'), busyText: '처리 중…', idleText: '정정 기록' });
         if (!result) return;
         closePaymentModal(); yjRefreshAfterPayment(orderId);
         if (typeof showToast === 'function') showToast('noti-accounting', '✏️', '입금 정정', `${result.client} 입금 정정을 기록했습니다.`);
@@ -6397,7 +6397,7 @@ window.addEventListener('load', () => {
 <script src="js/approval-dashboard.js"></script>
 <script src="js/approval.js"></script>
 <script src="js/employee-document-requests.js"></script>
-<script src="js/business-document-client.js?v=20261006-work55"></script>
-<script src="js/business-documents.js?v=20261008-work56"></script>
+<script src="js/business-document-client.js?v=20261008-work57"></script>
+<script src="js/business-documents.js?v=20261008-work57"></script>
 </body>
 </html>

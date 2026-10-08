@@ -75,6 +75,32 @@
   color: #f8fafc;
   font-size: 20px;
 }
+#yjBusinessDocuments .yb-notifications {
+  margin: 12px 0 16px;
+  padding: 12px;
+  border: 1px solid rgba(96, 165, 250, 0.42);
+  border-radius: 10px;
+  background: rgba(30, 64, 175, 0.16);
+}
+#yjBusinessDocuments .yb-notification-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 7px;
+}
+#yjBusinessDocuments .yb-notification-head span,
+#yjBusinessDocuments .yb-notification-row span {
+  color: #94a3b8;
+  font-size: 11px;
+}
+#yjBusinessDocuments .yb-notification-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  text-align: left;
+}
 #yjBusinessDocuments .yb-toolbar,
 .yb-inbox-header {
   display: flex;
@@ -377,6 +403,8 @@
     grid-template-columns: 1fr;
   }
   #yjBusinessDocuments .yb-toolbar,
+  #yjBusinessDocuments .yb-notification-head,
+  #yjBusinessDocuments .yb-notification-row,
   .yb-inbox-header,
   .yj-legacy-archive > summary {
     flex-direction: column;

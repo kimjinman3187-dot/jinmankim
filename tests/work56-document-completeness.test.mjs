@@ -32,8 +32,8 @@ test("responsive attachment UI and work56 cache busting are present", () => {
   assert.match(css, /\.yb-attachment-state/);
   assert.match(css, /\.yb-attachment-panel/);
   assert.match(css, /\.yb-attachment-item/);
-  assert.match(index, /business-documents\.css\?v=20261008-work56/);
-  assert.match(index, /business-documents\.js\?v=20261008-work56/);
+  assert.match(index, /business-documents\.css\?v=20261008-work57/);
+  assert.match(index, /business-documents\.js\?v=20261008-work57/);
 });
 
 test("document details remain printable on A4 or to PDF", () => {

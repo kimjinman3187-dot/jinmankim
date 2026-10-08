@@ -5,7 +5,9 @@
   "description": "WORK29 document approval attachment Firestore/Storage rules tests",
   "type": "module",
   "scripts": {
-    "test": "firebase emulators:exec --only firestore,storage --project yongjin-enterprise \"node --test\""
+    "test": "npm run test:firestore && npm run test:storage",
+    "test:firestore": "firebase emulators:exec --only firestore --project yongjin-enterprise \"node --test --test-concurrency=1 business-operations.test.mjs expense-approval.test.mjs firestore.test.mjs payment-events.test.mjs\"",
+    "test:storage": "firebase emulators:exec --only firestore,storage --project yongjin-enterprise \"node --test --test-concurrency=1 storage.test.mjs\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^4.0.1",
