@@ -39,6 +39,6 @@ test("인쇄 DOM을 두 프레임 렌더링한 뒤 인쇄하여 흰 종이 회�
 });
 
 test("WORK59 인쇄 서식 자산은 새 캐시 버전을 사용한다", () => {
-  assert.match(html, /business-documents\.css\?v=20261008-work59/);
-  assert.match(html, /business-documents\.js\?v=20261008-work59b/);
+  assert.match(html, /business-documents\.css\?v=20261009-work60/);
+  assert.match(html, /business-documents\.js\?v=20261009-work60/);
 });

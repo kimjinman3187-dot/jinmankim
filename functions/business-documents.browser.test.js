@@ -70,10 +70,12 @@ test.before(async () => {
       "C:/Program Files/Google/Chrome/Application/chrome.exe",
   });
   page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  page.on("pageerror", (error) => console.error("[browser-pageerror]", error));
   await page.exposeFunction("backend", async (data) => {
     requests.push(data);
     if (data.action === "directory") return { users: directoryUsers };
     if (data.action === "list") return { documents: listDocuments, capped: false };
+    if (data.action === "notifications") return { notifications: [], capped: false };
     if (["create", "updateDraft"].includes(data.action))
       return { document: { attachments: {} } };
     if (data.action === "submit") return { ok: true };
@@ -122,6 +124,81 @@ test("all five forms render; form values survive disabled fieldset during submis
   assert.equal(create.details.amount, 11000);
   assert.equal(create.approverUid, "admin");
   assert.equal(requests.filter((x) => x.action === "submit").length, 1);
+});
+test("expense form keeps requester DOM simple and calculates tax both ways", async () => {
+  listDocuments = [];
+  await mount();
+  await page.getByRole("button", { name: "새로고침", exact: true }).click();
+  await page.getByText("표준 문서 0건을 확인했습니다.").waitFor();
+  await page.locator("#yb-kind").selectOption("expense");
+  assert.equal(await page.locator("#yb-settlementType").count(), 0);
+  assert.equal(await page.locator(".yb-related").getAttribute("open"), null);
+  await page.locator("#yb-amount").fill("11000");
+  assert.equal(await page.locator("#yb-supplyAmount").inputValue(), "10000");
+  assert.equal(await page.locator("#yb-taxAmount").inputValue(), "1000");
+  await page.locator('[name="taxType"][value="exempt"]').check();
+  assert.equal(await page.locator("#yb-supplyAmount").inputValue(), "11000");
+  assert.equal(await page.locator("#yb-taxAmount").inputValue(), "0");
+  assert.equal(await page.locator("#yb-taxAmount").isDisabled(), true);
+  await page.locator("#yb-supplyAmount").fill("22000");
+  assert.equal(await page.locator("#yb-amount").inputValue(), "22000");
+});
+test("accounting can see classification and export one approved expense file", async () => {
+  const approvedExpense = {
+    id: "erp-ready-1",
+    number: "YJ-EXPENSE-20261009-ERP001",
+    kind: "expense",
+    status: "approved",
+    erpExportStatus: "ready",
+    requesterUid: "employee",
+    requesterName: "시험 직원",
+    approverUids: ["finance", "admin"],
+    approverNames: ["회계 직원", "최종 승인자"],
+    step: 1,
+    attachments: {},
+    paidAmount: 0,
+    paymentStatus: "unpaid",
+    approvedAt: Date.now(),
+    details: {
+      title: "ERP 이관 검증",
+      reason: "더존 CSV 생성",
+      settlementType: "vendor",
+      category: "material",
+      taxType: "taxable",
+      supplyAmount: 10000,
+      taxAmount: 1000,
+      amount: 11000,
+      payee: "검증 거래처",
+      transactionDate: "2026-10-09",
+      plannedDate: "2026-10-10",
+      paymentMethod: "bank_transfer",
+      purchaseId: "",
+      orderReference: "",
+    },
+  };
+  listDocuments = [approvedExpense];
+  await mount();
+  detailDocument = approvedExpense;
+  await page.evaluate(() => {
+    window.auth.currentUser = { uid: "finance" };
+    window.testUser = {
+      uid: "finance",
+      name: "회계 직원",
+      role: "accounting",
+      status: "active",
+    };
+  });
+  await page.waitForTimeout(700);
+  await page.getByRole("button", { name: "새로고침", exact: true }).click();
+  await page.getByText("표준 문서 1건을 확인했습니다.").waitFor();
+  assert.equal(await page.locator("#yb-settlementType").count(), 1);
+  await page.getByRole("button", { name: "전체 문서", exact: true }).click();
+  await page.locator("#ybList .yb-row").first().click();
+  const exportButton = page.getByRole("button", { name: "더존 CSV 내보내기", exact: true });
+  const [download] = await Promise.all([page.waitForEvent("download"), exportButton.click()]);
+  assert.equal(download.suggestedFilename(), "YJ-EXPENSE-20261009-ERP001_DOUZONE.csv");
+  const request = requests.findLast((item) => item.action === "exportErp");
+  assert.equal(request.format, "csv");
 });
 test("partial forms can be saved as drafts and existing drafts can be edited", async () => {
   listDocuments = [];
@@ -319,7 +396,7 @@ test("A4 print view produces a readable PDF without interactive controls", async
   await page.getByText("표준 문서 1건을 확인했습니다.").waitFor();
   await page.locator("#ybList .yb-row").first().click();
   await page.locator("#ybDetail h4").first().waitFor();
-  const printButton = page.locator("#ybDetail button").filter({ hasText: "A4 인쇄 / PDF" });
+  const printButton = page.locator("#ybDetail button").filter({ hasText: "A4 표준서식 인쇄 / PDF" });
   await printButton.waitFor();
   await page.evaluate(() => {
     window.print = () => {};
