@@ -1414,6 +1414,22 @@
     row.append(el("th", label), el("td", value || "-"));
     table.append(row);
   }
+  function printWideRow(table, label, value, className) {
+    const row = el("tr", undefined, className);
+    const cell = el("td", value || "-");
+    cell.colSpan = 3;
+    row.append(el("th", label), cell);
+    table.append(row);
+  }
+  function printPairRows(table, entries) {
+    for (let index = 0; index < entries.length; index += 2) {
+      const row = el("tr");
+      const pairs = entries.slice(index, index + 2);
+      pairs.forEach(([label, value]) => row.append(el("th", label), el("td", value || "-")));
+      if (pairs.length === 1) row.lastElementChild.colSpan = 3;
+      table.append(row);
+    }
+  }
   function approvalSignatures(r) {
     const document = r.document;
     const history = [...(r.history || [])].sort(
@@ -1504,62 +1520,38 @@
     heading.append(brand, approvalTable);
     host.append(heading);
 
-    const meta = el("table", undefined, "yb-print-table yb-print-meta-table");
-    printRow(meta, "문서 상태", documentStatusLabel(document));
-    printRow(meta, "작성자", document.requesterName);
-    printRow(meta, "작성일시", printDate(document.createdAt));
-    printRow(meta, "제출일시", printDate(document.submittedAt));
-    printRow(meta, "최종 승인일시", printDate(document.approvedAt));
+    const meta = el("table", undefined, "yb-print-table yb-print-compact-grid yb-print-meta-table");
+    printPairRows(meta, [
+      ["문서 상태", documentStatusLabel(document)],
+      ["작성자", document.requesterName],
+      ["작성일시", printDate(document.createdAt)],
+      ["제출일시", printDate(document.submittedAt)],
+      ["최종 승인", printDate(document.approvedAt)],
+      ["문서번호", document.number || "-"],
+    ]);
     host.append(el("h2", "문서 기본정보"), meta);
 
-    const content = el("table", undefined, "yb-print-table yb-print-content-table");
-    printRow(content, "제목", document.details.title || "제목 없는 문서", "yb-print-title-row");
-    printRow(content, "요청 내용·사유", document.details.reason || "-");
-    for (const [key, label, type] of fields[document.kind] || [])
-      printRow(content, label, printFieldValue(document, key, type));
+    const content = el("table", undefined, "yb-print-table yb-print-compact-grid yb-print-content-table");
+    printWideRow(content, "제목", document.details.title || "제목 없는 문서", "yb-print-title-row");
+    printWideRow(content, "요청 내용·사유", document.details.reason || "-", "yb-print-reason-row");
+    const detailEntries = (fields[document.kind] || [])
+      .map(([key, label, type]) => [label.replace(/ \(선택\)$/, ""), printFieldValue(document, key, type), key])
+      .filter(([, value, key]) => value !== "-" || !["purchaseId", "orderReference"].includes(key))
+      .map(([label, value]) => [label, value]);
     if (document.kind === "expense") {
-      printRow(content, "지급 상태", paymentLabels[document.paymentStatus] || "-");
-      printRow(content, "지급액", money(document.paidAmount));
-      printRow(
-        content,
-        "ERP 이관",
-        document.erpExportStatus === "exported" ? "이관 완료" : "이관 전",
+      detailEntries.push(
+        ["지급 상태", paymentLabels[document.paymentStatus] || "-"],
+        ["지급액", money(document.paidAmount)],
+        ["ERP 이관", document.erpExportStatus === "exported" ? "이관 완료" : "이관 전"],
       );
     }
-    if (document.completedAt) printRow(content, "처리 결과", document.completionNote || "-");
+    if (document.completedAt) detailEntries.push(["처리 결과", document.completionNote || "-"]);
     if (document.cancellationReason)
-      printRow(content, "승인 취소 사유", document.cancellationReason);
+      detailEntries.push(["승인 취소 사유", document.cancellationReason]);
+    printPairRows(content, detailEntries);
     host.append(el("h2", "결재 내용"), content);
 
     const attachments = attachmentEntries(document);
-    const attachmentTable = el("table", undefined, "yb-print-table yb-print-files");
-    const attachmentHead = el("tr");
-    attachmentHead.append(el("th", "번호"), el("th", "첨부파일"), el("th", "크기"), el("th", "저장 상태"));
-    attachmentTable.append(attachmentHead);
-    if (attachments.length) {
-      attachments.forEach(([slot, attachment], index) => {
-        const row = el("tr");
-        row.append(
-          el("td", String(index + 1)),
-          el("td", attachment.name),
-          el("td", formatBytes(attachment.size)),
-          el("td", document.attachmentCompletion?.[slot] === true ? "저장·무결성 확인" : "업로드 미완료"),
-        );
-        attachmentTable.append(row);
-      });
-    } else {
-      const row = el("tr");
-      const cell = el("td", "첨부 없음");
-      cell.colSpan = 4;
-      row.append(cell);
-      attachmentTable.append(row);
-    }
-    host.append(el("h2", "첨부 내역"), attachmentTable);
-
-    const historyTable = el("table", undefined, "yb-print-table yb-print-history");
-    const historyHead = el("tr");
-    historyHead.append(el("th", "일시"), el("th", "처리자"), el("th", "처리"), el("th", "의견"));
-    historyTable.append(historyHead);
     const historyLabels = {
       create: "문서 작성",
       updateDraft: "임시저장 수정",
@@ -1572,18 +1564,32 @@
       settle: "정산 완료",
       complete: "처리 완료",
       cancelApproved: "승인 취소",
+      classifyExpense: "회계 분류",
+      exportErp: "ERP 이관",
     };
-    (r.history || []).forEach((item) => {
-      const row = el("tr");
-      row.append(
-        el("td", printDate(item.at)),
-        el("td", item.actorName || "-"),
-        el("td", historyLabels[item.action] || item.action),
-        el("td", item.reason || "-"),
-      );
-      historyTable.append(row);
-    });
-    host.append(el("h2", "결재·처리 이력"), historyTable);
+    const attachmentSummary = attachments.length
+      ? attachments
+          .map(
+            ([slot, attachment]) =>
+              `${attachment.name} (${formatBytes(attachment.size)}, ${
+                document.attachmentCompletion?.[slot] === true ? "저장 확인" : "미완료"
+              })`,
+          )
+          .join(" / ")
+      : "첨부 없음";
+    const historySummary = (r.history || []).length
+      ? (r.history || [])
+          .slice(-4)
+          .map(
+            (item) =>
+              `${historyLabels[item.action] || item.action} · ${item.actorName || "-"} · ${printDate(item.at)}`,
+          )
+          .join(" / ")
+      : "상단 결재 서명란 참조";
+    const audit = el("table", undefined, "yb-print-table yb-print-compact-grid yb-print-audit");
+    printWideRow(audit, "증빙·첨부", attachmentSummary);
+    printWideRow(audit, "최근 처리이력", historySummary);
+    host.append(el("h2", "증빙·결재 기록"), audit);
 
     const footer = el("footer", undefined, "yb-print-footer");
     footer.append(

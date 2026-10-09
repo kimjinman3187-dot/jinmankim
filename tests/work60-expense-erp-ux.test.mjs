@@ -49,6 +49,6 @@ test("ERP 이관은 서버시간과 Rules 잠금으로 한 번만 기록한다",
 });
 
 test("WORK60 자산은 새 캐시 버전을 사용한다", () => {
-  assert.match(html, /business-documents\.css\?v=20261009-work60/);
-  assert.match(html, /business-documents\.js\?v=20261009-work60/);
+  assert.match(html, /business-documents\.css\?v=20261009-work60-a4/);
+  assert.match(html, /business-documents\.js\?v=20261009-work60-a4/);
 });

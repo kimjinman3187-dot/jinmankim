@@ -370,23 +370,39 @@ test("load failure shows an honest unknown state instead of zero counts or raw i
   assert.equal(await page.locator("#pcHubDocGlanceTotal").innerText(), "조회 실패");
   assert.doesNotMatch(await page.locator("#yjBusinessDocuments").innerText(), /\binternal\b/);
 });
-test("A4 print view produces a readable PDF without interactive controls", async () => {
+test("A4 print view keeps a standard expense approval form on one page", async () => {
   const document = {
     id: "printable",
-    number: "YJ-GEN-20260930-ABC123",
-    kind: "general",
+    number: "YJ-EXPENSE-20260930-ABC123",
+    kind: "expense",
     status: "approved",
     requesterUid: "employee",
     requesterName: "시험 직원",
-    approverUids: ["admin"],
-    approverNames: ["최종 승인자"],
-    step: 0,
-    attachments: {},
+    approverUids: ["accounting", "admin"],
+    approverNames: ["회계 담당자", "최종 승인자"],
+    step: 2,
+    paymentStatus: "unpaid",
+    paidAmount: 0,
+    erpExportStatus: "ready",
+    attachments: {
+      slot1: { name: "거래명세서.pdf", size: 182400, type: "application/pdf" },
+    },
+    attachmentCompletion: { slot1: true },
     details: {
-      title: "인쇄 검증 문서",
-      reason: "A4 PDF 저장 검증",
-      category: "report",
-      content: "출력 본문",
+      title: "10월 원자재 매입대금 지급",
+      reason: "승인된 원자재 구매 건에 대한 거래처 지급 요청이며 세금계산서와 거래명세서를 확인했습니다.",
+      settlementType: "vendor",
+      category: "material",
+      taxType: "taxable",
+      amount: 121000,
+      supplyAmount: 110000,
+      taxAmount: 11000,
+      payee: "테스트 거래처",
+      transactionDate: "2026-10-08",
+      plannedDate: "2026-10-15",
+      paymentMethod: "bank_transfer",
+      purchaseId: "PURCHASE-20261008-01",
+      orderReference: "ORDER-20261008-01",
     },
   };
   listDocuments = [document];
@@ -404,9 +420,14 @@ test("A4 print view produces a readable PDF without interactive controls", async
   await printButton.click();
   assert.equal(await page.locator("#ybPrint").count(), 1);
   assert.equal(await page.locator("#ybPrint button,#ybPrint input,#ybPrint select").count(), 0);
+  await page.emulateMedia({ media: "print" });
+  const printHeight = await page.locator("#ybPrint").evaluate((node) => node.getBoundingClientRect().height);
+  assert.ok(printHeight <= (277 / 25.4) * 96, `표준 지출결의서가 A4 인쇄 높이를 초과했습니다: ${printHeight}px`);
   const pdfPath = path.join(os.tmpdir(), "yj-work53-document-a4.pdf");
   await page.pdf({ path: pdfPath, format: "A4", printBackground: true });
-  assert.equal(fs.readFileSync(pdfPath).subarray(0, 4).toString(), "%PDF");
+  const pdf = fs.readFileSync(pdfPath);
+  assert.equal(pdf.subarray(0, 4).toString(), "%PDF");
+  assert.equal((pdf.toString("latin1").match(/\/Type\s*\/Page\b/g) || []).length, 1);
 });
 test("account switch clears sensitive form values and invalidates old session", async () => {
   listDocuments = [];
