@@ -24,6 +24,15 @@
     paid: "지급 완료",
     not_required: "지급 불필요",
   };
+  function documentStatusLabel(document) {
+    if (document?.kind === "expense" && document.erpExportStatus === "exported")
+      return "ERP 이관 완료";
+    if (document?.kind === "expense" && document.status === "approved")
+      return "승인 완료 · ERP 이관 대기";
+    if (document?.kind === "expense" && document.status === "pending")
+      return document.step === 0 ? "회계 검토" : "최종 승인 대기";
+    return status[document?.status] || document?.status || "-";
+  }
   const mime = {
     pdf: "application/pdf",
     png: "image/png",
@@ -54,6 +63,8 @@
           "other:기타",
         ],
       ],
+      ["taxType", "과세 구분", ["taxable:과세", "exempt:면세", "zero_rated:영세"]],
+      ["amount", "총액 (원)", "number"],
       ["supplyAmount", "공급가액 (원)", "number"],
       ["taxAmount", "부가세 (원)", "number"],
       ["payee", "지급 대상", "text"],
@@ -157,7 +168,7 @@
     '<div class="yb-header"><div><p class="yb-eyebrow">표준 문서 업무</p><h3>문서 작성·결재·지급을 한곳에서 처리합니다</h3><p>업무 카테고리별 표준 문서를 작성하고, 결재 상태와 실제 처리 결과를 함께 확인합니다.</p></div><button type="button" id="ybRefresh">새로고침</button></div>' +
     '<nav class="yb-tabs" aria-label="문서 업무 구분"><button type="button" data-yb-view="create">새 문서 작성</button><button type="button" data-yb-view="my">내 문서</button><button type="button" data-yb-view="inbox">결재함</button><button type="button" data-yb-view="payments">지급관리</button><button type="button" data-yb-view="all">전체 문서</button></nav>' +
     '<div class="yb-summary"><div><span>내 문서</span><strong id="ybMetricMine">0</strong></div><div><span>결재 대기</span><strong id="ybMetricPending">0</strong></div><div><span>반려</span><strong id="ybMetricRejected">0</strong></div><div><span>지급 대기</span><strong id="ybMetricPayment">0</strong></div></div>' +
-    '<p id="ybMessage" role="status" aria-live="polite"></p><section id="ybNotifications" class="yb-notifications" aria-label="문서 알림"></section><div class="yb-layout"><form id="ybForm"><fieldset id="ybFieldset"><h4 id="ybFormTitle">새 문서 작성</h4><div id="ybCommon"></div><div id="ybFields" class="yb-grid"></div><div id="ybRoute" class="yb-grid"></div><label>첨부파일 (최대 5개, 각 3MB·합계 10MB)<input id="ybFiles" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx,.csv"></label><div id="ybAttachmentState" class="yb-attachment-state" role="status" aria-live="polite"></div><label id="ybClearFilesLabel"><input id="ybClearFiles" type="checkbox"> 기존 첨부를 모두 제거</label><p id="ybAttachmentHelp" class="yb-help">무료 요금제 전용 보안 저장 · 지출은 증빙 필수 · 구매·수리는 견적 첨부 권장</p><button type="submit" name="intent" value="submit" class="yb-primary">저장하고 결재 요청</button><button type="submit" name="intent" value="draft">임시저장</button><button type="button" id="ybNew">새 양식</button></fieldset></form><section id="ybRecords"><div class="yb-toolbar"><div><h4 id="ybListTitle">내 문서</h4><p id="ybListHelp" class="yb-help">작성한 표준 문서를 확인합니다.</p></div><label>문서 종류<select id="ybFilter"><option value="all">전체</option></select></label></div><div id="ybList"></div><div id="ybDetail"></div></section></div>';
+    '<p id="ybMessage" role="status" aria-live="polite"></p><section id="ybNotifications" class="yb-notifications" aria-label="문서 알림"></section><div class="yb-layout"><form id="ybForm"><fieldset id="ybFieldset"><h4 id="ybFormTitle">새 문서 작성</h4><div id="ybDraftMeta" class="yb-draft-meta" aria-label="자동 입력 정보"></div><div id="ybCommon"></div><div id="ybFields" class="yb-grid"></div><div id="ybRoute" class="yb-grid"></div><label id="ybFileDrop" class="yb-file-drop">증빙 자료 첨부 <span>여기에 끌어놓거나 눌러서 선택 · 최대 5개, 각 3MB·합계 10MB</span><input id="ybFiles" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx,.csv"></label><div id="ybAttachmentState" class="yb-attachment-state" role="status" aria-live="polite"></div><label id="ybClearFilesLabel"><input id="ybClearFiles" type="checkbox"> 기존 첨부를 모두 제거</label><p id="ybAttachmentHelp" class="yb-help">무료 요금제 전용 보안 저장 · 지출은 증빙 필수 · 구매·수리는 견적 첨부 권장</p><button type="submit" name="intent" value="submit" class="yb-primary">저장하고 결재 요청</button><button type="submit" name="intent" value="draft">임시저장</button><button type="button" id="ybNew">새 양식</button></fieldset></form><section id="ybRecords"><div class="yb-toolbar"><div><h4 id="ybListTitle">내 문서</h4><p id="ybListHelp" class="yb-help">작성한 표준 문서를 확인합니다.</p></div><label>문서 종류<select id="ybFilter"><option value="all">전체</option></select></label></div><div id="ybList"></div><div id="ybDetail"></div></section></div>';
   const $ = (id) => document.getElementById(id);
   const form = $("ybForm");
   const views = ["create", "my", "inbox", "payments", "all"];
@@ -247,6 +258,39 @@
     parent.append(wrap);
     return n;
   }
+  function chipField(parent, key, label, options, value) {
+    const group = el("fieldset", undefined, "yb-chip-field");
+    group.append(el("legend", label));
+    const chips = el("div", undefined, "yb-chips");
+    options.forEach((option, index) => {
+      const split = option.indexOf(":");
+      const optionValue = option.slice(0, split);
+      const chip = el("label", undefined, "yb-chip");
+      const input = el("input");
+      input.type = "radio";
+      input.name = key;
+      input.value = optionValue;
+      input.checked = value ? value === optionValue : index === 0;
+      chip.append(input, el("span", option.slice(split + 1)));
+      chips.append(chip);
+    });
+    group.append(chips);
+    parent.append(group);
+    return group;
+  }
+  function renderDraftMeta(document) {
+    const meta = $("ybDraftMeta");
+    meta.replaceChildren();
+    [
+      ["문서번호", document?.number || "저장 시 자동 발급"],
+      ["작성일시", document?.createdAt ? printDate(document.createdAt) : "저장 시 기록"],
+      ["작성자", document?.requesterName || state.user?.name || "로그인 계정 확인 중"],
+    ].forEach(([label, value]) => {
+      const item = el("div");
+      item.append(el("span", label), el("strong", value));
+      meta.append(item);
+    });
+  }
   const type = field(
     $("ybCommon"),
     "kind",
@@ -292,8 +336,81 @@
   }
   function renderFields() {
     $("ybFields").replaceChildren();
-    for (const f of fields[type.value]) field($("ybFields"), ...f);
+    const target = $("ybFields");
+    let related = null;
+    for (const f of fields[type.value]) {
+      const [key, label, control] = f;
+      if (type.value === "expense" && key === "settlementType" && !isFinance())
+        continue;
+      if (type.value === "expense" && ["purchaseId", "orderReference"].includes(key)) {
+        if (!related) {
+          related = el("details", undefined, "yb-related");
+          related.append(el("summary", "+ 관련 문서 추가"));
+          target.append(related);
+        }
+        field(related, key, label, control);
+      } else if (
+        type.value === "expense" &&
+        ["category", "taxType"].includes(key) &&
+        Array.isArray(control)
+      ) {
+        chipField(target, key, label, control);
+      } else {
+        field(target, key, label, control);
+      }
+    }
+    bindExpenseAmounts();
     route();
+    renderDraftMeta(state.editing);
+  }
+  function selectedValue(name) {
+    return form.querySelector(`[name="${name}"]:checked`)?.value || "";
+  }
+  function setFormValue(key, value) {
+    const radios = form.querySelectorAll(`[name="${key}"][type="radio"]`);
+    if (radios.length) {
+      radios.forEach((input) => {
+        input.checked = input.value === value;
+      });
+      return;
+    }
+    if ($("yb-" + key)) $("yb-" + key).value = value ?? "";
+    if (["purchaseId", "orderReference"].includes(key) && value)
+      $("yb-" + key)?.closest("details")?.setAttribute("open", "");
+  }
+  function calculateExpenseAmounts(source) {
+    if (type.value !== "expense") return;
+    const total = $("yb-amount");
+    const supply = $("yb-supplyAmount");
+    const tax = $("yb-taxAmount");
+    if (!total || !supply || !tax) return;
+    const taxType = selectedValue("taxType") || "taxable";
+    const totalValue = Math.max(0, Math.trunc(Number(total.value) || 0));
+    const supplyValue = Math.max(0, Math.trunc(Number(supply.value) || 0));
+    if (source === "total") {
+      const nextSupply = taxType === "taxable" ? Math.round(totalValue / 1.1) : totalValue;
+      supply.value = String(nextSupply);
+      tax.value = String(taxType === "taxable" ? totalValue - nextSupply : 0);
+    } else {
+      const nextTax = taxType === "taxable" ? Math.round(supplyValue * 0.1) : 0;
+      tax.value = String(nextTax);
+      total.value = String(supplyValue + nextTax);
+    }
+    tax.disabled = taxType !== "taxable";
+  }
+  function bindExpenseAmounts() {
+    if (type.value !== "expense") return;
+    const total = $("yb-amount");
+    const supply = $("yb-supplyAmount");
+    const tax = $("yb-taxAmount");
+    if (!total || !supply || !tax) return;
+    tax.readOnly = true;
+    total.addEventListener("input", () => calculateExpenseAmounts("total"));
+    supply.addEventListener("input", () => calculateExpenseAmounts("supply"));
+    form.querySelectorAll('[name="taxType"]').forEach((input) =>
+      input.addEventListener("change", () => calculateExpenseAmounts(total.value ? "total" : "supply")),
+    );
+    calculateExpenseAmounts(total.value ? "total" : "supply");
   }
   type.addEventListener("change", () => {
     state.draft = null;
@@ -314,6 +431,23 @@
       : state.editing?.attachmentCount
         ? "파일 선택란이 비어 있어도 아래 저장 완료 표시가 있으면 기존 첨부는 유지됩니다."
         : "무료 요금제 전용 보안 저장 · 지출은 증빙 필수 · 구매·수리는 견적 첨부 권장";
+  });
+  ["dragenter", "dragover"].forEach((eventName) =>
+    $("ybFileDrop").addEventListener(eventName, (event) => {
+      event.preventDefault();
+      $("ybFileDrop").classList.add("is-dragging");
+    }),
+  );
+  ["dragleave", "drop"].forEach((eventName) =>
+    $("ybFileDrop").addEventListener(eventName, (event) => {
+      event.preventDefault();
+      $("ybFileDrop").classList.remove("is-dragging");
+    }),
+  );
+  $("ybFileDrop").addEventListener("drop", (event) => {
+    if (!event.dataTransfer?.files?.length) return;
+    $("ybFiles").files = event.dataTransfer.files;
+    $("ybFiles").dispatchEvent(new Event("change", { bubbles: true }));
   });
   $("ybClearFiles").addEventListener("change", () => {
     if ($("ybClearFiles").checked) $("ybFiles").value = "";
@@ -674,7 +808,7 @@
         el("span", d.number + " · " + kinds[d.kind]),
         el(
           "span",
-          status[d.status] +
+          documentStatusLabel(d) +
             (d.paymentStatus ? " · " + paymentLabels[d.paymentStatus] : ""),
         ),
       );
@@ -703,6 +837,52 @@
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     message("첨부 다운로드와 SHA-256 무결성 검증을 완료했습니다.");
+  }
+  function csvCell(value) {
+    const text = String(value ?? "");
+    return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  }
+  function erpRecord(document) {
+    return {
+      voucherDate: document.details.transactionDate,
+      documentNumber: document.number,
+      taxType: document.details.taxType || "taxable",
+      expenseCategory: document.details.category,
+      payee: document.details.payee,
+      supplyAmount: Number(document.details.supplyAmount) || 0,
+      taxAmount: Number(document.details.taxAmount) || 0,
+      totalAmount: Number(document.details.amount) || 0,
+      summary: document.details.title,
+      paymentMethod: document.details.paymentMethod,
+      approvedAt: new Date(
+        window.YJBusinessDocumentClient?.millis(document.approvedAt) || 0,
+      ).toISOString(),
+    };
+  }
+  function erpBlob(document, format) {
+    const record = erpRecord(document);
+    if (format === "json")
+      return new Blob([JSON.stringify(record, null, 2)], {
+        type: "application/json;charset=utf-8",
+      });
+    const headers = Object.keys(record);
+    const csv =
+      "\uFEFF" +
+      headers.map(csvCell).join(",") +
+      "\r\n" +
+      headers.map((key) => csvCell(record[key])).join(",") +
+      "\r\n";
+    return new Blob([csv], { type: "text/csv;charset=utf-8" });
+  }
+  function downloadErpBlob(row, format, blob) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${row.number}_DOUZONE.${format}`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   async function uploadPaymentProof(documentId, paymentId, file, meta, epoch) {
     guard(epoch);
@@ -746,18 +926,21 @@
     const r = await api({ action: "detail", id }, epoch);
     state.selected = r;
     const d = r.document;
+    const finance = isFinance();
     const box = $("ybDetail");
     box.replaceChildren();
     box.append(
       el("h4", d.details.title || "제목 없는 작성 중 문서"),
-      el("p", d.number + " · " + status[d.status]),
+      el("p", d.number + " · " + documentStatusLabel(d)),
     );
     const dl = el("dl");
     pair(dl, "문서 종류", kinds[d.kind]);
     pair(dl, "작성자", d.requesterName);
     pair(dl, "사유", d.details.reason);
     for (const [key, label, t] of fields[d.kind]) {
+      if (d.kind === "expense" && key === "settlementType" && !finance) continue;
       let val = d.details[key];
+      if (key === "taxType" && !val) val = "taxable";
       if (Array.isArray(t)) {
         const found = t.find((o) => o.split(":")[0] === val);
         val = found?.slice(found.indexOf(":") + 1) || val;
@@ -768,9 +951,9 @@
     }
     pair(dl, "결재선", d.approverNames.join(" → "));
     if (d.revisedFrom) pair(dl, "이전 문서 ID", d.revisedFrom);
-    if (d.kind === "expense") {
-      pair(dl, "총액", money(d.details.amount));
+    if (d.kind === "expense" && finance) {
       pair(dl, "지급 상태", paymentLabels[d.paymentStatus]);
+      pair(dl, "ERP 이관", d.erpExportStatus === "exported" ? "이관 완료" : d.status === "approved" ? "이관 대기" : "승인 전");
       pair(
         dl,
         "지급액 / 잔액",
@@ -847,8 +1030,9 @@
           $("yb-title").value = d.details.title;
           $("yb-reason").value = d.details.reason;
           for (const [k, v] of Object.entries(d.details)) {
-            if ($("yb-" + k)) $("yb-" + k).value = v;
+            setFormValue(k, v);
           }
+          calculateExpenseAmounts("total");
           if ($("yb-reviewerUid")) $("yb-reviewerUid").value = d.approverUids[0] || "";
           if ($("yb-approverUid"))
             $("yb-approverUid").value = d.approverUids[d.approverUids.length - 1] || "";
@@ -898,6 +1082,37 @@
     if (d.status === "pending" && d.requesterUid === state.uid)
       actions.append(button("회수", () => run(() => act("withdraw"))));
     if (d.status === "pending" && d.approverUids[d.step] === state.uid) {
+      if (d.kind === "expense" && d.step === 0 && finance) {
+        const classification = field(
+          actions,
+          "accountingSettlementType",
+          "회계 처리 유형",
+          [
+            "vendor:거래처 지급 요청",
+            "reimbursement:직원 경비 정산",
+            "prepaid:법인카드·기지급 정리",
+          ],
+          d.details.settlementType,
+        );
+        actions.append(
+          button("회계 분류 저장", () =>
+            run(async (currentEpoch) => {
+              await api(
+                operation({
+                  action: "classifyExpense",
+                  id,
+                  settlementType: classification.value,
+                  reason: classification.value,
+                }),
+                currentEpoch,
+              );
+              await load(currentEpoch);
+              await detail(id, currentEpoch);
+              message("회계 처리 유형을 저장했습니다.");
+            }),
+          ),
+        );
+      }
       const note = field(
         actions,
         "decisionReason",
@@ -920,8 +1135,9 @@
           type.value = d.kind;
           renderFields();
           for (const [k, v] of Object.entries(d.details)) {
-            if ($("yb-" + k)) $("yb-" + k).value = v;
+            setFormValue(k, v);
           }
+          calculateExpenseAmounts("total");
           message(
             "이전 문서 이력은 보존됩니다. 결재자와 첨부를 다시 확인하세요.",
           );
@@ -939,8 +1155,11 @@
           $("yb-title").value = d.details.title + " 대금 지급";
           $("yb-reason").value = "구매요청 " + d.number + "에 따른 지급";
           $("yb-purchaseId").value = id;
+          setFormValue("taxType", "taxable");
+          $("yb-amount").value = d.details.amount;
           $("yb-supplyAmount").value = d.details.amount;
           $("yb-taxAmount").value = 0;
+          calculateExpenseAmounts("total");
           message("공급가액·부가세·실제 지급액을 증빙에 맞춰 확인하세요.");
           form.scrollIntoView({ behavior: "smooth" });
         }),
@@ -953,7 +1172,8 @@
       !d.paidAmount &&
       !d.settledAt &&
       !d.completedAt &&
-      !d.allocatedAmount
+      !d.allocatedAmount &&
+      d.erpExportStatus !== "exported"
     ) {
       const note = field(
         actions,
@@ -965,7 +1185,40 @@
         button("승인 취소", () => run(() => act("cancelApproved", note.value))),
       );
     }
-    const finance = isFinance();
+    if (d.status === "approved" && d.kind === "expense" && finance) {
+      const erpState = d.erpExportStatus || "ready";
+      const erpPanel = el("section", undefined, "yb-erp-export");
+      erpPanel.append(
+        el("h4", "더존 ERP 내보내기"),
+        el(
+          "p",
+          erpState === "exported"
+            ? `이관 완료 · ${printDate(d.erpExportedAt)} · ${d.erpExportedBy || "처리자 확인"}`
+            : "승인 데이터를 UTF-8 BOM CSV 또는 JSON으로 내려받고 이관 완료로 잠급니다.",
+          "yb-help",
+        ),
+      );
+      if (erpState !== "exported") {
+        ["csv", "json"].forEach((format) =>
+          erpPanel.append(
+            button(`더존 ${format.toUpperCase()} 내보내기`, () =>
+              run(async (currentEpoch) => {
+                const blob = erpBlob(d, format);
+                await api(
+                  operation({ action: "exportErp", id, format }),
+                  currentEpoch,
+                );
+                downloadErpBlob(d, format, blob);
+                await load(currentEpoch);
+                await detail(id, currentEpoch);
+                message("ERP 파일을 생성하고 이관 완료 상태로 잠갔습니다.");
+              }),
+            ),
+          ),
+        );
+      }
+      actions.append(erpPanel);
+    }
     if (d.status === "approved" && d.kind === "expense" && finance) {
       if (d.details.settlementType === "prepaid" && !d.settledAt) {
         const note = field(
@@ -1114,6 +1367,7 @@
       create: "문서 작성",
       updateDraft: "임시저장 수정",
       submit: "결재 요청",
+      classifyExpense: "회계 분류 저장",
       approve: "승인",
       reject: "반려",
       withdraw: "회수",
@@ -1122,6 +1376,7 @@
       settle: "정산 완료",
       complete: "처리 완료",
       cancelApproved: "승인 취소",
+      exportErp: "ERP 이관 완료",
     };
     for (const h of r.history)
       box.append(
@@ -1145,6 +1400,7 @@
   }
   function printFieldValue(document, key, type) {
     let value = document.details[key];
+    if (key === "taxType" && !value) value = "taxable";
     if (Array.isArray(type)) {
       const found = type.find((option) => option.split(":")[0] === value);
       value = found?.slice(found.indexOf(":") + 1) || value;
@@ -1157,6 +1413,22 @@
     const row = el("tr", undefined, className);
     row.append(el("th", label), el("td", value || "-"));
     table.append(row);
+  }
+  function printWideRow(table, label, value, className) {
+    const row = el("tr", undefined, className);
+    const cell = el("td", value || "-");
+    cell.colSpan = 3;
+    row.append(el("th", label), cell);
+    table.append(row);
+  }
+  function printPairRows(table, entries) {
+    for (let index = 0; index < entries.length; index += 2) {
+      const row = el("tr");
+      const pairs = entries.slice(index, index + 2);
+      pairs.forEach(([label, value]) => row.append(el("th", label), el("td", value || "-")));
+      if (pairs.length === 1) row.lastElementChild.colSpan = 3;
+      table.append(row);
+    }
   }
   function approvalSignatures(r) {
     const document = r.document;
@@ -1248,58 +1520,38 @@
     heading.append(brand, approvalTable);
     host.append(heading);
 
-    const meta = el("table", undefined, "yb-print-table yb-print-meta-table");
-    printRow(meta, "문서 상태", status[document.status] || document.status);
-    printRow(meta, "작성자", document.requesterName);
-    printRow(meta, "작성일시", printDate(document.createdAt));
-    printRow(meta, "제출일시", printDate(document.submittedAt));
-    printRow(meta, "최종 승인일시", printDate(document.approvedAt));
+    const meta = el("table", undefined, "yb-print-table yb-print-compact-grid yb-print-meta-table");
+    printPairRows(meta, [
+      ["문서 상태", documentStatusLabel(document)],
+      ["작성자", document.requesterName],
+      ["작성일시", printDate(document.createdAt)],
+      ["제출일시", printDate(document.submittedAt)],
+      ["최종 승인", printDate(document.approvedAt)],
+      ["문서번호", document.number || "-"],
+    ]);
     host.append(el("h2", "문서 기본정보"), meta);
 
-    const content = el("table", undefined, "yb-print-table yb-print-content-table");
-    printRow(content, "제목", document.details.title || "제목 없는 문서", "yb-print-title-row");
-    printRow(content, "요청 내용·사유", document.details.reason || "-");
-    for (const [key, label, type] of fields[document.kind] || [])
-      printRow(content, label, printFieldValue(document, key, type));
+    const content = el("table", undefined, "yb-print-table yb-print-compact-grid yb-print-content-table");
+    printWideRow(content, "제목", document.details.title || "제목 없는 문서", "yb-print-title-row");
+    printWideRow(content, "요청 내용·사유", document.details.reason || "-", "yb-print-reason-row");
+    const detailEntries = (fields[document.kind] || [])
+      .map(([key, label, type]) => [label.replace(/ \(선택\)$/, ""), printFieldValue(document, key, type), key])
+      .filter(([, value, key]) => value !== "-" || !["purchaseId", "orderReference"].includes(key))
+      .map(([label, value]) => [label, value]);
     if (document.kind === "expense") {
-      printRow(content, "총액", money(document.details.amount));
-      printRow(content, "지급 상태", paymentLabels[document.paymentStatus] || "-");
-      printRow(content, "지급액", money(document.paidAmount));
+      detailEntries.push(
+        ["지급 상태", paymentLabels[document.paymentStatus] || "-"],
+        ["지급액", money(document.paidAmount)],
+        ["ERP 이관", document.erpExportStatus === "exported" ? "이관 완료" : "이관 전"],
+      );
     }
-    if (document.completedAt) printRow(content, "처리 결과", document.completionNote || "-");
+    if (document.completedAt) detailEntries.push(["처리 결과", document.completionNote || "-"]);
     if (document.cancellationReason)
-      printRow(content, "승인 취소 사유", document.cancellationReason);
+      detailEntries.push(["승인 취소 사유", document.cancellationReason]);
+    printPairRows(content, detailEntries);
     host.append(el("h2", "결재 내용"), content);
 
     const attachments = attachmentEntries(document);
-    const attachmentTable = el("table", undefined, "yb-print-table yb-print-files");
-    const attachmentHead = el("tr");
-    attachmentHead.append(el("th", "번호"), el("th", "첨부파일"), el("th", "크기"), el("th", "저장 상태"));
-    attachmentTable.append(attachmentHead);
-    if (attachments.length) {
-      attachments.forEach(([slot, attachment], index) => {
-        const row = el("tr");
-        row.append(
-          el("td", String(index + 1)),
-          el("td", attachment.name),
-          el("td", formatBytes(attachment.size)),
-          el("td", document.attachmentCompletion?.[slot] === true ? "저장·무결성 확인" : "업로드 미완료"),
-        );
-        attachmentTable.append(row);
-      });
-    } else {
-      const row = el("tr");
-      const cell = el("td", "첨부 없음");
-      cell.colSpan = 4;
-      row.append(cell);
-      attachmentTable.append(row);
-    }
-    host.append(el("h2", "첨부 내역"), attachmentTable);
-
-    const historyTable = el("table", undefined, "yb-print-table yb-print-history");
-    const historyHead = el("tr");
-    historyHead.append(el("th", "일시"), el("th", "처리자"), el("th", "처리"), el("th", "의견"));
-    historyTable.append(historyHead);
     const historyLabels = {
       create: "문서 작성",
       updateDraft: "임시저장 수정",
@@ -1312,18 +1564,32 @@
       settle: "정산 완료",
       complete: "처리 완료",
       cancelApproved: "승인 취소",
+      classifyExpense: "회계 분류",
+      exportErp: "ERP 이관",
     };
-    (r.history || []).forEach((item) => {
-      const row = el("tr");
-      row.append(
-        el("td", printDate(item.at)),
-        el("td", item.actorName || "-"),
-        el("td", historyLabels[item.action] || item.action),
-        el("td", item.reason || "-"),
-      );
-      historyTable.append(row);
-    });
-    host.append(el("h2", "결재·처리 이력"), historyTable);
+    const attachmentSummary = attachments.length
+      ? attachments
+          .map(
+            ([slot, attachment]) =>
+              `${attachment.name} (${formatBytes(attachment.size)}, ${
+                document.attachmentCompletion?.[slot] === true ? "저장 확인" : "미완료"
+              })`,
+          )
+          .join(" / ")
+      : "첨부 없음";
+    const historySummary = (r.history || []).length
+      ? (r.history || [])
+          .slice(-4)
+          .map(
+            (item) =>
+              `${historyLabels[item.action] || item.action} · ${item.actorName || "-"} · ${printDate(item.at)}`,
+          )
+          .join(" / ")
+      : "상단 결재 서명란 참조";
+    const audit = el("table", undefined, "yb-print-table yb-print-compact-grid yb-print-audit");
+    printWideRow(audit, "증빙·첨부", attachmentSummary);
+    printWideRow(audit, "최근 처리이력", historySummary);
+    host.append(el("h2", "증빙·결재 기록"), audit);
 
     const footer = el("footer", undefined, "yb-print-footer");
     footer.append(
@@ -1364,9 +1630,19 @@
       if (!state.draft) {
         const input = Object.fromEntries(
           [...form.elements]
-            .filter((n) => n.name)
+            .filter(
+              (n) =>
+                n.name &&
+                n.name !== "intent" &&
+                (n.type !== "radio" || n.checked),
+            )
             .map((n) => [n.name, n.value]),
         );
+        if (type.value === "expense" && !input.settlementType)
+          input.settlementType =
+            input.paymentMethod === "corporate_card"
+              ? "prepaid"
+              : state.editing?.details?.settlementType || "vendor";
         const details = { title: input.title, reason: input.reason };
         for (const [k, , t] of fields[type.value])
           details[k] = t === "number" ? Number(input[k]) : input[k] || "";

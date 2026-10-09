@@ -17,6 +17,7 @@ const expenseDetails = {
   reason: "승인된 거래처 지급",
   settlementType: "vendor",
   category: "material",
+  taxType: "taxable",
   supplyAmount: 10000,
   taxAmount: 0,
   amount: 10000,
@@ -139,7 +140,7 @@ test("거래처·계약조건 승인서를 초안과 생성 이력으로 함께 
   const operationId = "create-contract-00001";
   const batch = fs.writeBatch(db);
   batch.set(fs.doc(db, "business_documents", contractId), {
-    schemaVersion: 8,
+    schemaVersion: 9,
     clientMode: "spark-firestore",
     kind: "vendor_contract",
     number: "YJ-CONTRACT-20261008-TEST01",
@@ -180,6 +181,9 @@ test("거래처·계약조건 승인서를 초안과 생성 이력으로 함께 
     allocatedAmount: 0,
     purchaseReserved: false,
     revisedFrom: "",
+    erpExportStatus: null,
+    erpExportedAt: null,
+    erpExportedBy: "",
     lastOperationId: operationId,
   });
   batch.set(fs.doc(db, "business_documents", contractId, "history", operationId), {
@@ -196,6 +200,94 @@ test("거래처·계약조건 승인서를 초안과 생성 이력으로 함께 
   await assertSucceeds(batch.commit());
 });
 
+test("스키마 9 지출결의서는 과세구분과 ERP 초기상태를 함께 저장한다", async () => {
+  const db = env.authenticatedContext("emp1").firestore();
+  const id = "expense-schema9-draft";
+  const operationId = "create-expense-schema9-001";
+  const row = {
+    ...approvedExpense(),
+    schemaVersion: 9,
+    number: "YJ-EXPENSE-20261009-SCHEMA9",
+    details: {
+      ...expenseDetails,
+      taxType: "exempt",
+      supplyAmount: 10000,
+      taxAmount: 0,
+      amount: 10000,
+    },
+    approverUids: [],
+    approverNames: [],
+    status: "draft",
+    step: 0,
+    createdAt: fs.serverTimestamp(),
+    updatedAt: fs.serverTimestamp(),
+    submittedAt: null,
+    approvedAt: null,
+    erpExportStatus: "not_ready",
+    erpExportedAt: null,
+    erpExportedBy: "",
+    lastOperationId: operationId,
+  };
+  const batch = fs.writeBatch(db);
+  batch.set(fs.doc(db, "business_documents", id), row);
+  batch.set(fs.doc(db, "business_documents", id, "history", operationId), {
+    operationId,
+    action: "create",
+    actorUid: "emp1",
+    actorName: USERS.emp1.name,
+    actorRole: USERS.emp1.role,
+    at: fs.serverTimestamp(),
+    reason: "",
+    previousStatus: "none",
+    nextStatus: "draft",
+  });
+  await assertSucceeds(batch.commit());
+});
+
+test("면세 지출결의서에 부가세를 넣으면 Rules가 차단한다", async () => {
+  const db = env.authenticatedContext("emp1").firestore();
+  const id = "expense-invalid-exempt-tax";
+  const operationId = "create-expense-invalid-001";
+  const row = {
+    ...approvedExpense(),
+    schemaVersion: 9,
+    number: "YJ-EXPENSE-20261009-BADTAX",
+    details: {
+      ...expenseDetails,
+      taxType: "exempt",
+      supplyAmount: 10000,
+      taxAmount: 1000,
+      amount: 11000,
+    },
+    approverUids: [],
+    approverNames: [],
+    status: "draft",
+    step: 0,
+    createdAt: fs.serverTimestamp(),
+    updatedAt: fs.serverTimestamp(),
+    submittedAt: null,
+    approvedAt: null,
+    erpExportStatus: "not_ready",
+    erpExportedAt: null,
+    erpExportedBy: "",
+    lastOperationId: operationId,
+  };
+  const batch = fs.writeBatch(db);
+  batch.set(fs.doc(db, "business_documents", id), row);
+  batch.set(fs.doc(db, "business_documents", id, "history", operationId), {
+    operationId,
+    action: "create",
+    actorUid: "emp1",
+    actorName: USERS.emp1.name,
+    actorRole: USERS.emp1.role,
+    at: fs.serverTimestamp(),
+    reason: "",
+    previousStatus: "none",
+    nextStatus: "draft",
+  });
+  await assertFails(batch.commit());
+});
+
 test("일반 직원은 지급 준비 기록을 생성할 수 없다", async () => {
   const db = env.authenticatedContext("emp1").firestore();
   await assertFails(
@@ -204,6 +296,56 @@ test("일반 직원은 지급 준비 기록을 생성할 수 없다", async () =
       { ...paymentDraft(), actorUid: "emp1", actorName: USERS.emp1.name, actorRole: USERS.emp1.role },
     ),
   );
+});
+
+test("회계는 승인 문서를 ERP 이관 완료로 한 번만 잠글 수 있다", async () => {
+  const db = env.authenticatedContext("emp2").firestore();
+  const documentRef = fs.doc(db, "business_documents", docId);
+  const operationId = "erp-export-operation-0001";
+  const batch = fs.writeBatch(db);
+  batch.update(documentRef, {
+    schemaVersion: 9,
+    erpExportStatus: "exported",
+    erpExportedAt: fs.serverTimestamp(),
+    erpExportedBy: "emp2",
+    updatedAt: fs.serverTimestamp(),
+    lastOperationId: operationId,
+  });
+  batch.set(fs.doc(db, "business_documents", docId, "history", operationId), {
+    operationId,
+    action: "exportErp",
+    actorUid: "emp2",
+    actorName: USERS.emp2.name,
+    actorRole: USERS.emp2.role,
+    at: fs.serverTimestamp(),
+    reason: "csv",
+    previousStatus: "approved",
+    nextStatus: "approved",
+  });
+  await assertSucceeds(batch.commit());
+
+  const duplicateId = "erp-export-operation-0002";
+  const duplicate = fs.writeBatch(db);
+  duplicate.update(documentRef, {
+    schemaVersion: 9,
+    erpExportStatus: "exported",
+    erpExportedAt: fs.serverTimestamp(),
+    erpExportedBy: "emp2",
+    updatedAt: fs.serverTimestamp(),
+    lastOperationId: duplicateId,
+  });
+  duplicate.set(fs.doc(db, "business_documents", docId, "history", duplicateId), {
+    operationId: duplicateId,
+    action: "exportErp",
+    actorUid: "emp2",
+    actorName: USERS.emp2.name,
+    actorRole: USERS.emp2.role,
+    at: fs.serverTimestamp(),
+    reason: "json",
+    previousStatus: "approved",
+    nextStatus: "approved",
+  });
+  await assertFails(duplicate.commit());
 });
 
 test("지급 증빙 청크·완료 표시 후 지급·이력·중복번호·알림을 원자적으로 기록한다", async () => {

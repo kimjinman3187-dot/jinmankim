@@ -7,7 +7,7 @@
   const MAX_FILE_SIZE = 3 * 1024 * 1024;
   const MAX_TOTAL_SIZE = 10 * 1024 * 1024;
   const MAX_FILES = 5;
-  const SCHEMA_VERSION = 8;
+  const SCHEMA_VERSION = 9;
   const MIME = {
     pdf: "application/pdf",
     png: "image/png",
@@ -51,9 +51,11 @@
     if (kind === "expense") {
       out.settlementType = choice(d.settlementType, ["vendor", "reimbursement", "prepaid"], "처리 유형");
       out.category = choice(d.category, ["material", "outsourcing", "general", "entertainment", "other"], "지출 구분");
+      out.taxType = choice(d.taxType, ["taxable", "exempt", "zero_rated"], "과세 구분");
       out.supplyAmount = money(d.supplyAmount, "공급가액", true);
       out.taxAmount = money(d.taxAmount, "부가세", true);
       out.amount = money(out.supplyAmount + out.taxAmount, "총액");
+      check(out.taxType === "taxable" || out.taxAmount === 0, "면세·영세 거래의 부가세는 0원이어야 합니다.", "invalid-argument");
       out.payee = text(d.payee, "지급 대상", 100);
       out.transactionDate = date(d.transactionDate, "거래일");
       out.plannedDate = date(d.plannedDate, "지급 요청일");
@@ -118,8 +120,10 @@
     if (kind === "expense") {
       out.settlementType = ["vendor", "reimbursement", "prepaid"].includes(d.settlementType) ? d.settlementType : "vendor";
       out.category = ["material", "outsourcing", "general", "entertainment", "other"].includes(d.category) ? d.category : "material";
+      out.taxType = ["taxable", "exempt", "zero_rated"].includes(d.taxType) ? d.taxType : "taxable";
       out.supplyAmount = Math.trunc(number("supplyAmount"));
       out.taxAmount = Math.trunc(number("taxAmount"));
+      if (out.taxType !== "taxable") out.taxAmount = 0;
       out.amount = out.supplyAmount + out.taxAmount;
       out.payee = value("payee", 100);
       out.transactionDate = value("transactionDate", 10);
@@ -341,6 +345,9 @@
       allocatedAmount: 0,
       purchaseReserved: false,
       revisedFrom: data.revisedFrom || "",
+      erpExportStatus: data.kind === "expense" ? "not_ready" : null,
+      erpExportedAt: null,
+      erpExportedBy: "",
       lastOperationId: data.operationId,
     };
     const ref = database().collection(COLLECTION).doc(data.id);
@@ -444,6 +451,10 @@
             : null,
         completionNote: document.completionNote || "",
         cancellationReason: document.cancellationReason || "",
+        erpExportStatus:
+          data.kind === "expense" ? document.erpExportStatus || "not_ready" : null,
+        erpExportedAt: document.erpExportedAt || null,
+        erpExportedBy: document.erpExportedBy || "",
         updatedAt: serverTime(),
         lastOperationId: data.operationId,
       };
@@ -759,6 +770,21 @@
         patch = { status: "withdrawn", updatedAt: serverTime(), lastOperationId: data.operationId };
         notificationRecipient = document.approverUids[document.step];
         notificationEvent = "approval_withdrawn";
+      } else if (data.action === "classifyExpense") {
+        check(
+          document.kind === "expense" && document.status === "pending" && document.step === 0 && document.approverUids[0] === user.uid,
+          "현재 회계 검토자만 처리 유형을 지정할 수 있습니다.",
+          "permission-denied",
+        );
+        check(["accounting", "admin"].includes(user.role), "회계 권한을 확인하세요.", "permission-denied");
+        const settlementType = choice(data.settlementType, ["vendor", "reimbursement", "prepaid"], "처리 유형");
+        check(document.details.paymentMethod !== "corporate_card" || settlementType === "prepaid", "법인카드는 기지급 정리로 분류해야 합니다.", "invalid-argument");
+        patch = {
+          details: { ...document.details, settlementType },
+          paymentStatus: settlementType === "prepaid" ? "not_required" : "unpaid",
+          updatedAt: serverTime(),
+          lastOperationId: data.operationId,
+        };
       } else if (["approve", "reject"].includes(data.action)) {
         check(document.status === "pending" && document.requesterUid !== user.uid && document.approverUids[document.step] === user.uid, "현재 지정 결재자만 처리할 수 있습니다.", "permission-denied");
         const roles = document.kind === "expense" && document.step === 0 ? ["accounting", "admin"] : ["admin"];
@@ -770,6 +796,12 @@
         } else {
           const final = document.step === document.approverUids.length - 1;
           patch = { status: final ? "approved" : "pending", step: final ? document.step : document.step + 1, approvedAt: final ? serverTime() : null, updatedAt: serverTime(), lastOperationId: data.operationId };
+          if (document.kind === "expense") {
+            patch.schemaVersion = SCHEMA_VERSION;
+            patch.erpExportStatus = final ? "ready" : "not_ready";
+            patch.erpExportedAt = null;
+            patch.erpExportedBy = "";
+          }
           notificationRecipient = final ? document.requesterUid : document.approverUids[document.step + 1];
           notificationEvent = final ? "approval_completed" : "approval_requested";
         }
@@ -780,8 +812,8 @@
           "permission-denied",
         );
         check(
-          document.status === "approved" && !document.paidAmount && !document.settledAt && !document.completedAt && !document.allocatedAmount,
-          "지급·정산·처리 전 승인 문서만 취소할 수 있습니다.",
+          document.status === "approved" && document.erpExportStatus !== "exported" && !document.paidAmount && !document.settledAt && !document.completedAt && !document.allocatedAmount,
+          "ERP 이관·지급·정산·처리 전 승인 문서만 취소할 수 있습니다.",
           "failed-precondition",
         );
         const reason = text(data.reason || "", "승인 취소 사유", 500);
@@ -824,6 +856,32 @@
       return { ok: true, id: data.id, status: next };
     });
   }
+  async function exportErp(data) {
+    const user = await actor();
+    check(["admin", "accounting"].includes(user.role), "관리자·회계만 ERP 자료를 내보낼 수 있습니다.", "permission-denied");
+    check(["csv", "json"].includes(data.format), "ERP 파일 형식을 확인하세요.", "invalid-argument");
+    const ref = database().collection(COLLECTION).doc(data.id);
+    const historyRef = ref.collection("history").doc(data.operationId);
+    return database().runTransaction(async (transaction) => {
+      const [snapshot, existing] = await Promise.all([transaction.get(ref), transaction.get(historyRef)]);
+      if (existing.exists) return { ok: true, duplicate: true };
+      check(snapshot.exists, "문서를 찾을 수 없습니다.", "not-found");
+      const document = snapshot.data();
+      check(document.kind === "expense" && document.status === "approved", "승인 완료된 지출결의서만 내보낼 수 있습니다.", "failed-precondition");
+      check((document.erpExportStatus || "ready") === "ready", "이미 ERP 이관을 완료한 문서입니다.", "already-exists");
+      const patch = {
+        schemaVersion: SCHEMA_VERSION,
+        erpExportStatus: "exported",
+        erpExportedAt: serverTime(),
+        erpExportedBy: user.uid,
+        updatedAt: serverTime(),
+        lastOperationId: data.operationId,
+      };
+      transaction.update(ref, patch);
+      transaction.set(historyRef, historyData(data.operationId, "exportErp", user, data.format, document.status, document.status));
+      return { ok: true, id: data.id, erpExportStatus: "exported" };
+    });
+  }
   async function request(data) {
     if (data.action === "directory") return directory();
     if (data.action === "list") return list();
@@ -834,6 +892,7 @@
     if (data.action === "updateDraft") return updateDraft(data);
     if (data.action === "preparePayment") return preparePayment(data);
     if (data.action === "pay") return recordPayment(data);
+    if (data.action === "exportErp") return exportErp(data);
     return transition(data);
   }
 
