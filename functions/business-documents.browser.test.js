@@ -70,6 +70,7 @@ test.before(async () => {
       "C:/Program Files/Google/Chrome/Application/chrome.exe",
   });
   page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  page.on("dialog", (dialog) => dialog.accept());
   page.on("pageerror", (error) => console.error("[browser-pageerror]", error));
   await page.exposeFunction("backend", async (data) => {
     requests.push(data);
@@ -79,6 +80,16 @@ test.before(async () => {
     if (["create", "updateDraft"].includes(data.action))
       return { document: { attachments: {} } };
     if (data.action === "submit") return { ok: true };
+    if (data.action === "generateErp")
+      return {
+        ok: true,
+        snapshot: {
+          voucherDate: "2026-10-09", documentNumber: "YJ-EXPENSE-20261009-ERP001",
+          taxType: "taxable", expenseCategory: "material", payee: "검증 거래처",
+          supplyAmount: 10000, taxAmount: 1000, totalAmount: 11000,
+          summary: "ERP 이관 검증", paymentMethod: "bank_transfer",
+        },
+      };
     if (data.action === "detail") {
       if (detailDocument)
         return { document: detailDocument, history: [], payments: [], capped: false };
@@ -90,12 +101,12 @@ test.before(async () => {
 test.after(async () => {
   await browser?.close();
 });
-test("all five forms render; form values survive disabled fieldset during submission", async () => {
+test("all six forms render; form values survive disabled fieldset during submission", async () => {
   listDocuments = [];
   await mount();
   await page.getByRole("button", { name: "새로고침", exact: true }).click();
   await page.getByText("표준 문서 0건을 확인했습니다.").waitFor();
-  for (const kind of ["expense", "purchase", "leave", "general", "quality"]) {
+  for (const kind of ["expense", "purchase", "vendor_contract", "leave", "general", "quality"]) {
     await page.locator("#yb-kind").selectOption(kind);
     assert.ok(
       (await page
@@ -197,7 +208,7 @@ test("accounting can see classification and export one approved expense file", a
   const exportButton = page.getByRole("button", { name: "더존 CSV 내보내기", exact: true });
   const [download] = await Promise.all([page.waitForEvent("download"), exportButton.click()]);
   assert.equal(download.suggestedFilename(), "YJ-EXPENSE-20261009-ERP001_DOUZONE.csv");
-  const request = requests.findLast((item) => item.action === "exportErp");
+  const request = requests.findLast((item) => item.action === "generateErp");
   assert.equal(request.format, "csv");
 });
 test("partial forms can be saved as drafts and existing drafts can be edited", async () => {
@@ -208,7 +219,7 @@ test("partial forms can be saved as drafts and existing drafts can be edited", a
   await page.locator("#yb-kind").selectOption("general");
   await page.locator("#yb-title").fill("작성 중 품의");
   await page.getByRole("button", { name: "임시저장", exact: true }).click();
-  await page.getByText(/임시저장은 완료됐지만/).waitFor();
+  await page.getByText(/임시저장했습니다\. 계속 작성할 수 있습니다/).waitFor();
   const created = requests.findLast((item) => item.action === "create");
   assert.equal(created.draftOnly, true);
   assert.equal(created.details.reason, "");
@@ -412,7 +423,7 @@ test("A4 print view keeps a standard expense approval form on one page", async (
   await page.getByText("표준 문서 1건을 확인했습니다.").waitFor();
   await page.locator("#ybList .yb-row").first().click();
   await page.locator("#ybDetail h4").first().waitFor();
-  const printButton = page.locator("#ybDetail button").filter({ hasText: "A4 표준서식 인쇄 / PDF" });
+  const printButton = page.locator("#ybDetail button").filter({ hasText: "A4 요약본 인쇄 / PDF" });
   await printButton.waitFor();
   await page.evaluate(() => {
     window.print = () => {};
@@ -428,6 +439,30 @@ test("A4 print view keeps a standard expense approval form on one page", async (
   const pdf = fs.readFileSync(pdfPath);
   assert.equal(pdf.subarray(0, 4).toString(), "%PDF");
   assert.equal((pdf.toString("latin1").match(/\/Type\s*\/Page\b/g) || []).length, 1);
+});
+test("document list keeps filters while paging twenty rows at a time", async () => {
+  const timestamp = Date.parse("2026-10-12T09:00:00+09:00");
+  listDocuments = Array.from({ length: 45 }, (_, index) => ({
+    id: `page-${index + 1}`,
+    number: `YJ-GENERAL-20261012-${String(index + 1).padStart(3, "0")}`,
+    kind: "general", status: "approved", requesterUid: "employee", requesterName: "시험 직원",
+    approverUids: ["admin"], approverNames: ["최종 승인자"], step: 0,
+    createdAt: timestamp - index * 1000, approvedAt: timestamp,
+    details: { title: `페이지 문서 ${index + 1}`, reason: "페이지 단위 조회 검증", effectiveDate: "2026-10-12", amount: index },
+  }));
+  await mount();
+  await page.getByRole("button", { name: "새로고침", exact: true }).click();
+  await page.getByText("표준 문서 45건을 확인했습니다.").waitFor();
+  await page.locator("#ybDateBasis").selectOption("approved");
+  await page.locator("#ybDateFrom").fill("2026-10-12");
+  await page.locator("#ybDateTo").fill("2026-10-12");
+  assert.equal(await page.locator("#ybList .yb-row").count(), 20);
+  await page.getByRole("button", { name: "다음", exact: true }).click();
+  await page.getByText("2 / 3 페이지 · 45건").waitFor();
+  assert.equal(await page.locator("#ybList .yb-row").count(), 20);
+  await page.locator("#ybSearch").fill("YJ-GENERAL-20261012-045");
+  assert.equal(await page.locator("#ybList .yb-row").count(), 1);
+  assert.equal(await page.locator("#ybPager").innerText(), "");
 });
 test("account switch clears sensitive form values and invalidates old session", async () => {
   listDocuments = [];
@@ -447,8 +482,8 @@ test("account switch clears sensitive form values and invalidates old session", 
   );
   assert.equal(await page.locator("#ybDetail").innerText(), "");
 });
-test("no horizontal overflow at 360,390,430,1440; labels and focus exist", async () => {
-  for (const width of [360, 390, 430, 1440]) {
+test("no horizontal overflow at 360,390,430,1366,1440,1920; labels and focus exist", async () => {
+  for (const width of [360, 390, 430, 1366, 1440, 1920]) {
     await page.setViewportSize({ width, height: 1000 });
     assert.equal(
       await page.evaluate(

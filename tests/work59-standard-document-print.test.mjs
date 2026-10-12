@@ -7,7 +7,7 @@ const css = readFileSync(new URL("../business-documents.css", import.meta.url), 
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 
 test("표준문서 인쇄물은 화면 복제가 아닌 독립 A4 문서로 구성된다", () => {
-  assert.match(ui, /function buildPrintDocument\(r\)/);
+  assert.match(ui, /function buildPrintDocument\(r, mode = "summary"\)/);
   assert.doesNotMatch(ui, /\$\("ybDetail"\)\.cloneNode/);
   assert.match(ui, /문서 기본정보/);
   assert.match(ui, /결재 내용/);
@@ -40,6 +40,6 @@ test("인쇄 DOM을 두 프레임 렌더링한 뒤 인쇄하여 흰 종이 회�
 });
 
 test("WORK59 인쇄 서식 자산은 새 캐시 버전을 사용한다", () => {
-  assert.match(html, /business-documents\.css\?v=20261009-work60-a4/);
-  assert.match(html, /business-documents\.js\?v=20261009-work60-a4/);
+  assert.match(html, /business-documents\.css\?v=20261012-operation-completion/);
+  assert.match(html, /business-documents\.js\?v=20261012-operation-completion/);
 });

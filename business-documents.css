@@ -101,6 +101,90 @@
   width: 100%;
   text-align: left;
 }
+#yjBusinessDocuments .yb-notification-tools,
+#yjBusinessDocuments .yb-search-controls,
+#yjBusinessDocuments .yb-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+}
+#yjBusinessDocuments .yb-notification-tools select,
+#yjBusinessDocuments .yb-search-controls input,
+#yjBusinessDocuments .yb-search-controls select {
+  min-height: 42px;
+}
+#yjBusinessDocuments .yb-search-controls label {
+  min-width: 135px;
+  margin: 0;
+}
+#yjBusinessDocuments .yb-search-controls label:first-child {
+  flex: 1 1 220px;
+}
+#yjBusinessDocuments .yb-save-state {
+  margin: 5px 0;
+  color: #bfdbfe;
+  font-size: 13px;
+}
+#yjBusinessDocuments .yb-error-summary {
+  margin: 10px 0;
+  padding: 12px 14px;
+  border: 1px solid #f87171;
+  border-radius: 9px;
+  background: rgba(127, 29, 29, 0.24);
+  color: #fecaca;
+  font-weight: 700;
+}
+#yjBusinessDocuments .yb-field-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#yjBusinessDocuments .yb-required {
+  color: #fca5a5;
+  font-size: 11px;
+}
+#yjBusinessDocuments .yb-field-error {
+  display: block;
+  min-height: 18px;
+  color: #fca5a5;
+  font-size: 12px;
+  font-weight: 600;
+}
+#yjBusinessDocuments [aria-invalid="true"] {
+  border-color: #f87171;
+  box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.18);
+}
+#yjBusinessDocuments .yb-file-previews {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  width: 100%;
+  margin-top: 10px;
+}
+#yjBusinessDocuments .yb-file-preview {
+  margin: 0;
+  min-width: 0;
+}
+#yjBusinessDocuments .yb-file-preview img,
+#yjBusinessDocuments .yb-file-preview object {
+  display: block;
+  width: 100%;
+  height: 120px;
+  object-fit: contain;
+  border: 1px solid #475569;
+  border-radius: 7px;
+  background: #fff;
+}
+#yjBusinessDocuments .yb-file-preview figcaption {
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+  color: #cbd5e1;
+  font-size: 11px;
+}
+#yjBusinessDocuments button {
+  min-height: 42px;
+}
 #yjBusinessDocuments .yb-toolbar,
 .yb-inbox-header {
   display: flex;
@@ -536,6 +620,11 @@
   .yj-legacy-archive > summary {
     flex-direction: column;
   }
+  #yjBusinessDocuments .yb-search-controls,
+  #yjBusinessDocuments .yb-search-controls label,
+  #yjBusinessDocuments .yb-search-controls button {
+    width: 100%;
+  }
   #yjBusinessDocuments .yb-attachment-item {
     align-items: stretch;
     flex-direction: column;
@@ -696,6 +785,15 @@
   #ybPrint .yb-print-footer {
     break-inside: avoid-page;
   }
+  #ybPrint.is-detail > h2 {
+    break-after: avoid-page;
+  }
+  #ybPrint.is-detail .yb-print-detail-table {
+    break-inside: auto;
+  }
+  #ybPrint.is-detail .yb-print-detail-table tr {
+    break-inside: avoid-page;
+  }
   #ybPrint .yb-print-footer {
     margin-top: 3mm;
     padding-top: 1.5mm;
@@ -710,3 +808,15 @@
 }
 
 #yjBusinessDocuments [hidden] { display: none !important; }
+
+.yb-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 14px 0;
+  color: #cbd5e1;
+  font-size: 13px;
+}
+.yb-pager:empty { display: none; }
+.yb-pager button { min-width: 72px; }

@@ -32,12 +32,13 @@ test("responsive attachment UI and work56 cache busting are present", () => {
   assert.match(css, /\.yb-attachment-state/);
   assert.match(css, /\.yb-attachment-panel/);
   assert.match(css, /\.yb-attachment-item/);
-  assert.match(index, /business-documents\.css\?v=20261009-work60-a4/);
-  assert.match(index, /business-documents\.js\?v=20261009-work60-a4/);
+  assert.match(index, /business-documents\.css\?v=20261012-operation-completion/);
+  assert.match(index, /business-documents\.js\?v=20261012-operation-completion/);
 });
 
 test("document details remain printable on A4 or to PDF", () => {
-  assert.match(ui, /A4 표준서식 인쇄 \/ PDF/);
+  assert.match(ui, /A4 요약본 인쇄 \/ PDF/);
+  assert.match(ui, /상세 이력본 인쇄 \/ PDF/);
   assert.match(ui, /yb-print-audit/);
   assert.match(ui, /yb-print-compact-grid/);
   assert.match(ui, /yb-print-approval/);

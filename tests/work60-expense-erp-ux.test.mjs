@@ -39,16 +39,17 @@ test("더존 CSV는 UTF-8 BOM을 포함하고 JSON과 같은 승인 데이터를
   assert.match(ui, /_DOUZONE\.\$\{format\}/);
 });
 
-test("ERP 이관은 서버시간과 Rules 잠금으로 한 번만 기록한다", () => {
+test("ERP 파일 생성과 실제 이관 확인을 분리하고 서버시간으로 잠근다", () => {
   assert.match(client, /erpExportedAt: serverTime\(\)/);
   assert.match(client, /erpExportedBy: user\.uid/);
-  assert.match(client, /document\.erpExportStatus \|\| "ready"/);
-  assert.match(rules, /h\.action == "exportErp"/);
-  assert.match(rules, /od\.get\("erpExportStatus", "ready"\) == "ready"/);
+  assert.match(client, /action === "generateErp"/);
+  assert.match(client, /action === "confirmErp"/);
+  assert.match(rules, /h\.action == "generateErp"/);
+  assert.match(rules, /h\.action == "confirmErp"/);
   assert.match(rules, /nd\.erpExportedAt == request\.time/);
 });
 
 test("WORK60 자산은 새 캐시 버전을 사용한다", () => {
-  assert.match(html, /business-documents\.css\?v=20261009-work60-a4/);
-  assert.match(html, /business-documents\.js\?v=20261009-work60-a4/);
+  assert.match(html, /business-documents\.css\?v=20261012-operation-completion/);
+  assert.match(html, /business-documents\.js\?v=20261012-operation-completion/);
 });

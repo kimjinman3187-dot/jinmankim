@@ -7,7 +7,7 @@
   const MAX_FILE_SIZE = 3 * 1024 * 1024;
   const MAX_TOTAL_SIZE = 10 * 1024 * 1024;
   const MAX_FILES = 5;
-  const SCHEMA_VERSION = 9;
+  const SCHEMA_VERSION = 10;
   const MIME = {
     pdf: "application/pdf",
     png: "image/png",
@@ -196,6 +196,10 @@
   }
   const publicDoc = (snapshot) => ({ id: snapshot.id, ...snapshot.data() });
   const hex = (buffer) => [...new Uint8Array(buffer)].map((value) => value.toString(16).padStart(2, "0")).join("");
+  const stableJson = (value) => JSON.stringify(value, Object.keys(value).sort());
+  async function digestText(value) {
+    return hex(await global.crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)));
+  }
 
   async function describeFile(file) {
     check(file && typeof file.arrayBuffer === "function", "첨부파일을 다시 선택하세요.", "invalid-argument");
@@ -241,8 +245,17 @@
   async function directory() {
     await actor();
     const snapshot = await database().collection("business_approver_directory").where("status", "==", "active").limit(201).get();
+    const candidates = snapshot.docs.slice(0, 200);
+    const userSnapshots = await Promise.all(candidates.map((item) => database().collection("users").doc(item.id).get()));
     return {
-      users: snapshot.docs.slice(0, 200).map((item) => ({ uid: item.id, name: item.data().name, role: item.data().role })),
+      users: candidates.flatMap((item, index) => {
+        const directoryUser = item.data();
+        const actual = userSnapshots[index];
+        const actualUser = actual.data() || {};
+        return actual.exists && actualUser.status === "active" && actualUser.name === directoryUser.name && actualUser.role === directoryUser.role && ["accounting", "admin"].includes(actualUser.role)
+          ? [{ uid: item.id, name: directoryUser.name, role: directoryUser.role }]
+          : [];
+      }),
       capped: snapshot.size > 200,
     };
   }
@@ -262,10 +275,11 @@
   async function detail(id) {
     await actor();
     const ref = database().collection(COLLECTION).doc(id);
-    const [document, history, payments] = await Promise.all([
+    const [document, history, payments, revisions] = await Promise.all([
       ref.get(),
       ref.collection("history").orderBy("at", "desc").limit(101).get(),
       ref.collection("payments").orderBy("createdAt", "desc").limit(101).get(),
+      ref.collection("revisions").orderBy("createdAt", "desc").limit(21).get(),
     ]);
     check(document.exists, "문서를 찾을 수 없습니다.", "not-found");
     const row = publicDoc(document);
@@ -275,7 +289,8 @@
       document: row,
       history: history.docs.slice(0, 100).map(publicDoc),
       payments: paymentRows,
-      capped: history.size > 100 || payments.size > 100,
+      revisions: revisions.docs.slice(0, 20).map(publicDoc),
+      capped: history.size > 100 || payments.size > 100 || revisions.size > 20,
     };
   }
   async function loadRoute(kind, requester, reviewerUid, approverUid) {
@@ -348,6 +363,24 @@
       erpExportStatus: data.kind === "expense" ? "not_ready" : null,
       erpExportedAt: null,
       erpExportedBy: "",
+      erpExportSnapshot: null,
+      erpExportHash: "",
+      erpExportVersion: 0,
+      erpExportFormat: "",
+      erpExportCreatedAt: null,
+      erpExportCreatedBy: "",
+      erpExportCreatedByName: "",
+      erpExportConfirmedAt: null,
+      erpExportConfirmedBy: "",
+      erpExportCancelledAt: null,
+      erpExportCancelledBy: "",
+      erpExportCancelReason: "",
+      erpExportRetryCount: 0,
+      revision: 0,
+      revisionReason: "",
+      revisionRequestedAt: null,
+      revisionRequestedBy: "",
+      revisionSnapshotId: "",
       lastOperationId: data.operationId,
     };
     const ref = database().collection(COLLECTION).doc(data.id);
@@ -364,8 +397,8 @@
 
   async function draftAttachmentRefs(ref, document) {
     check(
-      document.status === "draft",
-      "작성 중 문서의 첨부만 변경할 수 있습니다.",
+      ["draft", "needs_revision"].includes(document.status),
+      "작성 중 또는 보완 요청 문서의 첨부만 변경할 수 있습니다.",
       "failed-precondition",
     );
     const [chunks, manifests] = await Promise.all([
@@ -395,8 +428,8 @@
     check(before.exists, "문서를 찾을 수 없습니다.", "not-found");
     const current = before.data();
     check(
-      current.requesterUid === user.uid && current.status === "draft",
-      "본인의 작성 중 문서만 수정할 수 있습니다.",
+      current.requesterUid === user.uid && ["draft", "needs_revision"].includes(current.status),
+      "본인의 작성 중 또는 보완 요청 문서만 수정할 수 있습니다.",
       "permission-denied",
     );
     check(current.kind === data.kind, "문서 종류는 변경할 수 없습니다.");
@@ -431,8 +464,8 @@
       check(snapshot.exists, "문서를 찾을 수 없습니다.", "not-found");
       const document = snapshot.data();
       check(
-        document.requesterUid === user.uid && document.status === "draft",
-        "본인의 작성 중 문서만 수정할 수 있습니다.",
+        document.requesterUid === user.uid && ["draft", "needs_revision"].includes(document.status),
+        "본인의 작성 중 또는 보완 요청 문서만 수정할 수 있습니다.",
         "permission-denied",
       );
       const patch = {
@@ -612,6 +645,20 @@
       return { ok: true };
     });
   }
+  async function markAllNotificationsRead() {
+    const user = await actor();
+    const snapshot = await database()
+      .collection("business_document_notifications")
+      .where("recipientUid", "==", user.uid)
+      .limit(50)
+      .get();
+    const unread = snapshot.docs.filter((item) => !item.data().readAt);
+    if (!unread.length) return { ok: true, count: 0 };
+    const batch = database().batch();
+    unread.forEach((item) => batch.update(item.ref, { readAt: serverTime() }));
+    await batch.commit();
+    return { ok: true, count: unread.length, capped: snapshot.size === 50 };
+  }
   async function preparePayment(data) {
     const user = await actor();
     check(["admin", "accounting"].includes(user.role), "관리자·회계만 지급을 준비할 수 있습니다.", "permission-denied");
@@ -740,7 +787,7 @@
   async function transition(data) {
     const user = await actor();
     const ref = database().collection(COLLECTION).doc(data.id);
-    if (data.action === "submit") {
+    if (["submit", "resubmit"].includes(data.action)) {
       const snapshot = await ref.get();
       check(snapshot.exists, "문서를 찾을 수 없습니다.", "not-found");
       check(
@@ -748,6 +795,10 @@
         "지출결의서는 증빙을 첨부하세요.",
         "failed-precondition",
       );
+      if (data.action === "resubmit") {
+        const row = snapshot.data();
+        await loadRoute(row.kind, user, row.kind === "expense" ? row.approverUids?.[0] : "", row.approverUids?.at(-1));
+      }
       await verifyAttachments({ id: snapshot.id, ...snapshot.data() });
     }
     const historyRef = ref.collection("history").doc(data.operationId);
@@ -805,6 +856,54 @@
           notificationRecipient = final ? document.requesterUid : document.approverUids[document.step + 1];
           notificationEvent = final ? "approval_completed" : "approval_requested";
         }
+      } else if (data.action === "requestChanges") {
+        check(document.status === "pending" && document.requesterUid !== user.uid && document.approverUids[document.step] === user.uid, "현재 지정 결재자만 보완을 요청할 수 있습니다.", "permission-denied");
+        const roles = document.kind === "expense" && document.step === 0 ? ["accounting", "admin"] : ["admin"];
+        check(roles.includes(user.role), "현재 계정의 결재 권한이 변경되었습니다.", "permission-denied");
+        const reason = text(data.reason || "", "보완 요청 사유", 500);
+        const revision = Number(document.revision || 0) + 1;
+        const revisionRef = ref.collection("revisions").doc(data.operationId);
+        transaction.set(revisionRef, {
+          schemaVersion: 1,
+          revision,
+          details: document.details,
+          attachments: document.attachments || {},
+          attachmentCount: document.attachmentCount || 0,
+          approverUids: document.approverUids,
+          approverNames: document.approverNames,
+          step: document.step,
+          submittedAt: document.submittedAt || null,
+          reason,
+          requestedBy: user.uid,
+          requestedByName: user.name,
+          createdAt: serverTime(),
+        });
+        patch = {
+          status: "needs_revision",
+          revision,
+          revisionReason: reason,
+          revisionRequestedAt: serverTime(),
+          revisionRequestedBy: user.uid,
+          revisionSnapshotId: data.operationId,
+          updatedAt: serverTime(),
+          lastOperationId: data.operationId,
+        };
+        notificationRecipient = document.requesterUid;
+        notificationEvent = "revision_requested";
+      } else if (data.action === "resubmit") {
+        check(document.status === "needs_revision" && document.requesterUid === user.uid, "보완 요청을 받은 작성자만 재제출할 수 있습니다.", "permission-denied");
+        validate(document.kind, document.details);
+        patch = {
+          status: "pending",
+          revisionReason: "",
+          revisionRequestedAt: null,
+          revisionRequestedBy: "",
+          submittedAt: serverTime(),
+          updatedAt: serverTime(),
+          lastOperationId: data.operationId,
+        };
+        notificationRecipient = document.approverUids[document.step];
+        notificationEvent = "revision_resubmitted";
       } else if (data.action === "cancelApproved") {
         check(
           user.role === "admin" && user.uid !== document.requesterUid,
@@ -856,30 +955,77 @@
       return { ok: true, id: data.id, status: next };
     });
   }
-  async function exportErp(data) {
+  function erpSnapshot(document) {
+    return {
+      voucherDate: document.details.transactionDate || "",
+      documentNumber: document.number,
+      taxType: document.details.taxType || "taxable",
+      expenseCategory: document.details.category || "",
+      payee: document.details.payee || "",
+      supplyAmount: Number(document.details.supplyAmount || 0),
+      taxAmount: Number(document.details.taxAmount || 0),
+      totalAmount: Number(document.details.amount || 0),
+      summary: document.details.title || "",
+      paymentMethod: document.details.paymentMethod || "",
+    };
+  }
+  async function erpAction(data) {
     const user = await actor();
     check(["admin", "accounting"].includes(user.role), "관리자·회계만 ERP 자료를 내보낼 수 있습니다.", "permission-denied");
-    check(["csv", "json"].includes(data.format), "ERP 파일 형식을 확인하세요.", "invalid-argument");
     const ref = database().collection(COLLECTION).doc(data.id);
     const historyRef = ref.collection("history").doc(data.operationId);
+    const action = data.action;
     return database().runTransaction(async (transaction) => {
       const [snapshot, existing] = await Promise.all([transaction.get(ref), transaction.get(historyRef)]);
       if (existing.exists) return { ok: true, duplicate: true };
       check(snapshot.exists, "문서를 찾을 수 없습니다.", "not-found");
       const document = snapshot.data();
       check(document.kind === "expense" && document.status === "approved", "승인 완료된 지출결의서만 내보낼 수 있습니다.", "failed-precondition");
-      check((document.erpExportStatus || "ready") === "ready", "이미 ERP 이관을 완료한 문서입니다.", "already-exists");
-      const patch = {
-        schemaVersion: SCHEMA_VERSION,
-        erpExportStatus: "exported",
-        erpExportedAt: serverTime(),
-        erpExportedBy: user.uid,
-        updatedAt: serverTime(),
-        lastOperationId: data.operationId,
-      };
+      const current = document.erpExportStatus || "ready";
+      let patch;
+      let reason = "";
+      if (action === "generateErp") {
+        check(["ready", "retry_pending"].includes(current), "ERP 생성 가능 상태가 아닙니다.", "failed-precondition");
+        check(["csv", "json"].includes(data.format), "ERP 파일 형식을 확인하세요.", "invalid-argument");
+        const exportSnapshot = erpSnapshot(document);
+        patch = {
+          schemaVersion: SCHEMA_VERSION,
+          erpExportStatus: "generated",
+          erpExportSnapshot: exportSnapshot,
+          erpExportHash: await digestText(stableJson(exportSnapshot)),
+          erpExportVersion: 1,
+          erpExportFormat: data.format,
+          erpExportCreatedAt: serverTime(),
+          erpExportCreatedBy: user.uid,
+          erpExportCreatedByName: user.name,
+          erpExportedAt: null,
+          erpExportedBy: "",
+          erpExportConfirmedAt: null,
+          erpExportConfirmedBy: "",
+          erpExportCancelledAt: null,
+          erpExportCancelledBy: "",
+          erpExportCancelReason: "",
+          updatedAt: serverTime(),
+          lastOperationId: data.operationId,
+        };
+        reason = data.format;
+      } else if (action === "confirmErp") {
+        check(current === "generated", "먼저 ERP 파일을 생성하세요.", "failed-precondition");
+        patch = { erpExportStatus: "confirmed", erpExportedAt: serverTime(), erpExportedBy: user.uid, erpExportConfirmedAt: serverTime(), erpExportConfirmedBy: user.uid, updatedAt: serverTime(), lastOperationId: data.operationId };
+        reason = "이관 완료 확인";
+      } else if (action === "cancelErp") {
+        check(["generated", "confirmed"].includes(current), "취소 가능한 ERP 이관 건이 없습니다.", "failed-precondition");
+        reason = text(data.reason || "", "ERP 이관 취소 사유", 500);
+        patch = { erpExportStatus: "cancelled", erpExportCancelledAt: serverTime(), erpExportCancelledBy: user.uid, erpExportCancelReason: reason, updatedAt: serverTime(), lastOperationId: data.operationId };
+      } else if (action === "retryErp") {
+        check(current === "cancelled", "취소된 ERP 이관 건만 재처리할 수 있습니다.", "failed-precondition");
+        patch = { erpExportStatus: "retry_pending", erpExportRetryCount: Number(document.erpExportRetryCount || 0) + 1, updatedAt: serverTime(), lastOperationId: data.operationId };
+        reason = "재처리 대기";
+      } else fail("invalid-argument", "ERP 처리 동작을 확인하세요.");
       transaction.update(ref, patch);
-      transaction.set(historyRef, historyData(data.operationId, "exportErp", user, data.format, document.status, document.status));
-      return { ok: true, id: data.id, erpExportStatus: "exported" };
+      transaction.set(historyRef, historyData(data.operationId, action, user, reason, document.status, document.status));
+      addNotification(transaction, { id: data.id, ...document }, data.operationId, "erp_status_changed", document.requesterUid, user);
+      return { ok: true, id: data.id, erpExportStatus: patch.erpExportStatus, snapshot: patch.erpExportSnapshot || document.erpExportSnapshot || null };
     });
   }
   async function request(data) {
@@ -888,11 +1034,12 @@
     if (data.action === "detail") return detail(data.id);
     if (data.action === "notifications") return listNotifications();
     if (data.action === "readNotification") return markNotificationRead(data.id);
+    if (data.action === "readAllNotifications") return markAllNotificationsRead();
     if (data.action === "create") return create(data);
     if (data.action === "updateDraft") return updateDraft(data);
     if (data.action === "preparePayment") return preparePayment(data);
     if (data.action === "pay") return recordPayment(data);
-    if (data.action === "exportErp") return exportErp(data);
+    if (["generateErp", "confirmErp", "cancelErp", "retryErp"].includes(data.action)) return erpAction(data);
     return transition(data);
   }
 
