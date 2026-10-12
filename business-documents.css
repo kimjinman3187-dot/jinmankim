@@ -113,6 +113,32 @@
   grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
+#yjBusinessDocuments .yb-draft-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  background: #0f1522;
+}
+#yjBusinessDocuments .yb-draft-meta div {
+  min-width: 0;
+}
+#yjBusinessDocuments .yb-draft-meta span,
+#yjBusinessDocuments .yb-draft-meta strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+#yjBusinessDocuments .yb-draft-meta span {
+  color: #94a3b8;
+  font-size: 10px;
+}
+#yjBusinessDocuments .yb-draft-meta strong {
+  color: #e2e8f0;
+  font-size: 12px;
+}
 #yjBusinessDocuments fieldset {
   border: 1px solid #334155;
   border-radius: 12px;
@@ -135,6 +161,97 @@
   padding: 9px;
   font: inherit;
   min-width: 0;
+}
+#yjBusinessDocuments input[type="number"] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+#yjBusinessDocuments input[readonly],
+#yjBusinessDocuments input:disabled {
+  color: #cbd5e1;
+  background: #1e293b;
+}
+#yjBusinessDocuments .yb-chip-field {
+  margin: 10px 0;
+  padding: 0;
+  border: 0;
+}
+#yjBusinessDocuments .yb-chip-field legend {
+  margin-bottom: 7px;
+  font-weight: 650;
+}
+#yjBusinessDocuments .yb-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+#yjBusinessDocuments .yb-chip {
+  margin: 0;
+  cursor: pointer;
+}
+#yjBusinessDocuments .yb-chip input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+#yjBusinessDocuments .yb-chip span {
+  display: block;
+  padding: 8px 12px;
+  border: 1px solid #475569;
+  border-radius: 999px;
+  color: #cbd5e1;
+  background: #0f1522;
+  font-size: 12px;
+}
+#yjBusinessDocuments .yb-chip input:checked + span {
+  border-color: #60a5fa;
+  color: #eff6ff;
+  background: #1d4ed8;
+}
+#yjBusinessDocuments .yb-chip input:focus-visible + span {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+#yjBusinessDocuments .yb-related {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+  padding: 10px 12px;
+  border: 1px solid #334155;
+  border-radius: 9px;
+  background: #0f1522;
+}
+#yjBusinessDocuments .yb-related summary {
+  cursor: pointer;
+  color: #bfdbfe;
+  font-weight: 750;
+}
+#yjBusinessDocuments .yb-file-drop {
+  display: flex;
+  min-height: 96px;
+  margin-top: 16px;
+  padding: 18px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  border: 1px dashed #64748b;
+  border-radius: 12px;
+  background: #0f1522;
+  text-align: center;
+  cursor: pointer;
+}
+#yjBusinessDocuments .yb-file-drop span {
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 500;
+}
+#yjBusinessDocuments .yb-file-drop input {
+  max-width: 420px;
+  margin-top: 10px;
+}
+#yjBusinessDocuments .yb-file-drop.is-dragging {
+  border-color: #60a5fa;
+  background: rgba(30, 64, 175, 0.24);
 }
 #yjBusinessDocuments textarea {
   min-height: 86px;
@@ -296,6 +413,13 @@
   background: #172554;
   border-radius: 12px;
 }
+#yjBusinessDocuments .yb-erp-export {
+  margin: 14px 0;
+  padding: 14px;
+  border: 1px solid rgba(52, 211, 153, 0.45);
+  border-radius: 12px;
+  background: rgba(6, 78, 59, 0.2);
+}
 .yb-print {
   display: none;
 }
@@ -399,6 +523,9 @@
   #yjBusinessDocuments .yb-grid {
     grid-template-columns: 1fr;
   }
+  #yjBusinessDocuments .yb-draft-meta {
+    grid-template-columns: 1fr;
+  }
   #yjBusinessDocuments .yb-summary {
     grid-template-columns: 1fr;
   }
@@ -418,7 +545,7 @@
 @media print {
   @page {
     size: A4;
-    margin: 12mm;
+    margin: 10mm;
   }
   html,
   body.yb-printing {
@@ -439,7 +566,9 @@
     padding: 0 !important;
     background: white !important;
     color: #111827 !important;
-    font: 10.5pt/1.45 "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+    max-width: 190mm !important;
+    font: 9pt/1.25 "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+    break-after: avoid-page;
   }
   #ybPrint,
   #ybPrint * {
@@ -448,23 +577,23 @@
     text-shadow: none !important;
   }
   #ybPrint h1 {
-    margin: 3mm 0 2mm;
-    font-size: 22pt;
+    margin: 2mm 0 1.5mm;
+    font-size: 18pt;
     letter-spacing: 0.12em;
     text-align: center;
   }
   #ybPrint h2 {
-    margin: 6mm 0 2mm;
+    margin: 3mm 0 1.2mm;
     padding-left: 2mm;
     border-left: 3px solid #111827;
-    font-size: 12pt;
+    font-size: 10pt;
   }
   #ybPrint .yb-print-heading {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 92mm;
+    grid-template-columns: minmax(0, 1fr) 106mm;
     align-items: end;
-    gap: 7mm;
-    padding-bottom: 5mm;
+    gap: 4mm;
+    padding-bottom: 3mm;
     border-bottom: 2px solid #111827;
   }
   #ybPrint .yb-print-company,
@@ -484,8 +613,8 @@
   }
   #ybPrint th,
   #ybPrint td {
-    height: 8mm;
-    padding: 1.8mm 2.2mm;
+    height: 6.5mm;
+    padding: 1.1mm 1.5mm;
     border: 1px solid #4b5563;
     vertical-align: middle;
     overflow-wrap: anywhere;
@@ -497,26 +626,26 @@
   }
   #ybPrint .yb-print-approval th:first-child,
   #ybPrint .yb-print-approval td:first-child {
-    width: 16mm;
+    width: 14mm;
   }
   #ybPrint .yb-print-approval td {
-    font-size: 8.5pt;
+    font-size: 7.5pt;
     text-align: center;
   }
   #ybPrint .yb-print-sign-row td {
-    height: 21mm;
+    height: 17mm;
   }
   #ybPrint .yb-signature-mark {
     display: flex;
-    width: 17mm;
-    height: 17mm;
+    width: 13.5mm;
+    height: 13.5mm;
     margin: 0 auto;
     align-items: center;
     justify-content: center;
     border: 1px dashed #9ca3af;
     border-radius: 50%;
     color: #6b7280 !important;
-    font-size: 7.5pt;
+    font-size: 6.5pt;
     font-weight: 800;
     line-height: 1.1;
     text-align: center;
@@ -530,15 +659,18 @@
     border: 2px solid #374151;
     color: #374151 !important;
   }
-  #ybPrint .yb-print-table th:first-child {
-    width: 42mm;
+  #ybPrint .yb-print-compact-grid th {
+    width: 28mm;
   }
   #ybPrint .yb-print-table td {
     white-space: pre-wrap;
   }
   #ybPrint .yb-print-title-row td {
-    font-size: 12pt;
+    font-size: 10.5pt;
     font-weight: 800;
+  }
+  #ybPrint .yb-print-reason-row td {
+    min-height: 12mm;
   }
   #ybPrint .yb-print-files th:nth-child(1),
   #ybPrint .yb-print-files td:nth-child(1) {
@@ -555,18 +687,21 @@
     width: 34mm;
     text-align: center;
   }
-  #ybPrint .yb-print-history {
-    font-size: 8.5pt;
+  #ybPrint .yb-print-audit {
+    font-size: 7.5pt;
   }
-  #ybPrint .yb-print-history th:nth-child(1) { width: 38mm; }
-  #ybPrint .yb-print-history th:nth-child(2) { width: 28mm; }
-  #ybPrint .yb-print-history th:nth-child(3) { width: 30mm; }
+  #ybPrint > h2,
+  #ybPrint > table,
+  #ybPrint .yb-print-heading,
   #ybPrint .yb-print-footer {
-    margin-top: 7mm;
-    padding-top: 3mm;
+    break-inside: avoid-page;
+  }
+  #ybPrint .yb-print-footer {
+    margin-top: 3mm;
+    padding-top: 1.5mm;
     border-top: 1px solid #9ca3af;
     color: #4b5563 !important;
-    font-size: 8pt;
+    font-size: 7pt;
     text-align: right;
   }
   #ybPrint .yb-print-footer p {
