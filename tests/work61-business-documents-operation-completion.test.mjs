@@ -9,7 +9,8 @@ const rules = readFileSync(new URL("../firestore.rules", import.meta.url), "utf8
 
 test("회계 검토자는 활성 회계·관리자 역할만 화면과 저장 검증을 통과한다", () => {
   assert.match(ui, /\["accounting", "admin"\]\.includes\(u\.role\)/);
-  assert.match(client, /actualUser\.status === "active"/);
+  assert.match(client, /directoryUser\.status === "active"/);
+  assert.doesNotMatch(client, /collection\("users"\)\.doc\(item\.id\)\.get/);
   assert.match(client, /\["accounting", "admin"\]\.includes\(users\[0\]\.role\)/);
   assert.match(rules, /businessApproverValid\(d\.approverUids\[0\].*\["accounting", "admin"\]\)/s);
 });

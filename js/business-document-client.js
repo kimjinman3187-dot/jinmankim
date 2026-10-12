@@ -246,13 +246,10 @@
     await actor();
     const snapshot = await database().collection("business_approver_directory").where("status", "==", "active").limit(201).get();
     const candidates = snapshot.docs.slice(0, 200);
-    const userSnapshots = await Promise.all(candidates.map((item) => database().collection("users").doc(item.id).get()));
     return {
-      users: candidates.flatMap((item, index) => {
+      users: candidates.flatMap((item) => {
         const directoryUser = item.data();
-        const actual = userSnapshots[index];
-        const actualUser = actual.data() || {};
-        return actual.exists && actualUser.status === "active" && actualUser.name === directoryUser.name && actualUser.role === directoryUser.role && ["accounting", "admin"].includes(actualUser.role)
+        return directoryUser.status === "active" && ["accounting", "admin"].includes(directoryUser.role)
           ? [{ uid: item.id, name: directoryUser.name, role: directoryUser.role }]
           : [];
       }),
@@ -911,7 +908,7 @@
           "permission-denied",
         );
         check(
-          document.status === "approved" && document.erpExportStatus !== "exported" && !document.paidAmount && !document.settledAt && !document.completedAt && !document.allocatedAmount,
+          document.status === "approved" && !["generated", "confirmed", "exported"].includes(document.erpExportStatus) && !document.paidAmount && !document.settledAt && !document.completedAt && !document.allocatedAmount,
           "ERP 이관·지급·정산·처리 전 승인 문서만 취소할 수 있습니다.",
           "failed-precondition",
         );

@@ -10,6 +10,10 @@ const requests = [];
 let listDocuments = [];
 let directoryUsers = [];
 let detailDocument = null;
+let detailHistory = [];
+let detailPayments = [];
+let detailRevisions = [];
+let pageErrors = [];
 const users = [
   { uid: "finance", name: "회계 직원", role: "accounting" },
   { uid: "admin", name: "최종 승인자", role: "admin" },
@@ -18,6 +22,10 @@ let slowResolve;
 async function mount() {
   directoryUsers = users;
   detailDocument = null;
+  detailHistory = [];
+  detailPayments = [];
+  detailRevisions = [];
+  pageErrors = [];
   await page.route("https://yj.test/", (r) =>
     r.fulfill({
       contentType: "text/html",
@@ -25,6 +33,7 @@ async function mount() {
     }),
   );
   await page.goto("https://yj.test/");
+  await page.emulateMedia({ media: "screen" });
   await page.addStyleTag({
     content: fs.readFileSync(
       path.join(__dirname, "../business-documents.css"),
@@ -71,7 +80,7 @@ test.before(async () => {
   });
   page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   page.on("dialog", (dialog) => dialog.accept());
-  page.on("pageerror", (error) => console.error("[browser-pageerror]", error));
+  page.on("pageerror", (error) => pageErrors.push(error));
   await page.exposeFunction("backend", async (data) => {
     requests.push(data);
     if (data.action === "directory") return { users: directoryUsers };
@@ -92,7 +101,7 @@ test.before(async () => {
       };
     if (data.action === "detail") {
       if (detailDocument)
-        return { document: detailDocument, history: [], payments: [], capped: false };
+        return { document: detailDocument, history: detailHistory, payments: detailPayments, revisions: detailRevisions, capped: false };
       throw new Error("simulated refresh failure");
     }
     return {};
@@ -100,6 +109,9 @@ test.before(async () => {
 });
 test.after(async () => {
   await browser?.close();
+});
+test.afterEach(() => {
+  assert.deepEqual(pageErrors.map((error) => error.message), []);
 });
 test("all six forms render; form values survive disabled fieldset during submission", async () => {
   listDocuments = [];
@@ -439,6 +451,88 @@ test("A4 print view keeps a standard expense approval form on one page", async (
   const pdf = fs.readFileSync(pdfPath);
   assert.equal(pdf.subarray(0, 4).toString(), "%PDF");
   assert.equal((pdf.toString("latin1").match(/\/Type\s*\/Page\b/g) || []).length, 1);
+});
+test("maximum-length detail print paginates without horizontal clipping or blank pages", async () => {
+  const longName = "거래근거_" + "가".repeat(180) + ".pdf";
+  const document = {
+    id: "printable-maximum", number: "YJ-EXPENSE-20261012-MAX001", kind: "expense", status: "approved",
+    requesterUid: "employee", requesterName: "시험 직원", approverUids: ["finance", "admin"],
+    approverNames: ["회계 직원", "최종 승인자"], step: 1, paymentStatus: "partial", paidAmount: 50000,
+    createdAt: Date.now(), submittedAt: Date.now(), approvedAt: Date.now(),
+    attachments: Object.fromEntries(Array.from({ length: 5 }, (_, index) => [`a${index}`, {
+      name: `${index + 1}_${longName}`, size: 3 * 1024 * 1024, contentType: "application/pdf",
+      chunkCount: 6, sha256: String(index + 1).repeat(64), firestorePath: `business_documents/printable-maximum/attachment_uploads/a${index}`,
+    }])),
+    attachmentCompletion: { a0: true, a1: true, a2: true, a3: true, a4: true },
+    erpExportStatus: "confirmed", erpExportHash: "a".repeat(64), erpExportCreatedByName: "회계 직원",
+    erpExportCreatedAt: Date.now(), erpExportConfirmedBy: "finance", erpExportConfirmedAt: Date.now(),
+    details: {
+      title: "최대 분량 지출결의서 출력 검증", reason: "장문 사유 ".repeat(220), settlementType: "vendor",
+      category: "material", taxType: "taxable", supplyAmount: 100000, taxAmount: 10000, amount: 110000,
+      payee: "최대분량 검증 거래처", transactionDate: "2026-10-12", plannedDate: "2026-10-20",
+      paymentMethod: "bank_transfer", purchaseId: "PURCHASE-MAX-001", orderReference: "ORDER-MAX-001",
+    },
+  };
+  listDocuments = [document];
+  await mount();
+  detailDocument = document;
+  detailHistory = Array.from({ length: 60 }, (_, index) => ({
+    action: index % 2 ? "approve" : "requestChanges", actorUid: index % 2 ? "admin" : "finance",
+    actorName: index % 2 ? "최종 승인자" : "회계 직원", actorRole: index % 2 ? "admin" : "accounting",
+    at: Date.now() - index * 60000, reason: "이력 상세 내용 ".repeat(12),
+  }));
+  detailPayments = Array.from({ length: 50 }, (_, index) => ({
+    reference: `BANK-${index + 1}`, paidDate: "2026-10-12", amount: 1000, status: "recorded",
+  }));
+  detailRevisions = Array.from({ length: 20 }, (_, index) => ({
+    revision: index + 1, createdAt: Date.now() - index * 60000, requestedByName: "회계 직원",
+    reason: "보완 요청 사유 ".repeat(10), details: { title: `제${index + 1}차 제출본` },
+  }));
+  await page.getByRole("button", { name: "새로고침", exact: true }).click();
+  await page.locator("#ybList .yb-row").first().click();
+  await page.evaluate(() => { window.print = () => {}; });
+  await page.getByRole("button", { name: "상세 이력본 인쇄 / PDF", exact: true }).click();
+  await page.emulateMedia({ media: "print" });
+  assert.equal(await page.locator("#ybPrint.is-detail .yb-print-footer p").count(), 1);
+  const geometry = await page.locator("#ybPrint").evaluate((node) => ({ clientWidth: node.clientWidth, scrollWidth: node.scrollWidth }));
+  assert.ok(geometry.scrollWidth <= geometry.clientWidth + 1, `상세 출력이 가로로 잘립니다: ${geometry.scrollWidth}/${geometry.clientWidth}`);
+  const pdfPath = path.join(os.tmpdir(), "yj-work61-document-detail-maximum.pdf");
+  await page.pdf({ path: pdfPath, format: "A4", printBackground: true });
+  const pdf = fs.readFileSync(pdfPath);
+  const pages = (pdf.toString("latin1").match(/\/Type\s*\/Page\b/g) || []).length;
+  assert.ok(pages >= 2, `최대 분량 상세본이 페이지 분할되지 않았습니다: ${pages}`);
+  assert.ok(pdf.length > 20000, `상세 PDF가 비정상적으로 비어 있습니다: ${pdf.length} bytes`);
+});
+test("legacy documents without new ERP or revision fields remain visible and printable", async () => {
+  const legacyDetails = {
+    expense: { title: "기존 지출", reason: "기존 문서", settlementType: "vendor", category: "material", supplyAmount: 1000, taxAmount: 100, amount: 1100, payee: "기존 거래처", transactionDate: "2026-09-01", plannedDate: "2026-09-02", paymentMethod: "bank_transfer", purchaseId: "", orderReference: "" },
+    purchase: { title: "기존 구매", reason: "기존 문서", category: "purchase", item: "자재", quantity: 1, amount: 1000, neededDate: "2026-09-02", vendor: "" },
+    vendor_contract: { title: "기존 계약", reason: "기존 문서", partnerName: "거래처", contractType: "supply", startDate: "2026-09-01", endDate: "2026-12-31", contractAmount: 0, paymentTerms: "월말", renewalTerms: "", ownerDepartment: "관리", riskNotes: "" },
+    leave: { title: "기존 휴가", reason: "기존 문서", category: "annual", startDate: "2026-09-01", endDate: "2026-09-01", hours: 8, handover: "인수인계" },
+    general: { title: "기존 품의", reason: "기존 문서", effectiveDate: "2026-09-01", amount: 0 },
+    quality: { title: "기존 품질", reason: "기존 문서", orderReference: "ORDER-OLD", category: "defect", quantity: 1, actionPlan: "재검사", impact: "없음" },
+  };
+  listDocuments = Object.entries(legacyDetails).map(([kind, details], index) => ({
+    id: `legacy-${kind}`, schemaVersion: 6, clientMode: "spark-firestore", number: `YJ-LEGACY-${index + 1}`,
+    kind, details, requesterUid: "employee", requesterName: "시험 직원", approverUids: kind === "expense" ? ["finance", "admin"] : ["admin"],
+    approverNames: kind === "expense" ? ["회계 직원", "최종 승인자"] : ["최종 승인자"], status: "approved", step: kind === "expense" ? 1 : 0,
+    attachments: {}, attachmentCount: 0, paidAmount: 0, paymentStatus: kind === "expense" ? "unpaid" : null,
+    createdAt: Date.now() - index * 1000, approvedAt: Date.now(),
+  }));
+  await mount();
+  detailDocument = listDocuments[0];
+  await page.evaluate(() => {
+    window.auth.currentUser = { uid: "finance" };
+    window.testUser = { uid: "finance", name: "회계 직원", role: "accounting", status: "active" };
+  });
+  await page.waitForTimeout(500);
+  await page.getByRole("button", { name: "새로고침", exact: true }).click();
+  await page.getByText("표준 문서 6건을 확인했습니다.").waitFor();
+  await page.getByRole("button", { name: "전체 문서", exact: true }).click();
+  assert.equal(await page.locator("#ybList .yb-row").count(), 6);
+  await page.locator("#ybList .yb-row").filter({ hasText: "기존 지출" }).click();
+  await page.getByRole("button", { name: "A4 요약본 인쇄 / PDF", exact: true }).waitFor();
+  await page.getByRole("button", { name: "더존 CSV 내보내기", exact: true }).waitFor();
 });
 test("document list keeps filters while paging twenty rows at a time", async () => {
   const timestamp = Date.parse("2026-10-12T09:00:00+09:00");

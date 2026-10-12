@@ -63,8 +63,10 @@ test.before(async () => {
     await setDoc(doc(db, "users/rules-accounting"), { role: "accounting", name: "회계", status: "active" });
     await setDoc(doc(db, "users/rules-employee"), { role: "sales", name: "직원", status: "active" });
     await setDoc(doc(db, "users/rules-outsider"), { role: "sales", name: "외부 직원", status: "active" });
+    await setDoc(doc(db, "users/rules-inactive"), { role: "admin", name: "비활성 관리자", status: "inactive" });
     await setDoc(doc(db, "business_approver_directory/rules-admin"), { role: "admin", name: "대표", status: "active" });
     await setDoc(doc(db, "business_approver_directory/rules-accounting"), { role: "accounting", name: "회계", status: "active" });
+    await setDoc(doc(db, "business_approver_directory/rules-inactive"), { role: "admin", name: "비활성 관리자", status: "active" });
   });
 });
 test.after(async () => { await env?.cleanup(); });
@@ -81,6 +83,20 @@ test("이력 없는 문서 생성과 문서 없는 이력 생성을 거부한다
   const db = env.authenticatedContext("rules-employee", token).firestore();
   await assertFails(setDoc(doc(db, "business_documents/orphan-document"), documentData("create-operation-0002")));
   await assertFails(setDoc(doc(db, "business_documents/missing/history/create-operation-0003"), history("create-operation-0003", "create", "rules-employee", "직원", "sales", "none", "draft")));
+});
+test("일반 작성자는 공개 결재자 명단만 읽고 비활성 실제 사용자는 저장 단계에서 거부한다", async () => {
+  const db = env.authenticatedContext("rules-employee", token).firestore();
+  await assertSucceeds(getDoc(doc(db, "business_approver_directory/rules-admin")));
+  await assertFails(getDoc(doc(db, "users/rules-admin")));
+  const id = "rules-inactive-route";
+  const operationId = "create-inactive-route-0001";
+  const data = documentData(operationId);
+  data.approverUids = ["rules-inactive"];
+  data.approverNames = ["비활성 관리자"];
+  const batch = writeBatch(db);
+  batch.set(doc(db, "business_documents/" + id), data);
+  batch.set(doc(db, "business_documents/" + id + "/history/" + operationId), history(operationId, "create", "rules-employee", "직원", "sales", "none", "draft"));
+  await assertFails(batch.commit());
 });
 test("작성자 제출과 지정 관리자 승인을 원자적 이력으로 처리한다", async () => {
   const id = "rules-document-flow"; await createDocument(id);
@@ -307,6 +323,7 @@ test("ERP 내보내기는 생성·확정·취소·재시도 순서와 고정 스
     seeded.approvedAt = serverTimestamp();
     seeded.paymentStatus = "unpaid";
     seeded.erpExportStatus = "ready";
+    delete seeded.erpExportRetryCount;
     await setDoc(doc(db, "business_documents/" + id), seeded);
   });
 

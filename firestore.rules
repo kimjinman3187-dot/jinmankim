@@ -1362,7 +1362,7 @@ service cloud.firestore {
             && businessText(nd.erpExportCancelReason, 1, 500) && nd.erpExportCancelReason == h.reason)
           || (h.action == "retryErp" && od.erpExportStatus == "cancelled" && nd.erpExportStatus == "retry_pending" && businessFinance()
             && nd.diff(od).affectedKeys().hasOnly(["erpExportStatus", "erpExportRetryCount", "updatedAt", "lastOperationId"])
-            && nd.erpExportRetryCount == od.erpExportRetryCount + 1)
+            && nd.erpExportRetryCount == od.get("erpExportRetryCount", 0) + 1)
         );
     }
     function businessHistoryCreateValid(documentId, historyId) {

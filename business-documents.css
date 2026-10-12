@@ -788,6 +788,12 @@
   #ybPrint.is-detail > h2 {
     break-after: avoid-page;
   }
+  #ybPrint.is-detail > table {
+    break-inside: auto;
+  }
+  #ybPrint.is-detail > table tr {
+    break-inside: avoid-page;
+  }
   #ybPrint.is-detail .yb-print-detail-table {
     break-inside: auto;
   }
@@ -804,6 +810,11 @@
   }
   #ybPrint .yb-print-footer p {
     margin: 0.5mm 0;
+  }
+  #ybPrint.is-detail .yb-print-footer {
+    margin-top: 1mm;
+    padding-top: 1mm;
+    font-size: 6.5pt;
   }
 }
 

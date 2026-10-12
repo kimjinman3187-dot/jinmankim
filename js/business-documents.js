@@ -1861,11 +1861,21 @@
     }
 
     const footer = el("footer", undefined, "yb-print-footer");
-    footer.append(
-      el("p", "본 문서는 용진FLOW에서 전자승인된 사내 문서이며 문서번호와 결재이력으로 원본을 확인할 수 있습니다."),
-      el("p", `원본 확인용 문서 ID ${document.id} · 출력 요청자 ${state.user?.name || "-"}`),
-      el("p", "출력 요청시각 " + new Date().toLocaleString("ko-KR")),
-    );
+    const printedAt = new Date().toLocaleString("ko-KR");
+    if (mode === "detail") {
+      footer.append(
+        el(
+          "p",
+          `용진FLOW 전자승인 문서 · 문서번호 ${document.number || "-"} · 원본 ID ${document.id} · 출력 요청자 ${state.user?.name || "-"} · 출력시각 ${printedAt}`,
+        ),
+      );
+    } else {
+      footer.append(
+        el("p", "본 문서는 용진FLOW에서 전자승인된 사내 문서이며 문서번호와 결재이력으로 원본을 확인할 수 있습니다."),
+        el("p", `원본 확인용 문서 ID ${document.id} · 출력 요청자 ${state.user?.name || "-"}`),
+        el("p", "출력 요청시각 " + printedAt),
+      );
+    }
     host.append(footer);
     return host;
   }
