@@ -15,6 +15,7 @@
     pending: "결재 대기",
     approved: "승인 완료",
     rejected: "반려",
+    needs_revision: "보완 요청",
     withdrawn: "회수",
     cancelled: "승인 취소",
   };
@@ -25,7 +26,7 @@
     not_required: "지급 불필요",
   };
   function documentStatusLabel(document) {
-    if (document?.kind === "expense" && document.erpExportStatus === "exported")
+    if (document?.kind === "expense" && ["confirmed", "exported"].includes(document.erpExportStatus))
       return "ERP 이관 완료";
     if (document?.kind === "expense" && document.status === "approved")
       return "승인 완료 · ERP 이관 대기";
@@ -142,6 +143,13 @@
     view: "create",
     loadFailed: false,
     directoryReady: false,
+    dirty: false,
+    autosaveTimer: null,
+    saving: false,
+    notificationFilter: "all",
+    previewUrls: [],
+    page: 1,
+    pageSize: 20,
   };
   const uuid = () => crypto.randomUUID();
   const money = (n) => Number(n || 0).toLocaleString("ko-KR") + "원";
@@ -168,7 +176,7 @@
     '<div class="yb-header"><div><p class="yb-eyebrow">표준 문서 업무</p><h3>문서 작성·결재·지급을 한곳에서 처리합니다</h3><p>업무 카테고리별 표준 문서를 작성하고, 결재 상태와 실제 처리 결과를 함께 확인합니다.</p></div><button type="button" id="ybRefresh">새로고침</button></div>' +
     '<nav class="yb-tabs" aria-label="문서 업무 구분"><button type="button" data-yb-view="create">새 문서 작성</button><button type="button" data-yb-view="my">내 문서</button><button type="button" data-yb-view="inbox">결재함</button><button type="button" data-yb-view="payments">지급관리</button><button type="button" data-yb-view="all">전체 문서</button></nav>' +
     '<div class="yb-summary"><div><span>내 문서</span><strong id="ybMetricMine">0</strong></div><div><span>결재 대기</span><strong id="ybMetricPending">0</strong></div><div><span>반려</span><strong id="ybMetricRejected">0</strong></div><div><span>지급 대기</span><strong id="ybMetricPayment">0</strong></div></div>' +
-    '<p id="ybMessage" role="status" aria-live="polite"></p><section id="ybNotifications" class="yb-notifications" aria-label="문서 알림"></section><div class="yb-layout"><form id="ybForm"><fieldset id="ybFieldset"><h4 id="ybFormTitle">새 문서 작성</h4><div id="ybDraftMeta" class="yb-draft-meta" aria-label="자동 입력 정보"></div><div id="ybCommon"></div><div id="ybFields" class="yb-grid"></div><div id="ybRoute" class="yb-grid"></div><label id="ybFileDrop" class="yb-file-drop">증빙 자료 첨부 <span>여기에 끌어놓거나 눌러서 선택 · 최대 5개, 각 3MB·합계 10MB</span><input id="ybFiles" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx,.csv"></label><div id="ybAttachmentState" class="yb-attachment-state" role="status" aria-live="polite"></div><label id="ybClearFilesLabel"><input id="ybClearFiles" type="checkbox"> 기존 첨부를 모두 제거</label><p id="ybAttachmentHelp" class="yb-help">무료 요금제 전용 보안 저장 · 지출은 증빙 필수 · 구매·수리는 견적 첨부 권장</p><button type="submit" name="intent" value="submit" class="yb-primary">저장하고 결재 요청</button><button type="submit" name="intent" value="draft">임시저장</button><button type="button" id="ybNew">새 양식</button></fieldset></form><section id="ybRecords"><div class="yb-toolbar"><div><h4 id="ybListTitle">내 문서</h4><p id="ybListHelp" class="yb-help">작성한 표준 문서를 확인합니다.</p></div><label>문서 종류<select id="ybFilter"><option value="all">전체</option></select></label></div><div id="ybList"></div><div id="ybDetail"></div></section></div>';
+    '<p id="ybMessage" role="status" aria-live="polite"></p><p id="ybSaveState" class="yb-save-state" role="status" aria-live="polite">변경사항 없음</p><div id="ybErrorSummary" class="yb-error-summary" role="alert" tabindex="-1" hidden></div><section id="ybNotifications" class="yb-notifications" aria-label="문서 알림"></section><div class="yb-layout"><form id="ybForm" novalidate><fieldset id="ybFieldset"><h4 id="ybFormTitle">새 문서 작성</h4><div id="ybDraftMeta" class="yb-draft-meta" aria-label="자동 입력 정보"></div><div id="ybCommon"></div><div id="ybFields" class="yb-grid"></div><div id="ybRoute" class="yb-grid"></div><label id="ybFileDrop" class="yb-file-drop">증빙 자료 첨부 <span>여기에 끌어놓거나 눌러서 선택 · 최대 5개, 각 3MB·합계 10MB</span><input id="ybFiles" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx,.csv"></label><div id="ybAttachmentState" class="yb-attachment-state" role="status" aria-live="polite"></div><label id="ybClearFilesLabel"><input id="ybClearFiles" type="checkbox"> 기존 첨부를 모두 제거</label><p id="ybAttachmentHelp" class="yb-help">무료 요금제 전용 보안 저장 · 지출은 증빙 필수 · 구매·수리는 견적 첨부 권장</p><div class="yb-form-actions"><button type="submit" name="intent" value="submit" class="yb-primary">저장하고 결재 요청</button><button type="submit" name="intent" value="draft">임시저장</button><button type="button" id="ybNew">새 양식</button></div></fieldset></form><section id="ybRecords"><div class="yb-toolbar"><div><h4 id="ybListTitle">내 문서</h4><p id="ybListHelp" class="yb-help">작성한 표준 문서를 확인합니다.</p></div><div class="yb-search-controls"><label>통합 검색<input id="ybSearch" type="search" placeholder="문서번호·제목·작성자·부서·결재자"></label><label>문서 종류<select id="ybFilter"><option value="all">전체</option></select></label><label>상태<select id="ybStatusFilter"><option value="all">전체</option><option value="draft">작성 중</option><option value="pending">결재 대기</option><option value="needs_revision">보완 요청</option><option value="approved">승인 완료</option><option value="rejected">반려</option></select></label><label>기간 기준<select id="ybDateBasis"><option value="created">작성일</option><option value="approved">승인일</option></select></label><label>시작일<input id="ybDateFrom" type="date"></label><label>종료일<input id="ybDateTo" type="date"></label><label>ERP 상태<select id="ybErpFilter"><option value="all">전체</option><option value="ready">미생성</option><option value="generated">파일 생성 완료</option><option value="confirmed">이관 완료</option><option value="cancelled">취소</option><option value="retry_pending">재처리 대기</option></select></label><label>지급 상태<select id="ybPaymentFilter"><option value="all">전체</option><option value="unpaid">지급 전</option><option value="partial">일부 지급</option><option value="paid">지급 완료</option><option value="not_required">지급 불필요</option></select></label><label>정렬<select id="ybSort"><option value="newest">최신순</option><option value="oldest">오래된순</option><option value="amount">금액순</option><option value="status">상태순</option><option value="waiting">결재대기 경과순</option></select></label><button type="button" id="ybSearchReset">검색 초기화</button></div></div><div id="ybList"></div><nav id="ybPager" class="yb-pager" aria-label="문서 목록 페이지"></nav><div id="ybDetail"></div></section></div>';
   const $ = (id) => document.getElementById(id);
   const form = $("ybForm");
   const views = ["create", "my", "inbox", "payments", "all"];
@@ -186,9 +194,28 @@
   function attachmentEntries(document) {
     return Object.entries(document?.attachments || {});
   }
+  const requiredByKind = {
+    expense: ["title", "reason", "amount", "payee", "transactionDate", "plannedDate", "reviewerUid", "approverUid"],
+    purchase: ["title", "reason", "item", "quantity", "amount", "neededDate", "approverUid"],
+    vendor_contract: ["title", "reason", "partnerName", "startDate", "endDate", "paymentTerms", "ownerDepartment", "approverUid"],
+    leave: ["title", "reason", "startDate", "endDate", "hours", "handover", "approverUid"],
+    general: ["title", "reason", "effectiveDate", "approverUid"],
+    quality: ["title", "reason", "orderReference", "quantity", "actionPlan", "impact", "approverUid"],
+  };
+  function requiredField(key, parent) {
+    if (key === "kind" || !form?.contains(parent)) return false;
+    return (requiredByKind[type?.value] || []).includes(key);
+  }
+  function clearFieldError(input) {
+    input.removeAttribute("aria-invalid");
+    const error = document.getElementById(input.id + "-error");
+    if (error) error.textContent = "";
+  }
   function renderFormAttachmentState(document, selectedFiles) {
     const host = $("ybAttachmentState");
     host.replaceChildren();
+    state.previewUrls.forEach((url) => URL.revokeObjectURL(url));
+    state.previewUrls = [];
     host.className = "yb-attachment-state";
     const selected = [...(selectedFiles || [])];
     const entries = attachmentEntries(document);
@@ -221,9 +248,42 @@
       );
     }
     host.append(el("strong", title), el("span", detail));
+    if (selected.length) {
+      const previews = el("div", undefined, "yb-file-previews");
+      selected.forEach((file) => {
+        const item = el("figure", undefined, "yb-file-preview");
+        const url = URL.createObjectURL(file);
+        state.previewUrls.push(url);
+        if (file.type.startsWith("image/")) {
+          const image = el("img");
+          image.src = url;
+          image.alt = file.name + " 미리보기";
+          item.append(image);
+        } else if (file.type === "application/pdf") {
+          const object = el("object");
+          object.data = url;
+          object.type = "application/pdf";
+          object.setAttribute("aria-label", file.name + " PDF 미리보기");
+          item.append(object);
+        }
+        item.append(el("figcaption", file.name));
+        previews.append(item);
+      });
+      const cancel = button("선택한 첨부 취소", () => {
+        $("ybFiles").value = "";
+        renderFormAttachmentState(state.editing);
+        scheduleAutosave(3000);
+      });
+      cancel.className = "yb-secondary";
+      host.append(previews, cancel);
+    }
   }
   function field(parent, key, label, type, value) {
-    const wrap = el("label", label);
+    const required = requiredField(key, parent);
+    const wrap = el("label");
+    const caption = el("span", label, "yb-field-label");
+    if (required) caption.append(el("span", "필수", "yb-required"));
+    wrap.append(caption);
     let n;
     if (Array.isArray(type) || type === "purchase") {
       n = el("select");
@@ -253,8 +313,17 @@
     }
     n.name = key;
     n.id = "yb-" + key;
+    if (required) {
+      n.required = true;
+      n.setAttribute("aria-required", "true");
+    }
     if (value !== undefined) n.value = value;
-    wrap.append(n);
+    const error = el("span", "", "yb-field-error");
+    error.id = n.id + "-error";
+    n.setAttribute("aria-describedby", error.id);
+    n.addEventListener("input", () => clearFieldError(n));
+    n.addEventListener("change", () => clearFieldError(n));
+    wrap.append(n, error);
     parent.append(wrap);
     return n;
   }
@@ -277,6 +346,28 @@
     group.append(chips);
     parent.append(group);
     return group;
+  }
+  function validateVisibleForm() {
+    const invalid = [];
+    form.querySelectorAll("[required]").forEach((input) => {
+      const missing = !String(input.value || "").trim();
+      const nonPositive = input.type === "number" && Number(input.value) <= 0;
+      if (!missing && !nonPositive) return;
+      input.setAttribute("aria-invalid", "true");
+      const error = document.getElementById(input.id + "-error");
+      if (error) error.textContent = `${input.closest("label")?.querySelector(".yb-field-label")?.firstChild?.textContent || "필수 항목"}을(를) ${nonPositive ? "0보다 크게 입력" : "입력"}해 주세요.`;
+      invalid.push(input);
+    });
+    const summary = $("ybErrorSummary");
+    summary.hidden = invalid.length === 0;
+    summary.textContent = invalid.length ? `입력하지 않은 필수 항목이 ${invalid.length}개 있습니다. 첫 번째 항목을 확인해 주세요.` : "";
+    if (invalid.length) {
+      invalid[0].closest("details")?.setAttribute("open", "");
+      invalid[0].scrollIntoView({ behavior: "smooth", block: "center" });
+      invalid[0].focus({ preventScroll: true });
+      summary.focus({ preventScroll: true });
+    }
+    return invalid.length === 0;
   }
   function renderDraftMeta(document) {
     const meta = $("ybDraftMeta");
@@ -322,7 +413,11 @@
       field(target, "reviewerUid", "회계 검토자 (본인·최종 승인자 제외)", [
         ":검토자 선택",
         ...state.users
-          .filter((u) => u.uid !== state.uid)
+          .filter(
+            (u) =>
+              ["accounting", "admin"].includes(u.role) &&
+              u.uid !== state.uid,
+          )
           .map(
             (u) =>
               u.uid +
@@ -413,12 +508,19 @@
     calculateExpenseAmounts(total.value ? "total" : "supply");
   }
   type.addEventListener("change", () => {
+    if (state.dirty && !window.confirm("작성 중인 변경사항이 있습니다. 문서 종류를 바꾸시겠습니까?")) {
+      type.value = state.editing?.kind || type.dataset.previous || "expense";
+      return;
+    }
+    type.dataset.previous = type.value;
     state.draft = null;
     state.revise = null;
     state.editing = null;
     renderFields();
     renderFormAttachmentState(null);
+    state.dirty = false;
   });
+  type.dataset.previous = type.value;
   renderFields();
   $("ybClearFilesLabel").hidden = true;
   renderFormAttachmentState(null);
@@ -477,6 +579,12 @@
       state.loaded = false;
       state.loadFailed = false;
       state.directoryReady = false;
+      state.dirty = false;
+      state.saving = false;
+      clearTimeout(state.autosaveTimer);
+      state.autosaveTimer = null;
+      state.previewUrls.forEach((url) => URL.revokeObjectURL(url));
+      state.previewUrls = [];
       state.busy = false;
       state.draft = null;
       state.selected = null;
@@ -494,6 +602,7 @@
         "무료 요금제 전용 보안 저장 · 지출은 증빙 필수 · 구매·수리는 견적 첨부 권장";
       renderFormAttachmentState(null);
       renderFields();
+      $("ybSaveState").textContent = "변경사항 없음";
       renderWorkspace();
       message(
         key
@@ -611,11 +720,29 @@
     $("ybFieldset").disabled = !state.directoryReady;
   }
   $("ybRefresh").onclick = () => run(load);
-  $("ybFilter").onchange = renderList;
+  ["ybFilter", "ybStatusFilter", "ybDateBasis", "ybDateFrom", "ybDateTo", "ybErpFilter", "ybPaymentFilter", "ybSort"].forEach((id) => ($(id).onchange = () => { state.page = 1; renderList(); }));
+  $("ybSearch").oninput = () => { state.page = 1; renderList(); };
+  $("ybSearchReset").onclick = () => {
+    $("ybSearch").value = "";
+    $("ybFilter").value = "all";
+    $("ybStatusFilter").value = "all";
+    $("ybDateBasis").value = "created";
+    $("ybDateFrom").value = "";
+    $("ybDateTo").value = "";
+    $("ybErpFilter").value = "all";
+    $("ybPaymentFilter").value = "all";
+    $("ybSort").value = "newest";
+    state.page = 1;
+    renderList();
+  };
   root.querySelectorAll("[data-yb-view]").forEach((tab) => {
-    tab.addEventListener("click", () => setView(tab.dataset.ybView));
+    tab.addEventListener("click", () => {
+      if (state.view === "create" && state.dirty && !window.confirm("저장되지 않은 변경사항이 있습니다. 화면을 이동하시겠습니까?")) return;
+      setView(tab.dataset.ybView);
+    });
   });
   $("ybNew").onclick = () => {
+    if (state.dirty && !window.confirm("저장되지 않은 변경사항을 버리고 새 양식을 여시겠습니까?")) return;
     state.draft = null;
     state.revise = null;
     state.editing = null;
@@ -627,6 +754,8 @@
     $("ybAttachmentHelp").textContent =
       "무료 요금제 전용 보안 저장 · 지출은 증빙 필수 · 구매·수리는 견적 첨부 권장";
     renderFormAttachmentState(null);
+    state.dirty = false;
+    $("ybSaveState").textContent = "변경사항 없음";
     message(
       "새 문서를 작성합니다. 저장된 작성 중 문서는 목록에서 확인할 수 있습니다.",
     );
@@ -662,12 +791,42 @@
               ["unpaid", "partial"].includes(d.paymentStatus),
           )
         : [];
-    return rows.filter(
+    rows = rows.filter(
       (d) => $("ybFilter").value === "all" || d.kind === $("ybFilter").value,
     );
+    const statusFilter = $("ybStatusFilter").value;
+    if (statusFilter !== "all") rows = rows.filter((d) => d.status === statusFilter);
+    const search = $("ybSearch").value.trim().toLocaleLowerCase("ko-KR");
+    if (search)
+      rows = rows.filter((d) =>
+        [d.number, d.details?.title, d.requesterName, d.details?.ownerDepartment, ...(d.approverNames || [])]
+          .filter(Boolean)
+          .some((value) => String(value).toLocaleLowerCase("ko-KR").includes(search)),
+      );
+    const dateFrom = $("ybDateFrom").value ? new Date($("ybDateFrom").value + "T00:00:00+09:00").getTime() : 0;
+    const dateTo = $("ybDateTo").value ? new Date($("ybDateTo").value + "T23:59:59+09:00").getTime() : Number.MAX_SAFE_INTEGER;
+    rows = rows.filter((d) => {
+      const basis = $("ybDateBasis").value === "approved" ? d.approvedAt : d.createdAt;
+      const documentDate = window.YJBusinessDocumentClient?.millis(basis) || 0;
+      return documentDate >= dateFrom && documentDate <= dateTo;
+    });
+    if ($("ybErpFilter").value !== "all") rows = rows.filter((d) => (d.erpExportStatus || "ready") === $("ybErpFilter").value);
+    if ($("ybPaymentFilter").value !== "all") rows = rows.filter((d) => d.paymentStatus === $("ybPaymentFilter").value);
+    const sorted = [...rows];
+    const time = (d) => window.YJBusinessDocumentClient?.millis(d.createdAt) || 0;
+    const sort = $("ybSort").value;
+    sorted.sort((a, b) => {
+      if (sort === "oldest") return time(a) - time(b);
+      if (sort === "amount") return Number(b.details?.amount || b.details?.contractAmount || 0) - Number(a.details?.amount || a.details?.contractAmount || 0);
+      if (sort === "status") return documentStatusLabel(a).localeCompare(documentStatusLabel(b), "ko");
+      if (sort === "waiting") return a.status === "pending" && b.status !== "pending" ? -1 : b.status === "pending" && a.status !== "pending" ? 1 : time(a) - time(b);
+      return time(b) - time(a);
+    });
+    return sorted;
   }
   function setView(view) {
     state.view = views.includes(view) ? view : "my";
+    state.page = 1;
     form.hidden = state.view !== "create";
     root.querySelectorAll("[data-yb-view]").forEach((tab) => {
       const active = tab.dataset.ybView === state.view;
@@ -760,6 +919,26 @@
       el("strong", `문서 알림 ${unread.length}건`),
       el("span", "결재·지급·처리 결과는 계정별로 따로 읽음 처리됩니다."),
     );
+    const tools = el("div", undefined, "yb-notification-tools");
+    const filter = el("select");
+    [["all", "전체"], ["unread", "미확인"], ["read", "읽음"]].forEach(([value, label]) => {
+      const option = el("option", label);
+      option.value = value;
+      option.selected = state.notificationFilter === value;
+      filter.append(option);
+    });
+    filter.setAttribute("aria-label", "알림 읽음 상태");
+    filter.onchange = () => {
+      state.notificationFilter = filter.value;
+      renderNotifications();
+    };
+    tools.append(filter, button("모두 읽음", () => run(async (epoch) => {
+      await api({ action: "readAllNotifications" }, epoch);
+      state.notifications.forEach((item) => { if (!item.readAt) item.readAt = Date.now(); });
+      renderNotifications();
+      message("표시 가능한 미확인 알림을 모두 읽음 처리했습니다.");
+    })));
+    head.append(tools);
     host.append(head);
     const labels = {
       approval_requested: "결재 요청",
@@ -770,8 +949,12 @@
       payment_recorded: "지급 기록",
       settlement_completed: "정산 완료",
       processing_completed: "처리 완료",
+      revision_requested: "보완 요청",
+      revision_resubmitted: "보완 후 재제출",
+      erp_status_changed: "ERP 상태 변경",
     };
-    unread.slice(0, 5).forEach((item) => {
+    const visible = state.notifications.filter((item) => state.notificationFilter === "all" || (state.notificationFilter === "unread" ? !item.readAt : !!item.readAt));
+    visible.forEach((item) => {
       const row = button("", () =>
         run(async (epoch) => {
           await api({ action: "readNotification", id: item.id }, epoch);
@@ -787,7 +970,7 @@
       );
       host.append(row);
     });
-    host.hidden = unread.length === 0;
+    host.hidden = state.notifications.length === 0;
   }
   function renderWorkspace() {
     applyRoleVisibility();
@@ -797,10 +980,16 @@
   }
   function renderList() {
     const list = $("ybList");
+    const pager = $("ybPager");
     list.replaceChildren();
+    pager.replaceChildren();
     const rows = visibleRows();
+    const pageCount = Math.max(1, Math.ceil(rows.length / state.pageSize));
+    state.page = Math.min(Math.max(1, state.page), pageCount);
+    const start = (state.page - 1) * state.pageSize;
+    const pageRows = rows.slice(start, start + state.pageSize);
     if (!rows.length) list.append(el("p", "표시할 문서가 없습니다."));
-    for (const d of rows) {
+    for (const d of pageRows) {
       const b = button("", () => run((e) => detail(d.id, e)));
       b.className = "yb-row";
       b.append(
@@ -813,6 +1002,13 @@
         ),
       );
       list.append(b);
+    }
+    if (rows.length > state.pageSize) {
+      const previous = button("이전", () => { state.page -= 1; renderList(); });
+      const next = button("다음", () => { state.page += 1; renderList(); });
+      previous.disabled = state.page === 1;
+      next.disabled = state.page === pageCount;
+      pager.append(previous, el("span", `${state.page} / ${pageCount} 페이지 · ${rows.length}건`), next);
     }
   }
   function pair(parent, label, value) {
@@ -860,7 +1056,7 @@
     };
   }
   function erpBlob(document, format) {
-    const record = erpRecord(document);
+    const record = document.erpExportSnapshot || erpRecord(document);
     if (format === "json")
       return new Blob([JSON.stringify(record, null, 2)], {
         type: "application/json;charset=utf-8",
@@ -914,6 +1110,9 @@
   }
   async function uploadDocumentAttachment(documentId, slot, file, meta, epoch) {
     guard(epoch);
+    const stateHost = $("ybAttachmentState");
+    stateHost.className = "yb-attachment-state is-pending";
+    stateHost.replaceChildren(el("strong", `업로드 중 · ${file.name}`), el("span", "분할 저장과 무결성 확인을 진행하고 있습니다."));
     await window.YJBusinessDocumentClient.uploadAttachment(
       documentId,
       slot,
@@ -921,6 +1120,8 @@
       meta,
     );
     guard(epoch);
+    stateHost.className = "yb-attachment-state is-complete";
+    stateHost.replaceChildren(el("strong", `업로드 완료 · ${file.name}`), el("span", "서버 저장과 SHA-256 무결성 확인 준비가 완료됐습니다."));
   }
   async function detail(id, epoch) {
     const r = await api({ action: "detail", id }, epoch);
@@ -953,7 +1154,7 @@
     if (d.revisedFrom) pair(dl, "이전 문서 ID", d.revisedFrom);
     if (d.kind === "expense" && finance) {
       pair(dl, "지급 상태", paymentLabels[d.paymentStatus]);
-      pair(dl, "ERP 이관", d.erpExportStatus === "exported" ? "이관 완료" : d.status === "approved" ? "이관 대기" : "승인 전");
+      pair(dl, "ERP 이관", ({ ready: "미생성", generated: "파일 생성 완료", confirmed: "이관 완료 확인", cancelled: "이관 취소", retry_pending: "재처리 대기", exported: "기존 이관 완료" })[d.erpExportStatus] || (d.status === "approved" ? "미생성" : "승인 전"));
       pair(
         dl,
         "지급액 / 잔액",
@@ -1017,7 +1218,7 @@
       await detail(id, epoch);
       message("처리를 완료했습니다.");
     }
-    if (d.status === "draft" && d.requesterUid === state.uid) {
+    if (["draft", "needs_revision"].includes(d.status) && d.requesterUid === state.uid) {
       actions.append(
         button("작성 중 문서 수정", () => {
           state.draft = null;
@@ -1036,7 +1237,7 @@
           if ($("yb-reviewerUid")) $("yb-reviewerUid").value = d.approverUids[0] || "";
           if ($("yb-approverUid"))
             $("yb-approverUid").value = d.approverUids[d.approverUids.length - 1] || "";
-          $("ybFormTitle").textContent = "작성 중 문서 수정";
+          $("ybFormTitle").textContent = d.status === "needs_revision" ? "보완 요청 문서 수정" : "작성 중 문서 수정";
           $("ybClearFilesLabel").hidden = !d.attachmentCount;
           $("ybClearFiles").checked = false;
           renderFormAttachmentState(d);
@@ -1045,7 +1246,9 @@
             : "현재 첨부가 없습니다. 지출결의서는 결재 요청 전에 증빙이 필요합니다.";
           setView("create");
           form.scrollIntoView({ behavior: "smooth" });
-          message("작성 중 문서를 불러왔습니다. 수정 후 임시저장하거나 결재 요청하세요.");
+          state.dirty = false;
+          $("ybSaveState").textContent = "저장된 문서를 불러왔습니다.";
+          message(d.status === "needs_revision" ? `보완 사유: ${d.revisionReason || "요청 내용을 확인하세요."}` : "작성 중 문서를 불러왔습니다. 수정 후 임시저장하거나 결재 요청하세요.");
         }),
       );
       for (const [slot, a] of Object.entries(d.attachments)) {
@@ -1065,7 +1268,7 @@
             message("첨부 업로드 완료 상태를 저장하고 확인했습니다.");
           });
       }
-      const submit = button("결재 요청", () => run(() => act("submit")));
+      const submit = button(d.status === "needs_revision" ? "보완 후 재제출" : "결재 요청", () => run(() => act(d.status === "needs_revision" ? "resubmit" : "submit")));
       const attachmentBlocked =
         completedAttachments !== documentAttachments.length ||
         (d.kind === "expense" && documentAttachments.length === 0);
@@ -1121,6 +1324,7 @@
       );
       actions.append(
         button("승인", () => run(() => act("approve", note.value))),
+        button("보완 요청", () => run(() => act("requestChanges", note.value))),
         button("반려", () => run(() => act("reject", note.value))),
       );
     }
@@ -1173,7 +1377,7 @@
       !d.settledAt &&
       !d.completedAt &&
       !d.allocatedAmount &&
-      d.erpExportStatus !== "exported"
+      !["generated", "confirmed"].includes(d.erpExportStatus)
     ) {
       const note = field(
         actions,
@@ -1187,35 +1391,63 @@
     }
     if (d.status === "approved" && d.kind === "expense" && finance) {
       const erpState = d.erpExportStatus || "ready";
+      const erpLabels = { ready: "미생성", generated: "파일 생성 완료", confirmed: "이관 완료 확인", cancelled: "이관 취소", retry_pending: "재처리 대기", exported: "기존 이관 완료" };
       const erpPanel = el("section", undefined, "yb-erp-export");
       erpPanel.append(
         el("h4", "더존 ERP 내보내기"),
         el(
           "p",
-          erpState === "exported"
-            ? `이관 완료 · ${printDate(d.erpExportedAt)} · ${d.erpExportedBy || "처리자 확인"}`
-            : "승인 데이터를 UTF-8 BOM CSV 또는 JSON으로 내려받고 이관 완료로 잠급니다.",
+          `${erpLabels[erpState] || erpState} · 파일 생성과 실제 ERP 이관 완료 확인은 분리됩니다.`,
           "yb-help",
         ),
       );
-      if (erpState !== "exported") {
+      if (["ready", "retry_pending"].includes(erpState)) {
         ["csv", "json"].forEach((format) =>
           erpPanel.append(
             button(`더존 ${format.toUpperCase()} 내보내기`, () =>
               run(async (currentEpoch) => {
-                const blob = erpBlob(d, format);
-                await api(
-                  operation({ action: "exportErp", id, format }),
+                const result = await api(
+                  operation({ action: "generateErp", id, format }),
                   currentEpoch,
                 );
+                const blob = erpBlob({ ...d, erpExportSnapshot: result.snapshot }, format);
                 downloadErpBlob(d, format, blob);
                 await load(currentEpoch);
                 await detail(id, currentEpoch);
-                message("ERP 파일을 생성하고 이관 완료 상태로 잠갔습니다.");
+                message("ERP 파일을 생성했습니다. 실제 업로드 후 이관 완료를 확인해 주세요.");
               }),
             ),
           ),
         );
+      }
+      if (["generated", "confirmed"].includes(erpState) && d.erpExportSnapshot) {
+        const format = d.erpExportFormat || "csv";
+        erpPanel.append(button("동일 파일 재다운로드", () => {
+          downloadErpBlob(d, format, erpBlob(d, format));
+          message(`최초 생성본과 동일한 파일입니다. 무결성값 ${d.erpExportHash || "확인 전"}`);
+        }));
+      }
+      if (erpState === "generated") {
+        erpPanel.append(button("ERP 이관 완료 확인", () => run(async (currentEpoch) => {
+          await api(operation({ action: "confirmErp", id }), currentEpoch);
+          await load(currentEpoch); await detail(id, currentEpoch);
+          message("실제 ERP 이관 완료를 확인했습니다.");
+        })));
+      }
+      if (["generated", "confirmed"].includes(erpState)) {
+        const cancelReason = field(erpPanel, "erpCancelReason", "ERP 이관 취소 사유", "textarea");
+        erpPanel.append(button("ERP 이관 취소", () => run(async (currentEpoch) => {
+          await api(operation({ action: "cancelErp", id, reason: cancelReason.value }), currentEpoch);
+          await load(currentEpoch); await detail(id, currentEpoch);
+          message("ERP 이관 건을 취소했습니다. 문서와 이력은 보존됩니다.");
+        })));
+      }
+      if (erpState === "cancelled") {
+        erpPanel.append(button("ERP 재처리 시작", () => run(async (currentEpoch) => {
+          await api(operation({ action: "retryErp", id }), currentEpoch);
+          await load(currentEpoch); await detail(id, currentEpoch);
+          message("ERP 재처리 대기로 전환했습니다.");
+        })));
       }
       actions.append(erpPanel);
     }
@@ -1362,6 +1594,15 @@
         );
       }
     }
+    if (r.revisions?.length) {
+      box.append(el("h4", "보완 요청·제출본 이력"));
+      r.revisions.forEach((revision) => {
+        const item = el("details", undefined, "yb-revision");
+        item.append(el("summary", `제${revision.revision}차 보완 요청 · ${revision.requestedByName || "-"} · ${printDate(revision.createdAt)}`));
+        item.append(el("p", revision.reason || "보완 사유 없음"), el("p", `제출본 제목: ${revision.details?.title || "-"}`), el("p", `첨부 ${revision.attachmentCount || 0}건 · 결재 단계 ${Number(revision.step || 0) + 1}`));
+        box.append(item);
+      });
+    }
     box.append(el("h4", "처리 이력"));
     const labels = {
       create: "문서 작성",
@@ -1370,13 +1611,18 @@
       classifyExpense: "회계 분류 저장",
       approve: "승인",
       reject: "반려",
+      requestChanges: "보완 요청",
+      resubmit: "보완 후 재제출",
       withdraw: "회수",
       preparePayment: "지급 증빙 준비",
       pay: "지급 기록",
       settle: "정산 완료",
       complete: "처리 완료",
       cancelApproved: "승인 취소",
-      exportErp: "ERP 이관 완료",
+      generateErp: "ERP 파일 생성",
+      confirmErp: "ERP 이관 완료 확인",
+      cancelErp: "ERP 이관 취소",
+      retryErp: "ERP 재처리 대기",
     };
     for (const h of r.history)
       box.append(
@@ -1392,7 +1638,10 @@
       );
     if (r.capped)
       box.append(el("p", "이력은 최근 100건만 표시합니다.", "yb-error"));
-    box.append(button("A4 표준서식 인쇄 / PDF", () => print(r)));
+    box.append(
+      button("A4 요약본 인쇄 / PDF", () => print(r, "summary")),
+      button("상세 이력본 인쇄 / PDF", () => print(r, "detail")),
+    );
   }
   function printDate(value) {
     const millis = window.YJBusinessDocumentClient?.millis(value) || Number(value || 0);
@@ -1478,10 +1727,11 @@
     });
     return signatures;
   }
-  function buildPrintDocument(r) {
+  function buildPrintDocument(r, mode = "summary") {
     const document = r.document;
     const host = el("section", undefined, "yb-print");
     host.id = "ybPrint";
+    host.classList.add(mode === "detail" ? "is-detail" : "is-summary");
 
     const heading = el("header", undefined, "yb-print-heading");
     const brand = el("div", undefined, "yb-print-brand");
@@ -1533,7 +1783,8 @@
 
     const content = el("table", undefined, "yb-print-table yb-print-compact-grid yb-print-content-table");
     printWideRow(content, "제목", document.details.title || "제목 없는 문서", "yb-print-title-row");
-    printWideRow(content, "요청 내용·사유", document.details.reason || "-", "yb-print-reason-row");
+    const reason = document.details.reason || "-";
+    printWideRow(content, "요청 내용·사유", mode === "summary" && reason.length > 700 ? reason.slice(0, 700) + "… (전체 내용은 상세 이력본 참조)" : reason, "yb-print-reason-row");
     const detailEntries = (fields[document.kind] || [])
       .map(([key, label, type]) => [label.replace(/ \(선택\)$/, ""), printFieldValue(document, key, type), key])
       .filter(([, value, key]) => value !== "-" || !["purchaseId", "orderReference"].includes(key))
@@ -1542,7 +1793,7 @@
       detailEntries.push(
         ["지급 상태", paymentLabels[document.paymentStatus] || "-"],
         ["지급액", money(document.paidAmount)],
-        ["ERP 이관", document.erpExportStatus === "exported" ? "이관 완료" : "이관 전"],
+        ["ERP 이관", ({ ready: "미생성", generated: "파일 생성 완료", confirmed: "이관 완료 확인", cancelled: "이관 취소", retry_pending: "재처리 대기", exported: "기존 이관 완료" })[document.erpExportStatus] || "이관 전"],
       );
     }
     if (document.completedAt) detailEntries.push(["처리 결과", document.completionNote || "-"]);
@@ -1558,6 +1809,8 @@
       submit: "결재 요청",
       approve: "승인",
       reject: "반려",
+      requestChanges: "보완 요청",
+      resubmit: "보완 후 재제출",
       withdraw: "회수",
       preparePayment: "지급 증빙 준비",
       pay: "지급 기록",
@@ -1565,7 +1818,10 @@
       complete: "처리 완료",
       cancelApproved: "승인 취소",
       classifyExpense: "회계 분류",
-      exportErp: "ERP 이관",
+      generateErp: "ERP 파일 생성",
+      confirmErp: "ERP 이관 완료 확인",
+      cancelErp: "ERP 이관 취소",
+      retryErp: "ERP 재처리 대기",
     };
     const attachmentSummary = attachments.length
       ? attachments
@@ -1590,18 +1846,41 @@
     printWideRow(audit, "증빙·첨부", attachmentSummary);
     printWideRow(audit, "최근 처리이력", historySummary);
     host.append(el("h2", "증빙·결재 기록"), audit);
+    if (mode === "detail") {
+      const addDetail = (label, rows) => {
+        host.append(el("h2", label));
+        const table = el("table", undefined, "yb-print-table yb-print-detail-table");
+        rows.forEach((row) => printWideRow(table, row[0], row[1]));
+        host.append(table);
+      };
+      addDetail("전체 첨부파일", attachments.length ? attachments.map(([slot, file]) => [file.name, `${formatBytes(file.size)} · SHA-256 ${file.sha256} · ${document.attachmentCompletion?.[slot] === true ? "무결성 확인" : "미완료"}`]) : [["첨부", "없음"]]);
+      addDetail("전체 결재·처리 이력", (r.history || []).map((item) => [printDate(item.at), `${historyLabels[item.action] || item.action} · ${item.actorName || "-"} (${item.actorRole || "-"})${item.reason ? " · " + item.reason : ""}`]));
+      addDetail("보완 요청·제출본", (r.revisions || []).length ? r.revisions.map((item) => [`제${item.revision}차 · ${printDate(item.createdAt)}`, `${item.requestedByName || "-"} · ${item.reason || "-"} · 제목: ${item.details?.title || "-"}`]) : [["보완 이력", "없음"]]);
+      addDetail("지급 이력", (r.payments || []).length ? r.payments.map((item) => [item.reference || "지급", `${item.paidDate || "-"} · ${money(item.amount)} · ${item.status === "recorded" ? "기록 완료" : "증빙 등록 중"}`]) : [["지급 이력", "없음"]]);
+      addDetail("ERP 이관 이력", [["현재 상태", ({ ready: "미생성", generated: "파일 생성 완료", confirmed: "이관 완료 확인", cancelled: "이관 취소", retry_pending: "재처리 대기", exported: "기존 이관 완료" })[document.erpExportStatus] || "승인 전"], ["파일 무결성값", document.erpExportHash || "-"], ["생성자·생성시각", `${document.erpExportCreatedByName || document.erpExportCreatedBy || "-"} · ${printDate(document.erpExportCreatedAt)}`], ["완료 확인", `${document.erpExportConfirmedBy || document.erpExportedBy || "-"} · ${printDate(document.erpExportConfirmedAt || document.erpExportedAt)}`], ["취소 사유", document.erpExportCancelReason || "-"]]);
+    }
 
     const footer = el("footer", undefined, "yb-print-footer");
-    footer.append(
-      el("p", "본 문서는 YJ FLOW 전자결재 기록을 기준으로 출력되었습니다."),
-      el("p", "서명 이미지가 등록되지 않은 계정은 성명과 전자결재 상태로 표시됩니다."),
-      el("p", "출력일시 " + new Date().toLocaleString("ko-KR")),
-    );
+    const printedAt = new Date().toLocaleString("ko-KR");
+    if (mode === "detail") {
+      footer.append(
+        el(
+          "p",
+          `용진FLOW 전자승인 문서 · 문서번호 ${document.number || "-"} · 원본 ID ${document.id} · 출력 요청자 ${state.user?.name || "-"} · 출력시각 ${printedAt}`,
+        ),
+      );
+    } else {
+      footer.append(
+        el("p", "본 문서는 용진FLOW에서 전자승인된 사내 문서이며 문서번호와 결재이력으로 원본을 확인할 수 있습니다."),
+        el("p", `원본 확인용 문서 ID ${document.id} · 출력 요청자 ${state.user?.name || "-"}`),
+        el("p", "출력 요청시각 " + printedAt),
+      );
+    }
     host.append(footer);
     return host;
   }
-  function print(r) {
-    const host = buildPrintDocument(r);
+  function print(r, mode = "summary") {
+    const host = buildPrintDocument(r, mode);
     document.getElementById("ybPrint")?.remove();
     document.body.append(host);
     document.body.classList.add("yb-printing");
@@ -1621,12 +1900,33 @@
       }),
     );
   }
+  function scheduleAutosave(delay = 45000) {
+    state.dirty = true;
+    $("ybSaveState").textContent = "저장되지 않은 변경사항";
+    clearTimeout(state.autosaveTimer);
+    state.autosaveTimer = setTimeout(() => {
+      if (!state.dirty || state.busy || !state.uid || state.view !== "create") return;
+      const button = form.querySelector('button[name="intent"][value="draft"]');
+      if (button) form.requestSubmit(button);
+    }, delay);
+  }
+  form.addEventListener("input", () => scheduleAutosave());
+  form.addEventListener("change", () => scheduleAutosave());
+  form.addEventListener("focusout", (event) => {
+    if (event.target.matches("input, textarea, select") && state.dirty) scheduleAutosave(3000);
+  });
+  window.addEventListener("beforeunload", (event) => {
+    if (!state.dirty && !state.saving) return;
+    event.preventDefault();
+    event.returnValue = "";
+  });
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     run(async (epoch) => {
       if (!state.loaded)
         throw new Error("먼저 새로고침하여 결재자를 확인하세요.");
       const intent = event.submitter?.value === "draft" ? "draft" : "submit";
+      if (intent === "submit" && !validateVisibleForm()) return;
       if (!state.draft) {
         const input = Object.fromEntries(
           [...form.elements]
@@ -1698,6 +1998,8 @@
         };
       }
       const d = state.draft;
+      state.saving = true;
+      $("ybSaveState").textContent = "저장 중…";
       message("문서를 저장하고 첨부를 올리는 중입니다…");
       const r = await api(
         operation({
@@ -1723,9 +2025,31 @@
           r.document.attachments["a" + i],
           epoch,
         );
+      if (intent === "draft") {
+        state.draft = null;
+        state.revise = null;
+        state.editing = {
+          id: d.id,
+          ...r.document,
+          attachmentCompletion: Object.fromEntries(Object.keys(r.document.attachments || {}).map((slot) => [slot, true])),
+        };
+        state.dirty = false;
+        state.saving = false;
+        clearTimeout(state.autosaveTimer);
+        $("ybFiles").value = "";
+        $("ybClearFiles").checked = false;
+        type.disabled = true;
+        $("ybFormTitle").textContent = "작성 중 문서 수정";
+        renderDraftMeta(state.editing);
+        renderFormAttachmentState(state.editing);
+        $("ybSaveState").textContent = "저장 완료 · " + new Date().toLocaleTimeString("ko-KR");
+        await load(epoch);
+        message("임시저장했습니다. 계속 작성할 수 있습니다.");
+        return;
+      }
       if (intent === "submit") {
         try {
-          await api(operation({ action: "submit", id: d.id }), epoch);
+          await api(operation({ action: state.editing?.status === "needs_revision" ? "resubmit" : "submit", id: d.id }), epoch);
         } catch (error) {
           state.draft = null;
           state.editing = { id: d.id };
@@ -1745,6 +2069,10 @@
       $("ybAttachmentHelp").textContent =
         "무료 요금제 전용 보안 저장 · 지출은 증빙 필수 · 구매·수리는 견적 첨부 권장";
       renderFormAttachmentState(null);
+      state.dirty = false;
+      state.saving = false;
+      clearTimeout(state.autosaveTimer);
+      $("ybSaveState").textContent = "변경사항 없음";
       try {
         await load(epoch);
         await detail(d.id, epoch);
@@ -1757,6 +2085,10 @@
           true,
         );
       }
+    }).finally(() => {
+      state.saving = false;
+      if (state.dirty && $("ybSaveState").textContent === "저장 중…")
+        $("ybSaveState").textContent = "저장 실패 · 임시저장을 다시 시도해 주세요.";
     });
   });
   // No persistent storage of financial data. Wipe every account generation, including A→B→A.

@@ -2,8 +2,8 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { randomUUID } = require("node:crypto");
-if (process.env.FIRESTORE_EMULATOR_HOST !== "127.0.0.1:8185")
-  throw new Error("Only dedicated demo emulator 127.0.0.1:8185 is permitted");
+if (process.env.FIRESTORE_EMULATOR_HOST !== "127.0.0.1:8080")
+  throw new Error("Only dedicated demo emulator 127.0.0.1:8080 is permitted");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
 initializeApp({
@@ -348,7 +348,7 @@ test("payment recorded documents cannot be cancelled", async () => {
   );
 });
 test("real Storage metadata verification rejects missing evidence and accepts uploaded bytes", async () => {
-  if (process.env.FIREBASE_STORAGE_EMULATOR_HOST !== "127.0.0.1:9295")
+  if (process.env.FIREBASE_STORAGE_EMULATOR_HOST !== "127.0.0.1:9199")
     throw new Error("Dedicated Storage emulator required");
   const id = await create();
   const request = {
