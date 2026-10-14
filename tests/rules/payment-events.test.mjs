@@ -271,10 +271,11 @@ test('관리자·회계 주문 생성 시 paid 주입 거부', async () => {
   await assertFails(m.setDoc(m.doc(acc, 'orders', 'N3'), { client: 'c', price: 1000, qty: 1, status: 'completed', paymentStatus: 'paid', paidAmount: 1000 }));
   await assertSucceeds(m.setDoc(m.doc(acc, 'orders', 'N5'), { client: 'c', price: 1000, qty: 1, status: 'pending', paymentStatus: 'unpaid' }));
 });
-test('영업 lastPaymentAt 단독 변경 거부 / 비입금 필드 허용', async () => {
+test('영업 lastPaymentAt·생산 필드 변경 거부 / 일반 비입금 필드 허용', async () => {
   const m = await fs(); const db = env.authenticatedContext('emp1').firestore(); const r = R(db, m);
   await assertFails(m.updateDoc(r.order, { lastPaymentAt: 123 }));
-  await assertSucceeds(m.updateDoc(r.order, { productionStage: 'packed', updatedAt: 1 }));
+  await assertFails(m.updateDoc(r.order, { productionStage: 'packed', updatedAt: 1 }));
+  await assertSucceeds(m.updateDoc(r.order, { salesMemo: '고객 요청 확인', updatedAt: 1 }));
 });
 test('이벤트/마커 수정·삭제 불가, 이벤트 읽기 허용', async () => {
   await seedDocs({ events: { p1: evt('p1', { type: 'payment', amount: 1000, before: 0, after: 1000, createdAt: 1 }) }, markers: { p1: mk('p1', { op: 'r1', kind: 'reversal', createdAt: 1 }) } });

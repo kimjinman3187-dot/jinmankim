@@ -38,6 +38,8 @@ export const USERS = {
   emp1: { name: '홍길동', role: 'sales', status: 'active', auth_uid: 'emp1' },
   emp2: { name: '김영희', role: 'accounting', status: 'active', auth_uid: 'emp2' },
   admin1: { name: '관리자', role: 'admin', status: 'active', auth_uid: 'admin1' },
+  factory1: { name: '생산담당', role: 'factory', status: 'active', auth_uid: 'factory1' },
+  manager1: { name: '생산관리자', role: 'factory_manager', status: 'active', auth_uid: 'manager1' },
   inactive1: { name: '퇴사자', role: 'sales', status: 'inactive', auth_uid: 'inactive1' }
 };
 

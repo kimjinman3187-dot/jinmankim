@@ -17,11 +17,12 @@ test('mobile document workflow is not introduced', () => {
   assert.doesNotMatch(html, /mountBusinessDocuments/);
 });
 
-test('unfinished inventory and invite previews stay hidden', () => {
-  assert.match(html, /id="pc-tab-inventory" aria-hidden="true" class="pc-tab-btn hidden yj-unfinished-feature/);
+test('operational inventory is visible while unfinished invite preview stays hidden', () => {
+  assert.match(html, /id="pc-tab-inventory" class="pc-tab-btn inline-flex/);
+  assert.match(html, /js\/production-inventory\.js/);
   assert.match(html, /id="pcAdminInviteCodePanel" aria-hidden="true" class="hidden yj-unfinished-feature/);
   const pcRoles = html.match(/const PC_ROLE_TABS = \{([\s\S]*?)\n\};/)?.[1] || '';
-  assert.doesNotMatch(pcRoles, /inventory/);
+  assert.match(pcRoles, /inventory/);
 });
 
 test('payment work is hidden outside accounting and admin roles', () => {
