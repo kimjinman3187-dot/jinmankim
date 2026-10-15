@@ -32,7 +32,7 @@ test('WORK62 makes the inventory screen operational instead of an unfinished she
   assert.match(html, /생산입고 원장 연결/);
   assert.doesNotMatch(legacyHotfix, /Inventory <span class="yj-inventory-beta-badge"/);
   assert.doesNotMatch(legacyHotfix, /표시 전용 Beta 화면/);
-  assert.match(moduleSource, /currentQty \|\| 0\) <= 0/);
+  assert.match(moduleSource, /availableQty\(item\) <= 0/);
   assert.match(moduleSource, /qty > 0 && qty <= Number\(item\.safetyStock \|\| 0\)/);
 });
 

@@ -1434,7 +1434,7 @@
                             <h2 class="text-2xl font-black text-white">재고관리 대시보드</h2>
                             <p class="text-xs text-slate-500 font-bold mt-2">품질 확인을 통과한 재고 생산품의 현재고와 생산입고 원장을 확인합니다.</p>
                         </div>
-                        <span class="text-[10px] font-black text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-1.5">생산입고 원장 연결</span>
+                        <span class="shrink-0 whitespace-nowrap text-[10px] font-black text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-1.5">생산입고 원장 연결</span>
                     </div>
 
 
@@ -1460,6 +1460,36 @@
                             <p class="text-[10px] text-slate-500 font-bold mt-1">단가/규격 확인</p>
                         </div>
                     </div>
+
+                    <section class="bg-[#1e293b] border border-cyan-500/20 rounded-2xl p-5 mb-6 shadow-xl">
+                        <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+                            <div><h3 class="text-sm font-black text-white">재고 순환 처리</h3><p class="text-[10px] text-slate-500 font-bold mt-1">주문 배정 후 출고하고, 취소·반품·정정은 원장을 남겨 재고를 복구합니다.</p></div>
+                            <span id="inventoryCyclePermission" class="shrink-0 whitespace-nowrap text-[10px] font-black text-slate-400 border border-slate-600 rounded-md px-2 py-1">조회 전용</span>
+                        </div>
+                        <div id="inventoryAllocationCreatePanel" class="hidden rounded-xl border border-[#334155] bg-[#111827] p-4">
+                            <p class="text-[11px] font-black text-cyan-200 mb-3">1. 주문에 재고 배정</p>
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                                <label class="text-[10px] text-slate-400 font-black">주문 *<select id="inventoryAllocationOrder" class="mt-1 w-full px-3 py-2.5 bg-[#0f1522] border border-[#334155] rounded-lg text-xs text-white"><option value="">주문 선택</option></select></label>
+                                <label class="text-[10px] text-slate-400 font-black">완제품 *<select id="inventoryAllocationItem" class="mt-1 w-full px-3 py-2.5 bg-[#0f1522] border border-[#334155] rounded-lg text-xs text-white"><option value="">품목 선택</option></select></label>
+                                <label class="text-[10px] text-slate-400 font-black">배정수량 *<input id="inventoryAllocationQty" type="number" min="1" step="1" inputmode="numeric" class="mt-1 w-full px-3 py-2.5 bg-[#0f1522] border border-[#334155] rounded-lg text-xs text-white text-right font-black" placeholder="0"></label>
+                                <button type="button" onclick="YJProductionInventory.allocateOrder()" class="px-4 py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black">주문 재고 배정</button>
+                            </div>
+                            <p id="inventoryCycleMessage" class="mt-3 min-h-[16px] text-[11px] font-bold text-slate-400"></p>
+                        </div>
+                        <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <div><div class="flex justify-between items-center mb-2"><h4 class="text-[11px] font-black text-white">2. 배정·출고 대기</h4><span id="inventoryAllocatedCount" class="text-[10px] text-slate-500 font-bold">0건</span></div><div id="inventoryAllocationList" class="space-y-2"><p class="text-center text-xs text-slate-500 font-bold py-5">배정된 주문이 없습니다.</p></div></div>
+                            <div><div class="flex justify-between items-center mb-2"><h4 class="text-[11px] font-black text-white">3. 최근 출고·반품</h4><span id="inventoryShippedCount" class="text-[10px] text-slate-500 font-bold">0건</span></div><div id="inventoryShipmentList" class="space-y-2"><p class="text-center text-xs text-slate-500 font-bold py-5">출고 기록이 없습니다.</p></div></div>
+                        </div>
+                        <details id="inventoryAdjustmentPanel" class="hidden mt-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+                            <summary class="cursor-pointer text-[11px] font-black text-amber-200">재고 실사·오입력 정정</summary>
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end mt-3">
+                                <label class="text-[10px] text-slate-400 font-black">완제품 *<select id="inventoryAdjustmentItem" class="mt-1 w-full px-3 py-2.5 bg-[#0f1522] border border-[#334155] rounded-lg text-xs text-white"><option value="">품목 선택</option></select></label>
+                                <label class="text-[10px] text-slate-400 font-black">증감수량 *<input id="inventoryAdjustmentQty" type="number" step="1" inputmode="numeric" class="mt-1 w-full px-3 py-2.5 bg-[#0f1522] border border-[#334155] rounded-lg text-xs text-white text-right font-black" placeholder="예: -2 또는 3"></label>
+                                <label class="text-[10px] text-slate-400 font-black">정정 사유 *<input id="inventoryAdjustmentReason" maxlength="200" class="mt-1 w-full px-3 py-2.5 bg-[#0f1522] border border-[#334155] rounded-lg text-xs text-white" placeholder="실사 차이, 오입력 등"></label>
+                                <button type="button" onclick="YJProductionInventory.adjustStock()" class="px-4 py-2.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-black">정정 원장 등록</button>
+                            </div>
+                        </details>
+                    </section>
 
                     <div id="pcInventoryCategoryShell" class="hidden grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
                         <section class="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-lg">
@@ -1500,8 +1530,8 @@
                         <section class="lg:col-span-2 bg-[#1e293b] border border-[#334155] rounded-2xl shadow-xl overflow-hidden">
                             <div class="p-5 border-b border-[#334155] bg-[#111827] flex items-center justify-between">
                                 <div>
-                                    <h3 class="text-sm font-bold text-white uppercase tracking-widest">부족 재고 리스트</h3>
-                                    <p class="text-[10px] text-slate-500 font-bold mt-1">현재고와 안전재고를 비교해 보충 검토 대상을 표시합니다.</p>
+                                    <h3 class="text-sm font-bold text-white uppercase tracking-widest">전체 재고 현황</h3>
+                                    <p class="text-[10px] text-slate-500 font-bold mt-1">현재고·주문 예약·가용재고를 구분해 실제 출고 가능한 수량을 표시합니다.</p>
                                 </div>
                                 <span id="pcInventoryItemCount" class="text-[10px] font-black text-slate-400 bg-[#0f1522] border border-[#334155] px-3 py-1 rounded-lg">0건</span>
                             </div>
@@ -1510,15 +1540,17 @@
                                     <thead class="bg-[#0f1522] text-slate-500 font-bold border-b border-[#334155]">
                                         <tr>
                                             <th class="px-4 py-3">품목</th>
-                                            <th class="px-4 py-3">그룹</th>
+                                            <th class="px-4 py-3">입고 창고</th>
                                             <th class="px-4 py-3 text-right">현재고</th>
+                                            <th class="px-4 py-3 text-right">예약</th>
+                                            <th class="px-4 py-3 text-right">가용</th>
                                             <th class="px-4 py-3 text-right">안전재고</th>
                                             <th class="px-4 py-3 text-center">상태</th>
                                         </tr>
                                     </thead>
                                     <tbody id="pcInventoryLowStockBody" class="divide-y divide-[#334155]/50">
                                         <tr>
-                                            <td colspan="5" class="px-4 py-10 text-center text-slate-500 font-bold">
+                                            <td colspan="7" class="px-4 py-10 text-center text-slate-500 font-bold">
                                                 표시할 재고 데이터가 없습니다. 재고 데이터 소스가 연결되면 이 영역에 부족 재고가 표시됩니다.
                                             </td>
                                         </tr>
@@ -1528,8 +1560,8 @@
                         </section>
 
                         <section class="bg-[#1e293b] border border-[#334155] rounded-2xl p-6 shadow-xl min-h-[280px]">
-                            <h3 class="text-sm font-bold text-white uppercase tracking-widest mb-1">최근 생산입고 원장</h3>
-                            <p class="text-[10px] text-slate-500 font-bold mb-4">생산계획과 재고 증가를 연결하는 삭제 불가 이력입니다.</p>
+                            <h3 class="text-sm font-bold text-white uppercase tracking-widest mb-1">최근 재고 이동 원장</h3>
+                            <p class="text-[10px] text-slate-500 font-bold mb-4">입고·배정·출고·반품·정정을 삭제하지 않고 기록합니다.</p>
                             <div id="pcInventoryMovementList" class="space-y-2"><p class="text-center text-xs font-bold text-slate-500">아직 재고 이동 이력이 없습니다.</p></div>
                         </section>
                     </div>
@@ -4309,7 +4341,7 @@ window.addEventListener('hashchange', enforceCurrentHashAccess);
 function startOrdersListener(customQuery = null) {
     if (ordersListenerUnsubscribe) { ordersListenerUnsubscribe(); ordersListenerUnsubscribe = null; }
     // 주문 조회와 재고 생산은 독립된 업무다. 주문 조회 실패 시에도 재고 화면 권한은 유지한다.
-    window.YJProductionInventory?.start?.(currentUser);
+    window.YJProductionInventory?.start?.(currentUser, orders);
     
     if(typeof db === 'undefined') {
         orders = [
@@ -4331,7 +4363,7 @@ function startOrdersListener(customQuery = null) {
     let query;
     if (customQuery) { query = customQuery; } 
     else { const baseRef = db.collection('orders'); if (currentUser.role === 'sales') { query = baseRef.where('reportedBy', '==', currentUser.name).orderBy('createdAt', 'desc').limit(100); } else if (['factory', 'factory_manager'].includes(currentUser.role)) { query = baseRef.where('status', 'in', ['approved', 'completed']).orderBy('createdAt', 'desc').limit(150); } else { query = baseRef.orderBy('createdAt', 'desc').limit(300); } }
-    ordersListenerUnsubscribe = query.onSnapshot(snap => { orders = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); executeSearch(); window.YJProductionInventory?.start?.(currentUser); }, error => { console.error("Orders Listener Error:", error); });
+    ordersListenerUnsubscribe = query.onSnapshot(snap => { orders = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); executeSearch(); window.YJProductionInventory?.start?.(currentUser, orders); }, error => { console.error("Orders Listener Error:", error); });
 }
 
 function renderAccounting() {
@@ -6479,6 +6511,6 @@ window.addEventListener('load', () => {
 <script src="js/employee-document-requests.js?v=20261008-work58"></script>
 <script src="js/business-document-client.js?v=20261012-operation-completion"></script>
 <script src="js/business-documents.js?v=20261012-operation-completion"></script>
-<script src="js/production-inventory.js?v=20261014-work61"></script>
+<script src="js/production-inventory.js?v=20261014-work63"></script>
 </body>
 </html>
