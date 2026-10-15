@@ -471,27 +471,27 @@
     function applyInventoryBetaState() {
         const inventoryTab = document.getElementById('pc-tab-inventory');
         const inventoryLabel = inventoryTab?.querySelector('span:last-child');
-        if (inventoryLabel && !inventoryLabel.querySelector('.yj-inventory-beta-badge')) {
-            inventoryLabel.innerHTML = 'Inventory <span class="yj-inventory-beta-badge"><span class="yj-beta-rainbow-text">(BETA)</span></span>';
-            inventoryLabel.style.display = 'inline-flex';
-            inventoryLabel.style.alignItems = 'center';
-            inventoryLabel.style.gap = '6px';
+        if (inventoryLabel && inventoryLabel.textContent.trim() !== '재고') {
+            inventoryLabel.textContent = '재고';
+            inventoryLabel.style.removeProperty('display');
+            inventoryLabel.style.removeProperty('align-items');
+            inventoryLabel.style.removeProperty('gap');
         }
 
         const inventoryPage = document.getElementById('pc-page-inventory');
         const title = inventoryPage?.querySelector('h2');
-        if (title && !title.querySelector('.yj-inventory-status-badge')) {
-            title.innerHTML = '재고관리 대시보드 <span class="yj-inventory-status-badge">수정중</span>';
-            title.style.display = 'flex';
-            title.style.alignItems = 'center';
-            title.style.gap = '10px';
-            title.style.flexWrap = 'wrap';
+        if (title && title.textContent.trim() !== '완제품 재고·입고 원장') {
+            title.textContent = '완제품 재고·입고 원장';
+            title.style.removeProperty('display');
+            title.style.removeProperty('align-items');
+            title.style.removeProperty('gap');
+            title.style.removeProperty('flex-wrap');
         }
 
         const desc = inventoryPage?.querySelector('p.text-xs');
-        if (desc && !desc.dataset.work25InventoryBeta) {
-            desc.dataset.work25InventoryBeta = 'true';
-            desc.textContent = '재고 데이터 소스 연결 전 단계의 표시 전용 Beta 화면입니다. 정식 업무 메뉴가 아니라 후순위 검증 메뉴입니다.';
+        if (desc) {
+            delete desc.dataset.work25InventoryBeta;
+            desc.textContent = '재고 확보 생산에서 품질 확인된 완제품만 입고되며, 현재고와 생산 입고 이력을 함께 확인합니다.';
         }
     }
 

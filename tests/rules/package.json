@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "test": "npm run test:firestore && npm run test:storage",
-    "test:firestore": "firebase emulators:exec --only firestore --project yongjin-enterprise \"node --test --test-concurrency=1 business-operations.test.mjs expense-approval.test.mjs firestore.test.mjs payment-events.test.mjs\"",
+    "test:firestore": "firebase emulators:exec --only firestore --project yongjin-enterprise \"node --test --test-concurrency=1 business-operations.test.mjs expense-approval.test.mjs firestore.test.mjs payment-events.test.mjs production-inventory.test.mjs\"",
     "test:storage": "firebase emulators:exec --only firestore,storage --project yongjin-enterprise \"node --test --test-concurrency=1 storage.test.mjs\""
   },
   "devDependencies": {

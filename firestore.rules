@@ -36,6 +36,329 @@ service cloud.firestore {
       return arIsAdmin() || arIsAccounting();
     }
 
+    // WORK61: 생산 수량·단계는 관리자·생산담당자·생산관리자만 변경한다.
+    function arIsProductionStaff() {
+      return arIsActiveUser()
+        && arUserDoc().get("role", "") in ["admin", "factory", "factory_manager"];
+    }
+
+    // 재고 생산계획 생성·재고 입고 확정은 생산관리자 이상으로 한정한다.
+    function arIsProductionManager() {
+      return arIsActiveUser()
+        && arUserDoc().get("role", "") in ["admin", "factory_manager"];
+    }
+
+    function orderProductionGatedKeys() {
+      return [
+        "completedQty", "productionStage", "productionHistory", "productionUpdatedAt",
+        "productionCompletedAt", "qualityCheckedAt", "packedAt", "shippedAt"
+      ];
+    }
+
+    function validOrderProductionStage(stage) {
+      return stage in ["in_production", "quantity_complete", "quality_passed", "packed", "shipped"];
+    }
+
+    function orderProductionStageOf(data) {
+      return data.get("productionStage", data.get("status", "") == "completed" ? "shipped" : "in_production");
+    }
+
+    function validOrderProductionTransition(oldStage, newStage) {
+      return oldStage == newStage
+        || (oldStage == "in_production" && newStage == "quantity_complete")
+        || (oldStage == "quantity_complete" && newStage == "in_production")
+        || (oldStage == "quantity_complete" && newStage == "quality_passed")
+        || (oldStage == "quality_passed" && newStage == "packed")
+        || (oldStage == "packed" && newStage == "shipped");
+    }
+
+    function validOrderProductionUpdate() {
+      let oldData = resource.data;
+      let newData = request.resource.data;
+      let affected = newData.diff(oldData).affectedKeys();
+      let oldHistory = oldData.get("productionHistory", []);
+      let newHistory = newData.get("productionHistory", []);
+      let oldStage = orderProductionStageOf(oldData);
+      let newStage = orderProductionStageOf(newData);
+      return arIsProductionStaff()
+        && affected.hasOnly([
+          "completedQty", "productionStage", "productionHistory", "productionUpdatedAt",
+          "productionCompletedAt", "qualityCheckedAt", "packedAt", "shippedAt",
+          "completedAt", "status"
+        ])
+        && newData.get("completedQty", 0) is number
+        && newData.get("completedQty", 0) >= 0
+        && newData.get("completedQty", 0) <= oldData.get("qty", 0)
+        && validOrderProductionStage(newStage)
+        && validOrderProductionTransition(oldStage, newStage)
+        && newHistory is list && newHistory.size() <= 50
+        && newHistory.size() == oldHistory.size() + 1
+        && newData.get("productionUpdatedAt", 0) is number
+        && (newStage != "quantity_complete" || newData.completedQty == oldData.qty)
+        && (newStage != "shipped" || (newData.status == "completed" && newData.completedQty == oldData.qty))
+        && (newStage == "shipped" || newData.status == "approved");
+    }
+
+    function validStockProductionStage(stage) {
+      return stage in ["planned", "in_production", "quantity_complete", "quality_passed", "stocked"];
+    }
+
+    function validStockProductionTransition(oldStage, newStage) {
+      return oldStage == newStage
+        || (oldStage == "planned" && newStage == "in_production")
+        || (oldStage == "in_production" && newStage == "quantity_complete")
+        || (oldStage == "quantity_complete" && newStage == "quality_passed")
+        || (oldStage == "quality_passed" && newStage == "stocked");
+    }
+
+    function stockJobCreateValid() {
+      let d = request.resource.data;
+      return arIsProductionManager()
+        && d.keys().hasOnly([
+          "productionType", "itemCode", "itemName", "material", "specification",
+          "targetWarehouse", "stockReason", "dueDate", "plannedQty", "completedQty",
+          "safetyStock", "inventoryQtyAtCreate", "productionStage", "status", "isTestData",
+          "createdByUid", "createdByName", "createdByRole", "createdAt", "updatedAt",
+          "stockReceiptId", "stockedQty", "stockedAt"
+        ])
+        && d.productionType == "stock"
+        && d.itemCode is string && d.itemCode.size() > 0 && d.itemCode.size() <= 40
+        && d.itemName is string && d.itemName.size() > 0 && d.itemName.size() <= 80
+        && d.material is string && d.specification is string
+        && d.targetWarehouse is string && d.targetWarehouse.size() > 0
+        && d.stockReason is string && d.stockReason.size() > 0
+        && d.dueDate is string && d.dueDate.size() == 10
+        && d.plannedQty is int && d.plannedQty > 0
+        && d.completedQty == 0 && d.stockedQty == 0
+        && d.safetyStock is int && d.safetyStock >= 0
+        && d.inventoryQtyAtCreate is number && d.inventoryQtyAtCreate >= 0
+        && d.productionStage == "planned" && d.status == "active"
+        && d.isTestData == false
+        && d.createdByUid == request.auth.uid
+        && d.createdByRole == arUserDoc().get("role", "")
+        && d.createdByName is string
+        && d.createdAt == request.time && d.updatedAt == request.time
+        && d.stockReceiptId == null && d.stockedAt == null;
+    }
+
+    function stockReceiptBound(jobId) {
+      let d = request.resource.data;
+      let movementPath = /databases/$(database)/documents/production_inventory/main/movements/$(jobId);
+      let itemPath = /databases/$(database)/documents/production_inventory/main/items/$(d.itemCode);
+      return d.productionStage == "stocked"
+        && d.status == "completed"
+        && d.stockReceiptId == jobId
+        && d.stockedQty == d.plannedQty
+        && d.stockedAt == request.time
+        && existsAfter(movementPath)
+        && getAfter(movementPath).data.sourceJobId == jobId
+        && getAfter(movementPath).data.itemCode == d.itemCode
+        && getAfter(movementPath).data.quantity == d.stockedQty
+        && existsAfter(itemPath)
+        && getAfter(itemPath).data.lastMovementId == jobId
+        && getAfter(itemPath).data.currentQty == getAfter(movementPath).data.afterQty;
+    }
+
+    function stockJobUpdateValid(jobId) {
+      let oldData = resource.data;
+      let newData = request.resource.data;
+      let affected = newData.diff(oldData).affectedKeys();
+      let oldStage = oldData.productionStage;
+      let newStage = newData.productionStage;
+      return arIsProductionStaff()
+        && affected.hasOnly([
+          "completedQty", "productionStage", "status", "productionStartedAt",
+          "productionCompletedAt", "qualityCheckedAt", "qualityCheckedByUid",
+          "lastProgressQty", "updatedAt", "updatedByUid", "updatedByName",
+          "stockReceiptId", "stockedQty", "stockedAt"
+        ])
+        && newData.productionType == oldData.productionType
+        && newData.itemCode == oldData.itemCode
+        && newData.plannedQty == oldData.plannedQty
+        && newData.completedQty is int && newData.completedQty >= 0
+        && newData.completedQty <= newData.plannedQty
+        && validStockProductionStage(newStage)
+        && validStockProductionTransition(oldStage, newStage)
+        && newData.updatedAt == request.time
+        && newData.updatedByUid == request.auth.uid
+        && newData.updatedByName is string
+        && (newStage != "quantity_complete" || newData.completedQty == newData.plannedQty)
+        && (newStage != "quality_passed" || newData.completedQty == newData.plannedQty)
+        && (newStage == "stocked" ? (arIsProductionManager() && stockReceiptBound(jobId)) : newData.status == "active");
+    }
+
+    function productionReceiptMovementValid(movementId) {
+      let d = request.resource.data;
+      let jobPath = /databases/$(database)/documents/production_inventory/main/jobs/$(d.sourceJobId);
+      let itemPath = /databases/$(database)/documents/production_inventory/main/items/$(d.itemCode);
+      return arIsProductionManager()
+        && movementId == d.sourceJobId
+        && d.keys().hasOnly([
+          "movementId", "movementType", "sourceJobId", "allocationId", "orderId", "orderLabel",
+          "itemCode", "itemName", "warehouse", "unit", "quantity", "stockDelta", "reservedDelta",
+          "beforeQty", "afterQty", "beforeReservedQty", "afterReservedQty", "reason",
+          "actorUid", "actorName", "actorRole", "createdAt"
+        ])
+        && d.movementId == movementId
+        && d.movementType == "production_receipt"
+        && d.quantity is int && d.quantity > 0
+        && d.stockDelta == d.quantity && d.reservedDelta == 0
+        && d.beforeQty is number && d.beforeQty >= 0
+        && d.afterQty == d.beforeQty + d.quantity
+        && d.afterReservedQty == d.beforeReservedQty
+        && d.actorUid == request.auth.uid
+        && d.actorRole == arUserDoc().get("role", "")
+        && d.actorName is string
+        && d.createdAt == request.time
+        && existsAfter(jobPath)
+        && getAfter(jobPath).data.productionStage == "stocked"
+        && getAfter(jobPath).data.stockReceiptId == movementId
+        && getAfter(jobPath).data.stockedQty == d.quantity
+        && existsAfter(itemPath)
+        && getAfter(itemPath).data.lastMovementId == movementId
+        && getAfter(itemPath).data.currentQty == d.afterQty;
+    }
+
+    function inventoryItemCreateValid(itemCode) {
+      let d = request.resource.data;
+      let movementPath = /databases/$(database)/documents/production_inventory/main/movements/$(d.lastMovementId);
+      return arIsProductionManager()
+        && d.keys().hasOnly([
+          "itemCode", "itemName", "material", "specification", "warehouse", "unit",
+          "currentQty", "reservedQty", "availableQty", "safetyStock", "lastMovementId", "updatedAt", "updatedByUid"
+        ])
+        && d.itemCode == itemCode
+        && d.currentQty is number && d.currentQty > 0
+        && d.reservedQty == 0 && d.availableQty == d.currentQty
+        && d.safetyStock is number && d.safetyStock >= 0
+        && d.updatedAt == request.time && d.updatedByUid == request.auth.uid
+        && existsAfter(movementPath)
+        && getAfter(movementPath).data.itemCode == itemCode
+        && getAfter(movementPath).data.beforeQty == 0
+        && getAfter(movementPath).data.afterQty == d.currentQty;
+    }
+
+    function inventoryItemUpdateValid(itemCode) {
+      let oldData = resource.data;
+      let newData = request.resource.data;
+      let movementPath = /databases/$(database)/documents/production_inventory/main/movements/$(newData.lastMovementId);
+      let movement = getAfter(movementPath).data;
+      return arIsProductionManager()
+        && newData.diff(oldData).affectedKeys().hasOnly([
+          "itemName", "material", "specification", "warehouse", "unit",
+          "currentQty", "reservedQty", "availableQty", "safetyStock", "lastMovementId", "updatedAt", "updatedByUid"
+        ])
+        && newData.itemCode == itemCode
+        && newData.currentQty is number && newData.currentQty >= 0
+        && newData.reservedQty is number && newData.reservedQty >= 0 && newData.reservedQty <= newData.currentQty
+        && newData.availableQty == newData.currentQty - newData.reservedQty
+        && newData.safetyStock is number && newData.safetyStock >= 0
+        && newData.updatedAt == request.time && newData.updatedByUid == request.auth.uid
+        && existsAfter(movementPath)
+        && movement.itemCode == itemCode && movement.actorUid == request.auth.uid
+        && movement.beforeQty == oldData.currentQty && movement.afterQty == newData.currentQty
+        && movement.beforeReservedQty == oldData.get("reservedQty", 0)
+        && movement.afterReservedQty == newData.reservedQty
+        && movement.stockDelta == newData.currentQty - oldData.currentQty
+        && movement.reservedDelta == newData.reservedQty - oldData.get("reservedQty", 0);
+    }
+
+    function inventoryAllocationCreateValid(allocationId) {
+      let d = request.resource.data;
+      let movementPath = /databases/$(database)/documents/production_inventory/main/movements/$(allocationId);
+      return arIsProductionManager()
+        && d.keys().hasOnly(["allocationId", "orderId", "orderLabel", "itemCode", "itemName", "warehouse", "unit", "allocatedQty", "shippedQty", "returnedQty", "status", "createdAt", "createdByUid", "updatedAt", "updatedByUid"])
+        && d.allocationId == allocationId && d.orderId is string && d.orderId.size() > 0
+        && exists(/databases/$(database)/documents/orders/$(d.orderId))
+        && d.itemCode is string && d.itemCode.size() > 0 && d.allocatedQty is int && d.allocatedQty > 0
+        && d.shippedQty == 0 && d.returnedQty == 0 && d.status == "allocated"
+        && d.createdAt == request.time && d.updatedAt == request.time
+        && d.createdByUid == request.auth.uid && d.updatedByUid == request.auth.uid
+        && getAfter(movementPath).data.movementType == "allocation"
+        && getAfter(movementPath).data.allocationId == allocationId;
+    }
+
+    function inventoryAllocationUpdateValid(allocationId) {
+      let oldData = resource.data;
+      let newData = request.resource.data;
+      let movement = getAfter(/databases/$(database)/documents/production_inventory/main/movements/$(newData.lastMovementId)).data;
+      return arIsProductionManager()
+        && newData.diff(oldData).affectedKeys().hasOnly(["status", "shippedQty", "returnedQty", "updatedAt", "updatedByUid", "lastMovementId"])
+        && newData.updatedAt == request.time && newData.updatedByUid == request.auth.uid
+        && movement.allocationId == allocationId && movement.actorUid == request.auth.uid
+        && (
+          (oldData.status == "allocated" && newData.status == "shipped" && newData.shippedQty == oldData.allocatedQty && movement.movementType == "shipment")
+          || (oldData.status == "allocated" && newData.status == "released" && movement.movementType == "allocation_release")
+          || (oldData.status == "shipped" && newData.status == "returned" && newData.returnedQty == oldData.allocatedQty && movement.movementType == "return_receipt")
+        );
+    }
+
+    function inventoryCycleMovementValid(movementId) {
+      let d = request.resource.data;
+      let item = getAfter(/databases/$(database)/documents/production_inventory/main/items/$(d.itemCode)).data;
+      return arIsProductionManager()
+        && d.keys().hasOnly(["movementId", "movementType", "sourceJobId", "allocationId", "orderId", "orderLabel", "itemCode", "itemName", "warehouse", "unit", "quantity", "stockDelta", "reservedDelta", "beforeQty", "afterQty", "beforeReservedQty", "afterReservedQty", "reason", "actorUid", "actorName", "actorRole", "createdAt"])
+        && d.movementId == movementId
+        && d.movementType in ["allocation", "shipment", "allocation_release", "return_receipt", "stock_adjustment"]
+        && d.quantity is int && d.quantity > 0
+        && d.afterQty == d.beforeQty + d.stockDelta
+        && d.afterReservedQty == d.beforeReservedQty + d.reservedDelta
+        && d.afterQty >= 0 && d.afterReservedQty >= 0 && d.afterReservedQty <= d.afterQty
+        && d.actorUid == request.auth.uid && d.actorRole == arUserDoc().get("role", "") && d.createdAt == request.time
+        && item.lastMovementId == movementId && item.currentQty == d.afterQty && item.reservedQty == d.afterReservedQty
+        && (d.movementType == "stock_adjustment"
+          ? d.allocationId == ""
+            && d.orderId == ""
+            && d.stockDelta != 0
+            && d.reservedDelta == 0
+            && d.reason is string
+            && d.reason.size() > 0
+          : d.allocationId is string
+            && d.allocationId.size() > 0
+            && (
+              (d.movementType == "allocation"
+                && d.stockDelta == 0
+                && d.reservedDelta == d.quantity
+                && getAfter(/databases/$(database)/documents/production_inventory/main/allocations/$(d.allocationId)).data.status == "allocated")
+              || (d.movementType == "shipment"
+                && d.stockDelta == -d.quantity
+                && d.reservedDelta == -d.quantity
+                && getAfter(/databases/$(database)/documents/production_inventory/main/allocations/$(d.allocationId)).data.status == "shipped")
+              || (d.movementType == "allocation_release"
+                && d.stockDelta == 0
+                && d.reservedDelta == -d.quantity
+                && getAfter(/databases/$(database)/documents/production_inventory/main/allocations/$(d.allocationId)).data.status == "released")
+              || (d.movementType == "return_receipt"
+                && d.stockDelta == d.quantity
+                && d.reservedDelta == 0
+                && getAfter(/databases/$(database)/documents/production_inventory/main/allocations/$(d.allocationId)).data.status == "returned")
+            )
+        );
+    }
+
+    function inventoryAdjustmentMovementValid(movementId) {
+      let d = request.resource.data;
+      let item = getAfter(/databases/$(database)/documents/production_inventory/main/items/$(d.itemCode)).data;
+      return arIsProductionManager()
+        && d.keys().hasOnly(["movementId", "movementType", "sourceJobId", "allocationId", "orderId", "orderLabel", "itemCode", "itemName", "warehouse", "unit", "quantity", "stockDelta", "reservedDelta", "beforeQty", "afterQty", "beforeReservedQty", "afterReservedQty", "reason", "actorUid", "actorName", "actorRole", "createdAt"])
+        && d.movementId == movementId
+        && d.movementType == "stock_adjustment"
+        && d.sourceJobId == "" && d.allocationId == "" && d.orderId == ""
+        && d.quantity is int && d.quantity > 0
+        && d.stockDelta is int && d.stockDelta != 0
+        && d.reservedDelta == 0
+        && d.afterQty == d.beforeQty + d.stockDelta
+        && d.afterReservedQty == d.beforeReservedQty
+        && d.afterQty >= 0 && d.afterReservedQty >= 0 && d.afterReservedQty <= d.afterQty
+        && d.reason is string && d.reason.size() > 0
+        && d.actorUid == request.auth.uid
+        && d.actorRole == arUserDoc().get("role", "")
+        && d.createdAt == request.time
+        && item.lastMovementId == movementId
+        && item.currentQty == d.afterQty
+        && item.reservedQty == d.afterReservedQty;
+    }
+
     // WORK52-2: 주문 문서에서 입금 관련 요약 필드(회계·관리자만 변경 허용)
     // first/lastOperationId·lastPaymentAt 포함 — 요약 변경과 실제 입금 이벤트 생성을 묶는 연결 키.
     function orderPaymentGatedKeys() {
@@ -811,12 +1134,15 @@ service cloud.firestore {
         && !("lastOperationId" in request.resource.data)
         && (!("paymentLedgerInitialized" in request.resource.data) || request.resource.data.paymentLedgerInitialized == false)
         && (!("paymentStatus" in request.resource.data) || request.resource.data.paymentStatus == "unpaid");
-      // WORK52-2: 입금 요약 필드(paidAmount 등) 변경은 회계·관리자만 + 이벤트 바인딩 필수.
-      // 그 외 필드(생산 단계·영업 등)는 기존대로 active 사용자 전체가 처리 가능(기존 기능 유지).
+      // WORK52-2/WORK61: 입금 요약은 회계 이벤트, 생산 필드는 생산 전용 검증을 반드시 통과한다.
       allow update: if arIsActiveUser()
         && (
           (arIsFinanceStaff() && orderPaymentEventBound(orderId))
-          || !request.resource.data.diff(resource.data).affectedKeys().hasAny(orderPaymentGatedKeys())
+          || (
+            request.resource.data.diff(resource.data).affectedKeys().hasAny(orderProductionGatedKeys())
+              ? validOrderProductionUpdate()
+              : !request.resource.data.diff(resource.data).affectedKeys().hasAny(orderPaymentGatedKeys())
+          )
         );
       allow delete: if arIsAdmin();
 
@@ -832,6 +1158,42 @@ service cloud.firestore {
         allow read: if arIsActiveUser();
         allow create: if arIsFinanceStaff() && paymentActionMarkerValid(orderId, targetEventId);
         allow update, delete: if false;
+      }
+    }
+
+    // WORK61: 생산·재고 데이터를 단일 네임스페이스 아래에 격리해 기존 업무 Rules 평가를 증가시키지 않는다.
+    match /production_inventory/main {
+      allow read, write: if false;
+
+      match /jobs/{jobId} {
+        allow read: if arIsActiveUser();
+        allow create: if stockJobCreateValid();
+        allow update: if stockJobUpdateValid(jobId);
+        allow delete: if false;
+      }
+
+      match /items/{itemCode} {
+        allow read: if arIsActiveUser();
+        allow create: if inventoryItemCreateValid(itemCode);
+        allow update: if inventoryItemUpdateValid(itemCode);
+        allow delete: if false;
+      }
+
+      match /movements/{movementId} {
+        allow read: if arIsActiveUser();
+        allow create: if request.resource.data.movementType == "production_receipt"
+          ? productionReceiptMovementValid(movementId)
+          : request.resource.data.movementType == "stock_adjustment"
+            ? inventoryAdjustmentMovementValid(movementId)
+            : inventoryCycleMovementValid(movementId);
+        allow update, delete: if false;
+      }
+
+      match /allocations/{allocationId} {
+        allow read: if arIsActiveUser();
+        allow create: if inventoryAllocationCreateValid(allocationId);
+        allow update: if inventoryAllocationUpdateValid(allocationId);
+        allow delete: if false;
       }
     }
 
