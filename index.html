@@ -403,6 +403,28 @@
             </section>
         </div>
 
+        <div id="section-inventory" class="hidden space-y-6">
+            <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-cyan-100">
+                <div class="flex items-start justify-between gap-3 mb-4">
+                    <div>
+                        <h3 class="font-bold text-cyan-900 text-lg">완제품 재고</h3>
+                        <p class="text-[11px] text-slate-500 font-bold mt-1">현재고·예약·가용 수량과 최근 입출고 원장을 확인합니다.</p>
+                    </div>
+                    <span class="shrink-0 text-[10px] font-black text-cyan-700 bg-cyan-50 border border-cyan-100 rounded-full px-3 py-1">조회 전용</span>
+                </div>
+                <div id="mobileInventorySummary" class="grid grid-cols-3 gap-2 mb-5">
+                    <div class="rounded-2xl bg-slate-50 border border-slate-100 p-3"><p class="text-[9px] font-black text-slate-400">품목</p><strong class="block mt-1 text-lg text-slate-900">0</strong></div>
+                    <div class="rounded-2xl bg-blue-50 border border-blue-100 p-3"><p class="text-[9px] font-black text-blue-500">예약</p><strong class="block mt-1 text-lg text-blue-800">0</strong></div>
+                    <div class="rounded-2xl bg-cyan-50 border border-cyan-100 p-3"><p class="text-[9px] font-black text-cyan-600">가용</p><strong class="block mt-1 text-lg text-cyan-900">0</strong></div>
+                </div>
+                <h4 class="text-xs font-black text-slate-700 mb-2">재고 현황</h4>
+                <div id="mobileInventoryItems" class="space-y-3"><p class="py-5 text-center text-xs font-bold text-slate-400">입고 확정된 완제품이 없습니다.</p></div>
+                <h4 class="text-xs font-black text-slate-700 mt-6 mb-2">최근 재고 이동</h4>
+                <div id="mobileInventoryMovements" class="space-y-2"><p class="py-5 text-center text-xs font-bold text-slate-400">재고 이동 이력이 없습니다.</p></div>
+                <p class="mt-5 rounded-2xl bg-slate-50 border border-slate-100 px-4 py-3 text-[10px] leading-5 font-bold text-slate-500">주문 배정·출고·반품·정정은 수량 오처리를 방지하기 위해 PC 생산관리 화면에서 처리합니다.</p>
+            </section>
+        </div>
+
         <div id="section-receivables" class="hidden space-y-6">
             <div id="receivableBannerWrap"></div>
             <section class="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-amber-200">
@@ -1846,9 +1868,9 @@ const TAB_ACCESS_AREA = {
 const ROLE_TABS = {
     sales: ['sales', 'receivables', 'factory', 'history'],
     accounting: ['sales', 'accounting', 'receivables', 'factory', 'history'],
-    factory: ['factory'],
-    factory_manager: ['factory'],
-    admin: ['sales', 'accounting', 'receivables', 'factory', 'history']
+    factory: ['factory', 'inventory'],
+    factory_manager: ['factory', 'inventory'],
+    admin: ['sales', 'accounting', 'receivables', 'factory', 'inventory', 'history']
 };
 // [K5G-17] PC 사이드바 네비 아이콘 (Heroicons outline, currentColor 기반). SVG는 여기 한 곳에서만 관리.
 const NAV_ICONS = {
@@ -1869,7 +1891,7 @@ function applyNavIcons() {
 }
 document.addEventListener('DOMContentLoaded', applyNavIcons);
 
-const TAB_META = { sales: {label:'영업'}, accounting: {label:'회계'}, receivables: {label:'채권'}, factory: {label:'생산'}, history: {label:'현황'} };
+const TAB_META = { sales: {label:'영업'}, accounting: {label:'회계'}, receivables: {label:'채권'}, factory: {label:'생산'}, inventory: {label:'재고'}, history: {label:'현황'} };
 const PC_ROLE_TABS = {
     sales: ['dashboard', 'docbox', 'sales', 'receivables', 'factory', 'inventory'],
     accounting: ['dashboard', 'docbox', 'approval', 'sales', 'accounting', 'receivables', 'factory', 'inventory'],
@@ -4248,13 +4270,13 @@ function switchTab(tabId, pushHistory = true) {
     }
     document.querySelectorAll('#roleTabsWrap button').forEach(b => b.classList.remove('active-role'));
     const btn = document.getElementById('role-' + tabId); if(btn) btn.classList.add('active-role');
-    ['sales', 'accounting', 'factory', 'receivables', 'history'].forEach(s => { const el = document.getElementById('section-' + s); if(el) el.classList.add('hidden'); });
+    ['sales', 'accounting', 'factory', 'inventory', 'receivables', 'history'].forEach(s => { const el = document.getElementById('section-' + s); if(el) el.classList.add('hidden'); });
     const targetSec = document.getElementById('section-' + tabId); if(targetSec) targetSec.classList.remove('hidden');
     sessionStorage.setItem('active_tab', tabId); 
     
     if (pushHistory) { try { history.pushState({ tab: tabId }, '', '#' + tabId); } catch(e) { } }
     
-    if(tabId === 'accounting') renderAccounting(); else if(tabId === 'factory') renderFactory(); else if(tabId === 'receivables') renderReceivables(); else if(tabId === 'history') { renderHistory(); renderAdminMonitor(); }
+    if(tabId === 'accounting') renderAccounting(); else if(tabId === 'factory') renderFactory(); else if(tabId === 'inventory') window.YJProductionInventory?.refresh?.(); else if(tabId === 'receivables') renderReceivables(); else if(tabId === 'history') { renderHistory(); renderAdminMonitor(); }
 }
 
 window.addEventListener('popstate', function(event) {
