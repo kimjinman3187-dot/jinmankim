@@ -19,9 +19,9 @@ test('WORK63 exposes a guided allocation, shipment, return, and correction workf
   assert.match(moduleSource, /adjustStock/);
 });
 test('WORK63 distinguishes physical, reserved, and available inventory', () => {
-  assert.match(html, />현재고</);
-  assert.match(html, />예약</);
-  assert.match(html, />가용</);
+  assert.match(html, />현재 재고</);
+  assert.match(html, />주문 예약</);
+  assert.match(html, />출고 가능</);
   assert.match(moduleSource, /availableQty: afterQty - afterReservedQty/);
   assert.match(moduleSource, /reservedQty: afterReservedQty/);
 });
