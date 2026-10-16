@@ -227,7 +227,7 @@
     const movementList = document.getElementById('pcInventoryMovementList');
     if (movementList) {
       const labels = { production_receipt: '생산입고', allocation: '주문 배정', allocation_release: '배정 해제', shipment: '출고', return_receipt: '반품 입고', stock_adjustment: '재고 정정' };
-      inventoryMovements.length ? inventoryMovements.slice(0, 12).map(movement => {
+      movementList.innerHTML = inventoryMovements.length ? inventoryMovements.slice(0, 12).map(movement => {
         const stockDelta = Number(movement.stockDelta ?? movement.quantity ?? 0);
         const reservedDelta = Number(movement.reservedDelta || 0);
         const deltaText = stockDelta ? `${stockDelta > 0 ? '+' : ''}${stockDelta.toLocaleString()}` : `예약 ${reservedDelta > 0 ? '+' : ''}${reservedDelta.toLocaleString()}`;
@@ -235,7 +235,46 @@
         return `<div class="rounded-lg border border-[#334155] bg-[#111827] p-3"><div class="flex justify-between gap-3"><strong class="text-xs text-white">${esc(movement.itemName || movement.itemCode)}</strong><span class="text-xs font-black ${deltaClass}">${esc(deltaText)}${esc(movement.unit || '장')}</span></div><p class="mt-1 text-[9px] font-bold text-slate-500">${esc(labels[movement.movementType] || movement.movementType)} · ${esc(movement.orderLabel || movement.reason || movement.actorName || '-')}</p></div>`;
       }).join('') : '<p class="text-center text-xs font-bold text-slate-500">아직 재고 이동 이력이 없습니다.</p>';
     }
+    renderMobileInventory();
     renderCycle();
+  }
+
+  function renderMobileInventory() {
+    const summary = document.getElementById('mobileInventorySummary');
+    const itemList = document.getElementById('mobileInventoryItems');
+    const movementList = document.getElementById('mobileInventoryMovements');
+    if (!summary && !itemList && !movementList) return;
+
+    const totalReserved = inventoryItems.reduce((sum, item) => sum + Number(item.reservedQty || 0), 0);
+    const totalAvailable = inventoryItems.reduce((sum, item) => sum + availableQty(item), 0);
+    if (summary) {
+      summary.innerHTML = `
+        <div class="rounded-2xl bg-slate-50 border border-slate-100 p-3"><p class="text-[9px] font-black text-slate-400">품목</p><strong class="block mt-1 text-lg text-slate-900">${inventoryItems.length.toLocaleString()}</strong></div>
+        <div class="rounded-2xl bg-blue-50 border border-blue-100 p-3"><p class="text-[9px] font-black text-blue-500">예약</p><strong class="block mt-1 text-lg text-blue-800">${totalReserved.toLocaleString()}</strong></div>
+        <div class="rounded-2xl bg-cyan-50 border border-cyan-100 p-3"><p class="text-[9px] font-black text-cyan-600">가용</p><strong class="block mt-1 text-lg text-cyan-900">${totalAvailable.toLocaleString()}</strong></div>`;
+    }
+    if (itemList) {
+      itemList.innerHTML = inventoryItems.length ? inventoryItems.map(item => {
+        const current = Number(item.currentQty || 0);
+        const reserved = Number(item.reservedQty || 0);
+        const available = availableQty(item);
+        const safety = Number(item.safetyStock || 0);
+        const tone = available <= 0 ? 'text-red-600 bg-red-50 border-red-100' : available <= safety ? 'text-amber-700 bg-amber-50 border-amber-100' : 'text-emerald-700 bg-emerald-50 border-emerald-100';
+        const state = available <= 0 ? '부족' : available <= safety ? '보충 검토' : '정상';
+        return `<article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div class="flex items-start justify-between gap-3"><div><strong class="block text-sm text-slate-900">${esc(item.itemName || item.itemCode)}</strong><span class="text-[9px] font-bold text-slate-400">${esc(item.itemCode)} · ${esc(item.warehouse || '-')}</span></div><span class="shrink-0 rounded-full border px-2 py-1 text-[9px] font-black ${tone}">${state}</span></div><div class="mt-3 grid grid-cols-3 gap-2 text-center"><div class="rounded-xl bg-slate-50 p-2"><span class="block text-[9px] font-bold text-slate-400">현재</span><strong class="text-sm text-slate-800">${current.toLocaleString()}</strong></div><div class="rounded-xl bg-blue-50 p-2"><span class="block text-[9px] font-bold text-blue-400">예약</span><strong class="text-sm text-blue-800">${reserved.toLocaleString()}</strong></div><div class="rounded-xl bg-cyan-50 p-2"><span class="block text-[9px] font-bold text-cyan-500">가용</span><strong class="text-sm text-cyan-900">${available.toLocaleString()}</strong></div></div></article>`;
+      }).join('') : '<p class="py-5 text-center text-xs font-bold text-slate-400">입고 확정된 완제품이 없습니다.</p>';
+    }
+    if (movementList) {
+      const labels = { production_receipt: '생산입고', allocation: '주문 배정', allocation_release: '배정 해제', shipment: '출고', return_receipt: '반품 입고', stock_adjustment: '재고 정정' };
+      movementList.innerHTML = inventoryMovements.length ? inventoryMovements.slice(0, 8).map(movement => {
+        const stockDelta = Number(movement.stockDelta || 0);
+        const reservedDelta = Number(movement.reservedDelta || 0);
+        const delta = stockDelta || reservedDelta;
+        const deltaText = stockDelta ? `${stockDelta > 0 ? '+' : ''}${stockDelta.toLocaleString()}` : `예약 ${reservedDelta > 0 ? '+' : ''}${reservedDelta.toLocaleString()}`;
+        const tone = delta < 0 || reservedDelta > 0 ? 'text-orange-600' : 'text-emerald-600';
+        return `<div class="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 border border-slate-100 px-4 py-3"><div class="min-w-0"><strong class="block truncate text-xs text-slate-800">${esc(movement.itemName || movement.itemCode)}</strong><span class="text-[9px] font-bold text-slate-400">${esc(labels[movement.movementType] || movement.movementType)} · ${esc(movement.orderLabel || movement.reason || '-')}</span></div><strong class="shrink-0 text-xs ${tone}">${esc(deltaText)}${esc(movement.unit || '장')}</strong></div>`;
+      }).join('') : '<p class="py-5 text-center text-xs font-bold text-slate-400">재고 이동 이력이 없습니다.</p>';
+    }
   }
 
   function renderCycle() {
