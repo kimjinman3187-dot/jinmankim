@@ -32,7 +32,7 @@ const expenseDetails = {
 function approvedExpense() {
   const now = fs.Timestamp.now();
   return {
-    schemaVersion: 8,
+    schemaVersion: 10,
     clientMode: "spark-firestore",
     kind: "expense",
     number: "YJ-EXPENSE-20261008-TEST01",
@@ -61,6 +61,27 @@ function approvedExpense() {
     allocatedAmount: 0,
     purchaseReserved: false,
     revisedFrom: "",
+    erpExportStatus: "ready",
+    erpExportedAt: null,
+    erpExportedBy: "",
+    erpExportSnapshot: null,
+    erpExportHash: "",
+    erpExportVersion: 0,
+    erpExportFormat: "",
+    erpExportCreatedAt: null,
+    erpExportCreatedBy: "",
+    erpExportCreatedByName: "",
+    erpExportConfirmedAt: null,
+    erpExportConfirmedBy: "",
+    erpExportCancelledAt: null,
+    erpExportCancelledBy: "",
+    erpExportCancelReason: "",
+    erpExportRetryCount: 0,
+    revision: 0,
+    revisionReason: "",
+    revisionRequestedAt: null,
+    revisionRequestedBy: "",
+    revisionSnapshotId: "",
     lastOperationId: "approve-operation-00001",
   };
 }
@@ -140,7 +161,7 @@ test("거래처·계약조건 승인서를 초안과 생성 이력으로 함께 
   const operationId = "create-contract-00001";
   const batch = fs.writeBatch(db);
   batch.set(fs.doc(db, "business_documents", contractId), {
-    schemaVersion: 9,
+    schemaVersion: 10,
     clientMode: "spark-firestore",
     kind: "vendor_contract",
     number: "YJ-CONTRACT-20261008-TEST01",
@@ -184,6 +205,24 @@ test("거래처·계약조건 승인서를 초안과 생성 이력으로 함께 
     erpExportStatus: null,
     erpExportedAt: null,
     erpExportedBy: "",
+    erpExportSnapshot: null,
+    erpExportHash: "",
+    erpExportVersion: 0,
+    erpExportFormat: "",
+    erpExportCreatedAt: null,
+    erpExportCreatedBy: "",
+    erpExportCreatedByName: "",
+    erpExportConfirmedAt: null,
+    erpExportConfirmedBy: "",
+    erpExportCancelledAt: null,
+    erpExportCancelledBy: "",
+    erpExportCancelReason: "",
+    erpExportRetryCount: 0,
+    revision: 0,
+    revisionReason: "",
+    revisionRequestedAt: null,
+    revisionRequestedBy: "",
+    revisionSnapshotId: "",
     lastOperationId: operationId,
   });
   batch.set(fs.doc(db, "business_documents", contractId, "history", operationId), {
@@ -200,14 +239,14 @@ test("거래처·계약조건 승인서를 초안과 생성 이력으로 함께 
   await assertSucceeds(batch.commit());
 });
 
-test("스키마 9 지출결의서는 과세구분과 ERP 초기상태를 함께 저장한다", async () => {
+test("스키마 10 지출결의서는 과세구분과 ERP 초기상태를 함께 저장한다", async () => {
   const db = env.authenticatedContext("emp1").firestore();
-  const id = "expense-schema9-draft";
-  const operationId = "create-expense-schema9-001";
+  const id = "expense-schema10-draft";
+  const operationId = "create-expense-schema10-001";
   const row = {
     ...approvedExpense(),
-    schemaVersion: 9,
-    number: "YJ-EXPENSE-20261009-SCHEMA9",
+    schemaVersion: 10,
+    number: "YJ-EXPENSE-20261009-SCHEMA10",
     details: {
       ...expenseDetails,
       taxType: "exempt",
@@ -298,22 +337,46 @@ test("일반 직원은 지급 준비 기록을 생성할 수 없다", async () =
   );
 });
 
-test("회계는 승인 문서를 ERP 이관 완료로 한 번만 잠글 수 있다", async () => {
+test("회계는 승인 문서를 ERP 파일 생성 상태로 한 번만 잠글 수 있다", async () => {
   const db = env.authenticatedContext("emp2").firestore();
   const documentRef = fs.doc(db, "business_documents", docId);
   const operationId = "erp-export-operation-0001";
+  const erpSnapshot = {
+    voucherDate: expenseDetails.transactionDate,
+    documentNumber: "YJ-EXPENSE-20261008-TEST01",
+    taxType: expenseDetails.taxType,
+    expenseCategory: expenseDetails.category,
+    payee: expenseDetails.payee,
+    supplyAmount: expenseDetails.supplyAmount,
+    taxAmount: expenseDetails.taxAmount,
+    totalAmount: expenseDetails.amount,
+    summary: expenseDetails.title,
+    paymentMethod: expenseDetails.paymentMethod,
+  };
   const batch = fs.writeBatch(db);
   batch.update(documentRef, {
-    schemaVersion: 9,
-    erpExportStatus: "exported",
-    erpExportedAt: fs.serverTimestamp(),
-    erpExportedBy: "emp2",
+    schemaVersion: 10,
+    erpExportStatus: "generated",
+    erpExportSnapshot: erpSnapshot,
+    erpExportHash: "a".repeat(64),
+    erpExportVersion: 1,
+    erpExportFormat: "csv",
+    erpExportCreatedAt: fs.serverTimestamp(),
+    erpExportCreatedBy: "emp2",
+    erpExportCreatedByName: USERS.emp2.name,
+    erpExportedAt: null,
+    erpExportedBy: "",
+    erpExportConfirmedAt: null,
+    erpExportConfirmedBy: "",
+    erpExportCancelledAt: null,
+    erpExportCancelledBy: "",
+    erpExportCancelReason: "",
     updatedAt: fs.serverTimestamp(),
     lastOperationId: operationId,
   });
   batch.set(fs.doc(db, "business_documents", docId, "history", operationId), {
     operationId,
-    action: "exportErp",
+    action: "generateErp",
     actorUid: "emp2",
     actorName: USERS.emp2.name,
     actorRole: USERS.emp2.role,
@@ -327,16 +390,28 @@ test("회계는 승인 문서를 ERP 이관 완료로 한 번만 잠글 수 있�
   const duplicateId = "erp-export-operation-0002";
   const duplicate = fs.writeBatch(db);
   duplicate.update(documentRef, {
-    schemaVersion: 9,
-    erpExportStatus: "exported",
-    erpExportedAt: fs.serverTimestamp(),
-    erpExportedBy: "emp2",
+    schemaVersion: 10,
+    erpExportStatus: "generated",
+    erpExportSnapshot: erpSnapshot,
+    erpExportHash: "b".repeat(64),
+    erpExportVersion: 1,
+    erpExportFormat: "json",
+    erpExportCreatedAt: fs.serverTimestamp(),
+    erpExportCreatedBy: "emp2",
+    erpExportCreatedByName: USERS.emp2.name,
+    erpExportedAt: null,
+    erpExportedBy: "",
+    erpExportConfirmedAt: null,
+    erpExportConfirmedBy: "",
+    erpExportCancelledAt: null,
+    erpExportCancelledBy: "",
+    erpExportCancelReason: "",
     updatedAt: fs.serverTimestamp(),
     lastOperationId: duplicateId,
   });
   duplicate.set(fs.doc(db, "business_documents", docId, "history", duplicateId), {
     operationId: duplicateId,
-    action: "exportErp",
+    action: "generateErp",
     actorUid: "emp2",
     actorName: USERS.emp2.name,
     actorRole: USERS.emp2.role,
